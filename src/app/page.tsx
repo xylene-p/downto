@@ -15,6 +15,8 @@ interface Person {
 
 interface Event {
   id: number;
+  dbId?: string;
+  createdBy?: string;
   title: string;
   venue: string;
   date: string;
@@ -29,7 +31,7 @@ interface Event {
   neighborhood?: string;
 }
 
-const MOCK_EVENTS: Event[] = [
+const DEMO_EVENTS: Event[] = [
   {
     id: 1,
     title: "Dusk to Dawn: Anadelia b2b VTSS",
@@ -117,7 +119,7 @@ interface InterestCheck {
   isYours?: boolean;
 }
 
-const MOCK_CHECKS: InterestCheck[] = [
+const DEMO_CHECKS: InterestCheck[] = [
   {
     id: 200,
     text: "dinner tonight? thinking thai or korean",
@@ -155,7 +157,7 @@ const MOCK_CHECKS: InterestCheck[] = [
 ];
 
 // Tonight's public events (from public IG posts around the city)
-const MOCK_TONIGHT: Event[] = [
+const DEMO_TONIGHT: Event[] = [
   {
     id: 100,
     title: "Rooftop DJ Set — House & Disco",
@@ -1214,20 +1216,42 @@ const EventCard = ({
   onToggleSave,
   onToggleDown,
   onOpenSocial,
+  onLongPress,
 }: {
   event: Event;
   onToggleSave: () => void;
   onToggleDown: () => void;
   onOpenSocial: () => void;
+  onLongPress?: () => void;
 }) => {
   const [hovered, setHovered] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
   const mutuals = event.peopleDown.filter((p) => p.mutual);
   const others = event.peopleDown.filter((p) => !p.mutual);
+
+  const clearLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
 
   return (
     <div
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseLeave={() => { setHovered(false); clearLongPress(); }}
+      onPointerDown={() => {
+        if (!onLongPress) return;
+        longPressFired.current = false;
+        longPressTimer.current = setTimeout(() => {
+          longPressFired.current = true;
+          onLongPress();
+        }, 500);
+      }}
+      onPointerUp={clearLongPress}
+      onPointerLeave={clearLongPress}
+      onTouchMove={clearLongPress}
       style={{
         background: color.card,
         borderRadius: 20,
@@ -1452,6 +1476,199 @@ const EventCard = ({
             {event.isDown ? "You're Down ✋" : "I'm Down ✋"}
           </button>
         </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Edit Event Modal ───────────────────────────────────────────────────────
+
+const EditEventModal = ({
+  event,
+  open,
+  onClose,
+  onSave,
+}: {
+  event: Event | null;
+  open: boolean;
+  onClose: () => void;
+  onSave: (updated: { title: string; venue: string; date: string; time: string; vibe: string[] }) => void;
+}) => {
+  const [title, setTitle] = useState("");
+  const [venue, setVenue] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [vibeText, setVibeText] = useState("");
+
+  useEffect(() => {
+    if (event && open) {
+      setTitle(event.title);
+      setVenue(event.venue);
+      setDate(event.date);
+      setTime(event.time);
+      setVibeText(event.vibe.join(", "));
+    }
+  }, [event, open]);
+
+  if (!open || !event) return null;
+
+  const inputStyle: CSSProperties = {
+    background: color.deep,
+    border: `1px solid ${color.borderMid}`,
+    borderRadius: 10,
+    padding: "12px 14px",
+    color: color.text,
+    fontFamily: font.mono,
+    fontSize: 13,
+    outline: "none",
+    width: "100%",
+    boxSizing: "border-box",
+  };
+
+  const labelStyle: CSSProperties = {
+    fontFamily: font.mono,
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: "0.15em",
+    color: color.dim,
+    marginBottom: 6,
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 100,
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center",
+      }}
+    >
+      <div
+        onClick={onClose}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.7)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+        }}
+      />
+      <div
+        style={{
+          position: "relative",
+          background: color.surface,
+          borderRadius: "24px 24px 0 0",
+          width: "100%",
+          maxWidth: 420,
+          padding: "32px 24px 40px",
+          maxHeight: "80vh",
+          overflowY: "auto",
+          animation: "slideUp 0.3s ease-out",
+        }}
+      >
+        <div
+          style={{
+            width: 40,
+            height: 4,
+            background: color.faint,
+            borderRadius: 2,
+            margin: "0 auto 24px",
+          }}
+        />
+        <h3
+          style={{
+            fontFamily: font.serif,
+            fontSize: 22,
+            color: color.text,
+            marginBottom: 20,
+            fontWeight: 400,
+          }}
+        >
+          Edit event
+        </h3>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <div style={labelStyle}>Title</div>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Event name"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <div style={labelStyle}>Venue</div>
+            <input
+              type="text"
+              value={venue}
+              onChange={(e) => setVenue(e.target.value)}
+              placeholder="Venue"
+              style={inputStyle}
+            />
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <div style={labelStyle}>Date</div>
+              <input
+                type="text"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                placeholder="e.g. Fri, Feb 14"
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={labelStyle}>Time</div>
+              <input
+                type="text"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                placeholder="e.g. 9PM–2AM"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+          <div>
+            <div style={labelStyle}>Vibes (comma-separated)</div>
+            <input
+              type="text"
+              value={vibeText}
+              onChange={(e) => setVibeText(e.target.value)}
+              placeholder="e.g. techno, late night"
+              style={inputStyle}
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={() => {
+            const vibes = vibeText.split(",").map((v) => v.trim()).filter(Boolean);
+            onSave({ title, venue, date, time, vibe: vibes });
+          }}
+          disabled={!title.trim()}
+          style={{
+            width: "100%",
+            marginTop: 20,
+            background: !title.trim() ? color.faint : color.accent,
+            color: "#000",
+            border: "none",
+            borderRadius: 12,
+            padding: "14px",
+            fontFamily: font.mono,
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: !title.trim() ? "not-allowed" : "pointer",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            opacity: !title.trim() ? 0.5 : 1,
+          }}
+        >
+          Save Changes
+        </button>
       </div>
     </div>
   );
@@ -1894,7 +2111,7 @@ interface Squad {
   time: string;
 }
 
-const MOCK_SQUADS: Squad[] = [
+const DEMO_SQUADS: Squad[] = [
   {
     id: 1,
     name: "Bossa squad",
@@ -2284,14 +2501,14 @@ interface Friend {
   availability?: "open" | "awkward" | "not-available";
 }
 
-const MOCK_FRIENDS: Friend[] = [
+const DEMO_FRIENDS: Friend[] = [
   { id: 1, name: "Sara", username: "sara.nyc", avatar: "S", status: "friend", availability: "open" },
   { id: 2, name: "Nickon", username: "nickon", avatar: "N", status: "friend", availability: "awkward" },
   { id: 3, name: "Janelle", username: "janelle.k", avatar: "J", status: "friend", availability: "not-available" },
   { id: 4, name: "Luke", username: "luke_bk", avatar: "L", status: "friend", availability: "open" },
 ];
 
-const MOCK_SUGGESTIONS: Friend[] = [
+const DEMO_SUGGESTIONS: Friend[] = [
   { id: 10, name: "Devon", username: "devon.mp3", avatar: "D", status: "none" },
   { id: 11, name: "Raya", username: "raya_k", avatar: "R", status: "incoming" },
   { id: 12, name: "Marcus", username: "marcus.wav", avatar: "M", status: "pending" },
@@ -3614,14 +3831,14 @@ export default function Home() {
   const [tab, setTab] = useState<Tab>("feed");
   const [feedMode, setFeedMode] = useState<"foryou" | "tonight">("foryou");
   const [events, setEvents] = useState<Event[]>([]);
-  const [tonightEvents, setTonightEvents] = useState<Event[]>(MOCK_TONIGHT); // Public events always visible
+  const [tonightEvents, setTonightEvents] = useState<Event[]>([]); // Loaded from DB or demo data
   const [checks, setChecks] = useState<InterestCheck[]>([]);
   const [squads, setSquads] = useState<Squad[]>([]);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [socialEvent, setSocialEvent] = useState<Event | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [friends, setFriends] = useState<Friend[]>([]);
-  const [suggestions, setSuggestions] = useState<Friend[]>(MOCK_SUGGESTIONS); // Suggestions always visible
+  const [suggestions, setSuggestions] = useState<Friend[]>([]); // Loaded from DB or demo data
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [myCheckResponses, setMyCheckResponses] = useState<Record<number, "down" | "maybe">>({});
   const [squadNotification, setSquadNotification] = useState<{
@@ -3630,10 +3847,47 @@ export default function Home() {
     ideaBy: string;
     members: string[];
   } | null>(null);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [notifications, setNotifications] = useState<{ id: string; type: string; title: string; body: string | null; related_user_id: string | null; related_squad_id: string | null; related_check_id: string | null; is_read: boolean; created_at: string }[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 2000);
+  };
+
+  const handleEditEvent = async (updated: { title: string; venue: string; date: string; time: string; vibe: string[] }) => {
+    if (!editingEvent) return;
+
+    // Update in database if logged in and has a dbId
+    if (!isDemoMode && userId && editingEvent.dbId) {
+      try {
+        await db.updateEvent(editingEvent.dbId, {
+          title: updated.title,
+          venue: updated.venue,
+          date_display: updated.date,
+          time_display: updated.time,
+          vibes: updated.vibe,
+        });
+      } catch (err) {
+        console.error("Failed to update event:", err);
+        showToast("Failed to update - try again");
+        return;
+      }
+    }
+
+    // Update local state
+    const updateList = (prev: Event[]) =>
+      prev.map((e) =>
+        e.id === editingEvent.id
+          ? { ...e, title: updated.title, venue: updated.venue, date: updated.date, time: updated.time, vibe: updated.vibe }
+          : e
+      );
+    setEvents(updateList);
+    setTonightEvents(updateList);
+    setEditingEvent(null);
+    showToast("Event updated!");
   };
 
   // Load real data when logged in (non-demo mode)
@@ -3643,8 +3897,22 @@ export default function Home() {
     try {
       // Load saved events
       const savedEvents = await db.getSavedEvents();
+      const savedEventIds = savedEvents.map((se) => se.event!.id);
+
+      // Load public/tonight events
+      const publicEvents = await db.getPublicEvents();
+      const publicEventIds = publicEvents.map((e) => e.id);
+
+      // Batch fetch people down for all events
+      const allEventIds = [...new Set([...savedEventIds, ...publicEventIds])];
+      const peopleDownMap = allEventIds.length > 0
+        ? await db.getPeopleDownBatch(allEventIds)
+        : {};
+
       const transformedEvents: Event[] = savedEvents.map((se) => ({
-        id: parseInt(se.event!.id.slice(0, 8), 16) || Date.now(), // Convert UUID to number for compatibility
+        id: parseInt(se.event!.id.slice(0, 8), 16) || Date.now(),
+        dbId: se.event!.id,
+        createdBy: se.event!.created_by ?? undefined,
         title: se.event!.title,
         venue: se.event!.venue ?? "",
         date: se.event!.date_display ?? "",
@@ -3654,15 +3922,15 @@ export default function Home() {
         igHandle: se.event!.ig_handle ?? "",
         saved: true,
         isDown: se.is_down,
-        peopleDown: [], // TODO: fetch separately
+        peopleDown: peopleDownMap[se.event!.id] ?? [],
         neighborhood: se.event!.neighborhood ?? undefined,
       }));
       setEvents(transformedEvents);
 
-      // Load public/tonight events
-      const publicEvents = await db.getPublicEvents();
       const transformedTonight: Event[] = publicEvents.map((e) => ({
         id: parseInt(e.id.slice(0, 8), 16) || Date.now(),
+        dbId: e.id,
+        createdBy: e.created_by ?? undefined,
         title: e.title,
         venue: e.venue ?? "",
         date: e.date_display ?? "Tonight",
@@ -3673,10 +3941,10 @@ export default function Home() {
         saved: false,
         isDown: false,
         isPublic: true,
-        peopleDown: [],
+        peopleDown: peopleDownMap[e.id] ?? [],
         neighborhood: e.neighborhood ?? undefined,
       }));
-      setTonightEvents(transformedTonight.length > 0 ? transformedTonight : MOCK_TONIGHT);
+      setTonightEvents(transformedTonight);
 
       // Load friends
       const friendsList = await db.getFriends();
@@ -3702,8 +3970,25 @@ export default function Home() {
         avatar: f.requester!.avatar_letter,
         status: "incoming" as const,
       }));
-      // Add incoming requests to suggestions
-      setSuggestions((prev) => [...incomingFriends, ...prev.filter(s => s.status !== "incoming")]);
+
+      // Load suggested users (people not yet friends)
+      let suggestedFriends: Friend[] = [];
+      try {
+        const suggestedUsers = await db.getSuggestedUsers();
+        suggestedFriends = suggestedUsers.map((p) => ({
+          id: parseInt(p.id.slice(0, 8), 16) || Date.now(),
+          odbc: p.id,
+          name: p.display_name,
+          username: p.username,
+          avatar: p.avatar_letter,
+          status: "none" as const,
+        }));
+      } catch (suggestErr) {
+        console.warn("Failed to load suggestions:", suggestErr);
+      }
+
+      // Merge incoming requests + suggestions
+      setSuggestions([...incomingFriends, ...suggestedFriends]);
 
       // Load interest checks
       const activeChecks = await db.getActiveChecks();
@@ -3743,7 +4028,7 @@ export default function Home() {
           id: parseInt(s.id.slice(0, 8), 16) || Date.now(),
           name: s.name,
           event: s.event ? `${s.event.title} — ${s.event.date_display}` : undefined,
-          members: [], // Simplified - will load members separately when needed
+          members: [],
           messages: [],
           lastMsg: "",
           time: "",
@@ -3751,12 +4036,10 @@ export default function Home() {
         setSquads(transformedSquads);
       } catch (squadErr) {
         console.warn("Failed to load squads:", squadErr);
-        // Continue without squads
       }
 
     } catch (err) {
       console.error("Failed to load data:", err);
-      // Fall back to empty states - user can still use the app
     }
   }, [isDemoMode, userId]);
 
@@ -3779,6 +4062,38 @@ export default function Home() {
       loadRealData();
     }
   }, [isLoggedIn, isDemoMode, loadRealData]);
+
+  // Load notifications and subscribe to realtime updates
+  useEffect(() => {
+    if (!isLoggedIn || isDemoMode || !userId) return;
+
+    // Load initial notifications
+    const loadNotifications = async () => {
+      try {
+        const [notifs, count] = await Promise.all([
+          db.getNotifications(),
+          db.getUnreadCount(),
+        ]);
+        setNotifications(notifs);
+        setUnreadCount(count);
+      } catch (err) {
+        console.warn("Failed to load notifications:", err);
+      }
+    };
+    loadNotifications();
+
+    // Subscribe to new notifications in realtime
+    const channel = db.subscribeToNotifications(userId, (newNotif) => {
+      setNotifications((prev) => [newNotif, ...prev]);
+      setUnreadCount((prev) => prev + 1);
+      // Show toast for friend requests
+      if (newNotif.type === "friend_request" && newNotif.body) {
+        showToast(newNotif.body);
+      }
+    });
+
+    return () => { channel.unsubscribe(); };
+  }, [isLoggedIn, isDemoMode, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleSave = (id: number) => {
     setEvents((prev) =>
@@ -3922,11 +4237,13 @@ export default function Home() {
           setIsLoggedIn(true);
           setIgConnected(true);
           setIsDemoMode(true);
-          // Populate with mock data for demo
-          setEvents(MOCK_EVENTS);
-          setChecks(MOCK_CHECKS);
-          setSquads(MOCK_SQUADS);
-          setFriends(MOCK_FRIENDS);
+          // Populate with demo data
+          setEvents(DEMO_EVENTS);
+          setChecks(DEMO_CHECKS);
+          setSquads(DEMO_SQUADS);
+          setFriends(DEMO_FRIENDS);
+          setTonightEvents(DEMO_TONIGHT);
+          setSuggestions(DEMO_SUGGESTIONS);
         }}
       />
     );
@@ -3971,25 +4288,77 @@ export default function Home() {
         >
           down to
         </h1>
-        <button
-          onClick={() => setPasteOpen(true)}
-          style={{
-            background: color.accent,
-            color: "#000",
-            border: "none",
-            width: 40,
-            height: 40,
-            borderRadius: "50%",
-            fontSize: 22,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontWeight: 700,
-          }}
-        >
-          +
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* Bell icon */}
+          <button
+            onClick={() => {
+              setNotificationsOpen(true);
+              if (unreadCount > 0 && !isDemoMode && userId) {
+                db.markAllNotificationsRead().then(() => {
+                  setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+                  setUnreadCount(0);
+                });
+              }
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              position: "relative",
+              padding: 8,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            {unreadCount > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 4,
+                  right: 4,
+                  width: unreadCount > 9 ? 18 : 16,
+                  height: 16,
+                  borderRadius: 8,
+                  background: "#ff3b30",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 9,
+                  fontWeight: 700,
+                  fontFamily: font.mono,
+                  color: "#fff",
+                }}
+              >
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </div>
+            )}
+          </button>
+          {/* Add event button */}
+          <button
+            onClick={() => setPasteOpen(true)}
+            style={{
+              background: color.accent,
+              color: "#000",
+              border: "none",
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              fontSize: 22,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: 700,
+            }}
+          >
+            +
+          </button>
+        </div>
       </div>
 
       {/* Content */}
@@ -4338,6 +4707,9 @@ export default function Home() {
                         onToggleSave={() => toggleSave(e.id)}
                         onToggleDown={() => toggleDown(e.id)}
                         onOpenSocial={() => setSocialEvent(e)}
+                        onLongPress={
+                          (e.createdBy === userId || isDemoMode) ? () => setEditingEvent(e) : undefined
+                        }
                       />
                     ))}
                   </>
@@ -4437,6 +4809,35 @@ export default function Home() {
                     public events happening tonight in Brooklyn
                   </p>
                 </div>
+                {tonightEvents.length === 0 ? (
+                  <div
+                    style={{
+                      padding: "40px 20px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontFamily: font.serif,
+                        fontSize: 20,
+                        color: color.muted,
+                        marginBottom: 8,
+                      }}
+                    >
+                      No events tonight yet
+                    </div>
+                    <p
+                      style={{
+                        fontFamily: font.mono,
+                        fontSize: 11,
+                        color: color.faint,
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      Paste an IG link or add an event manually to get started
+                    </p>
+                  </div>
+                ) : null}
                 {tonightEvents.map((e) => (
                   <div
                     key={e.id}
@@ -4628,6 +5029,7 @@ export default function Home() {
                 cursor: "pointer",
                 padding: "8px 16px",
                 borderRadius: 12,
+                position: "relative",
               }}
             >
               <span
@@ -4642,6 +5044,19 @@ export default function Home() {
               >
                 {tabIcons[t]} {tabLabels[t]}
               </span>
+              {t === "groups" && notifications.some((n) => n.type === "squad_message" && !n.is_read) && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 4,
+                    right: 8,
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: "#ff3b30",
+                  }}
+                />
+              )}
             </button>
           ))}
         </div>
@@ -4794,6 +5209,8 @@ export default function Home() {
               // Add to local state with the real ID
               const newEvent: Event = {
                 id: parseInt(dbEvent.id.slice(0, 8), 16) || Date.now(),
+                dbId: dbEvent.id,
+                createdBy: userId,
                 title,
                 venue,
                 date: dateDisplay,
@@ -4908,6 +5325,250 @@ export default function Home() {
         event={socialEvent}
         open={!!socialEvent}
         onClose={() => setSocialEvent(null)}
+      />
+      {/* Notifications Panel */}
+      {notificationsOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 100,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            onClick={() => setNotificationsOpen(false)}
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(0,0,0,0.7)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+            }}
+          />
+          <div
+            style={{
+              position: "relative",
+              background: color.surface,
+              borderRadius: "24px 24px 0 0",
+              width: "100%",
+              maxWidth: 420,
+              maxHeight: "80vh",
+              padding: "24px 0 0",
+              animation: "slideUp 0.3s ease-out",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              style={{
+                width: 40,
+                height: 4,
+                background: color.faint,
+                borderRadius: 2,
+                margin: "0 auto 16px",
+              }}
+            />
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "0 20px 16px",
+                borderBottom: `1px solid ${color.border}`,
+              }}
+            >
+              <h2
+                style={{
+                  fontFamily: font.serif,
+                  fontSize: 22,
+                  color: color.text,
+                  fontWeight: 400,
+                }}
+              >
+                Notifications
+              </h2>
+              {notifications.some((n) => !n.is_read) && (
+                <button
+                  onClick={() => {
+                    if (!isDemoMode && userId) {
+                      db.markAllNotificationsRead();
+                    }
+                    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+                    setUnreadCount(0);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: color.accent,
+                    fontFamily: font.mono,
+                    fontSize: 11,
+                    cursor: "pointer",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  Mark all read
+                </button>
+              )}
+            </div>
+            <div
+              style={{
+                overflowY: "auto",
+                flex: 1,
+                padding: "0 0 32px",
+              }}
+            >
+              {notifications.length === 0 ? (
+                <div
+                  style={{
+                    padding: "40px 20px",
+                    textAlign: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: font.serif,
+                      fontSize: 18,
+                      color: color.muted,
+                      marginBottom: 8,
+                    }}
+                  >
+                    No notifications yet
+                  </div>
+                  <p
+                    style={{
+                      fontFamily: font.mono,
+                      fontSize: 11,
+                      color: color.faint,
+                    }}
+                  >
+                    You&apos;ll see friend requests, check responses, and squad messages here
+                  </p>
+                </div>
+              ) : (
+                notifications.map((n) => (
+                  <button
+                    key={n.id}
+                    onClick={() => {
+                      // Mark single notification as read
+                      if (!n.is_read && !isDemoMode && userId) {
+                        db.markNotificationRead(n.id);
+                        setNotifications((prev) =>
+                          prev.map((notif) => notif.id === n.id ? { ...notif, is_read: true } : notif)
+                        );
+                        setUnreadCount((prev) => Math.max(0, prev - 1));
+                      }
+                      // Navigate based on type
+                      if (n.type === "friend_request" || n.type === "friend_accepted") {
+                        setNotificationsOpen(false);
+                        setFriendsOpen(true);
+                      } else if (n.type === "squad_message") {
+                        setNotificationsOpen(false);
+                        setTab("groups");
+                      } else if (n.type === "check_response") {
+                        setNotificationsOpen(false);
+                        setTab("feed");
+                        setFeedMode("foryou");
+                      }
+                    }}
+                    style={{
+                      display: "flex",
+                      gap: 12,
+                      padding: "14px 20px",
+                      background: n.is_read ? "transparent" : "rgba(232, 255, 90, 0.04)",
+                      border: "none",
+                      borderBottom: `1px solid ${color.border}`,
+                      cursor: "pointer",
+                      width: "100%",
+                      textAlign: "left",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: "50%",
+                        background: n.type === "friend_request" ? "#E8FF5A22"
+                          : n.type === "friend_accepted" ? "#34C75922"
+                          : n.type === "check_response" ? "#FF9F0A22"
+                          : "#5856D622",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 16,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {n.type === "friend_request" ? "👋"
+                        : n.type === "friend_accepted" ? "🤝"
+                        : n.type === "check_response" ? "🔥"
+                        : "💬"}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontFamily: font.mono,
+                          fontSize: 12,
+                          color: n.is_read ? color.muted : color.text,
+                          fontWeight: n.is_read ? 400 : 700,
+                          marginBottom: 2,
+                        }}
+                      >
+                        {n.title}
+                      </div>
+                      {n.body && (
+                        <div
+                          style={{
+                            fontFamily: font.mono,
+                            fontSize: 11,
+                            color: color.dim,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {n.body}
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          fontFamily: font.mono,
+                          fontSize: 10,
+                          color: color.faint,
+                          marginTop: 4,
+                        }}
+                      >
+                        {formatTimeAgo(new Date(n.created_at))}
+                      </div>
+                    </div>
+                    {!n.is_read && (
+                      <div
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          background: color.accent,
+                          flexShrink: 0,
+                          alignSelf: "center",
+                        }}
+                      />
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <EditEventModal
+        event={editingEvent}
+        open={!!editingEvent}
+        onClose={() => setEditingEvent(null)}
+        onSave={handleEditEvent}
       />
       <FriendsModal
         open={friendsOpen}

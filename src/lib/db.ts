@@ -8,6 +8,7 @@ import type {
   CheckResponse,
   Squad,
   Message,
+  Notification,
 } from './types';
 
 // ============================================================================
@@ -76,6 +77,24 @@ export async function createEvent(event: Omit<Event, 'id' | 'created_at'>): Prom
   if (error) {
     throw new Error(`createEvent failed: ${error.message} (${error.code})`);
   }
+  return data;
+}
+
+export async function updateEvent(
+  eventId: string,
+  updates: Partial<Pick<Event, 'title' | 'venue' | 'date_display' | 'time_display' | 'vibes'>>
+): Promise<Event> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { data, error } = await supabase
+    .from('events')
+    .update(updates)
+    .eq('id', eventId)
+    .select()
+    .single();
+
+  if (error) throw error;
   return data;
 }
 
@@ -148,6 +167,57 @@ export async function getPeopleDown(eventId: string): Promise<(SavedEvent & { us
   return data ?? [];
 }
 
+export async function getPeopleDownBatch(
+  eventIds: string[]
+): Promise<Record<string, { name: string; avatar: string; mutual: boolean }[]>> {
+  if (eventIds.length === 0) return {};
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const currentUserId = user?.id;
+
+  const { data, error } = await supabase
+    .from('saved_events')
+    .select('event_id, user:profiles(*)')
+    .in('event_id', eventIds)
+    .eq('is_down', true);
+
+  if (error) throw error;
+
+  // Get friend IDs for mutual detection
+  let friendIds: Set<string> = new Set();
+  if (currentUserId) {
+    const { data: friendships } = await supabase
+      .from('friendships')
+      .select('requester_id, addressee_id')
+      .eq('status', 'accepted')
+      .or(`requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`);
+
+    if (friendships) {
+      friendIds = new Set(
+        friendships.map(f =>
+          f.requester_id === currentUserId ? f.addressee_id : f.requester_id
+        )
+      );
+    }
+  }
+
+  const result: Record<string, { name: string; avatar: string; mutual: boolean }[]> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const row of (data ?? []) as any[]) {
+    const eventId = row.event_id;
+    if (!result[eventId]) result[eventId] = [];
+    const profile = row.user;
+    if (profile && profile.id !== currentUserId) {
+      result[eventId].push({
+        name: profile.display_name,
+        avatar: profile.avatar_letter,
+        mutual: friendIds.has(profile.id),
+      });
+    }
+  }
+  return result;
+}
+
 // ============================================================================
 // FRIENDSHIPS
 // ============================================================================
@@ -218,6 +288,32 @@ export async function removeFriend(friendshipId: string): Promise<void> {
     .eq('id', friendshipId);
 
   if (error) throw error;
+}
+
+export async function getSuggestedUsers(): Promise<Profile[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  // Get all users the current user has any friendship with (pending or accepted)
+  const { data: friendships } = await supabase
+    .from('friendships')
+    .select('requester_id, addressee_id')
+    .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
+
+  const excludeIds = new Set<string>([user.id]);
+  for (const f of friendships ?? []) {
+    excludeIds.add(f.requester_id);
+    excludeIds.add(f.addressee_id);
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .not('id', 'in', `(${Array.from(excludeIds).join(',')})`)
+    .limit(10);
+
+  if (error) throw error;
+  return data ?? [];
 }
 
 // ============================================================================
@@ -414,4 +510,78 @@ export async function searchUsers(query: string): Promise<Profile[]> {
 
   if (error) throw error;
   return data ?? [];
+}
+
+// ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+
+export async function getNotifications(): Promise<Notification[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*, related_user:profiles!related_user_id(*)')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getUnreadCount(): Promise<number> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('is_read', false);
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function markNotificationRead(notificationId: string): Promise<void> {
+  const { error } = await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('id', notificationId);
+
+  if (error) throw error;
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { error } = await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('user_id', user.id)
+    .eq('is_read', false);
+
+  if (error) throw error;
+}
+
+export function subscribeToNotifications(
+  userId: string,
+  callback: (notification: Notification) => void
+) {
+  return supabase
+    .channel(`notifications:${userId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${userId}`,
+      },
+      (payload) => callback(payload.new as Notification)
+    )
+    .subscribe();
 }

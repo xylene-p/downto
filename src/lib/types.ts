@@ -108,6 +108,21 @@ export interface Message {
   sender?: Profile;
 }
 
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: 'friend_request' | 'friend_accepted' | 'check_response' | 'squad_message';
+  title: string;
+  body: string | null;
+  related_user_id: string | null;
+  related_squad_id: string | null;
+  related_check_id: string | null;
+  is_read: boolean;
+  created_at: string;
+  // Joined data
+  related_user?: Profile;
+}
+
 // ============================================================================
 // Frontend View Types - Transformed for UI consumption
 // ============================================================================
