@@ -399,11 +399,18 @@ export function subscribeToMessages(
 // ============================================================================
 
 export async function searchUsers(query: string): Promise<Profile[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const sanitized = query.replace(/[%_]/g, '');
+  if (!sanitized) return [];
+
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
-    .limit(10);
+    .or(`username.ilike.%${sanitized}%,display_name.ilike.%${sanitized}%`)
+    .neq('id', user.id)
+    .limit(20);
 
   if (error) throw error;
   return data ?? [];

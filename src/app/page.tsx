@@ -2307,6 +2307,7 @@ const FriendsModal = ({
   suggestions,
   onAddFriend,
   onAcceptRequest,
+  onSearchUsers,
 }: {
   open: boolean;
   onClose: () => void;
@@ -2314,9 +2315,13 @@ const FriendsModal = ({
   suggestions: Friend[];
   onAddFriend: (id: number) => void;
   onAcceptRequest: (id: number) => void;
+  onSearchUsers?: (query: string) => Promise<Friend[]>;
 }) => {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"friends" | "add">("friends");
+  const [searchResults, setSearchResults] = useState<Friend[]>([]);
+  const [searching, setSearching] = useState(false);
+  const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const incomingRequests = suggestions.filter((s) => s.status === "incoming");
   const filteredFriends = friends.filter(
@@ -2330,6 +2335,41 @@ const FriendsModal = ({
       (s.name.toLowerCase().includes(search.toLowerCase()) ||
         s.username.toLowerCase().includes(search.toLowerCase()))
   );
+
+  // Debounced user search for "Add" tab
+  useEffect(() => {
+    if (tab !== "add" || !onSearchUsers || search.length < 2) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+
+    setSearching(true);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const results = await onSearchUsers(search);
+        setSearchResults(results);
+      } catch (err) {
+        console.error("Search failed:", err);
+        setSearchResults([]);
+      }
+      setSearching(false);
+    }, 300);
+
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [search, tab, onSearchUsers]);
+
+  // Reset search when modal closes
+  useEffect(() => {
+    if (!open) {
+      setSearch("");
+      setSearchResults([]);
+      setSearching(false);
+    }
+  }, [open]);
 
   if (!open) return null;
 
@@ -2438,7 +2478,7 @@ const FriendsModal = ({
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name or username..."
+          placeholder={tab === "add" ? "Search users by name or @username..." : "Filter friends..."}
           style={{
             width: "100%",
             background: color.deep,
@@ -2619,86 +2659,227 @@ const FriendsModal = ({
               </>
             )}
 
-            {/* Suggestions */}
-            <div
-              style={{
-                fontFamily: font.mono,
-                fontSize: 10,
-                textTransform: "uppercase",
-                letterSpacing: "0.15em",
-                color: color.dim,
-                marginBottom: 12,
-              }}
-            >
-              Suggestions
-            </div>
-            {filteredSuggestions.map((f) => (
-              <div
-                key={f.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "12px 0",
-                  borderBottom: `1px solid ${color.border}`,
-                }}
-              >
+            {/* Search Results or Suggestions */}
+            {search.length >= 2 ? (
+              <>
                 <div
                   style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: "50%",
-                    background: color.borderLight,
+                    fontFamily: font.mono,
+                    fontSize: 10,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.15em",
                     color: color.dim,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontFamily: font.mono,
-                    fontSize: 16,
-                    fontWeight: 700,
-                    marginRight: 12,
+                    marginBottom: 12,
                   }}
                 >
-                  {f.avatar}
+                  {searching ? "Searching..." : `Results (${searchResults.length})`}
                 </div>
-                <div style={{ flex: 1 }}>
+                {searching ? (
                   <div
                     style={{
+                      textAlign: "center",
+                      padding: "32px 0",
+                      color: color.faint,
                       fontFamily: font.mono,
-                      fontSize: 13,
-                      color: color.text,
+                      fontSize: 12,
                     }}
                   >
-                    {f.name}
+                    <span style={{ animation: "pulse 1.5s ease-in-out infinite" }}>
+                      Searching users...
+                    </span>
                   </div>
-                  <div
+                ) : searchResults.length === 0 ? (
+                  <p
                     style={{
+                      textAlign: "center",
+                      color: color.faint,
                       fontFamily: font.mono,
-                      fontSize: 11,
-                      color: color.dim,
+                      fontSize: 12,
+                      padding: "32px 0",
                     }}
                   >
-                    @{f.username}
-                  </div>
-                </div>
-                <button
-                  onClick={() => f.status === "none" && onAddFriend(f.id)}
-                  disabled={f.status === "pending"}
+                    No users found
+                  </p>
+                ) : (
+                  searchResults.map((f) => (
+                    <div
+                      key={f.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "12px 0",
+                        borderBottom: `1px solid ${color.border}`,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: "50%",
+                          background: f.status === "friend" ? color.accent : color.borderLight,
+                          color: f.status === "friend" ? "#000" : color.dim,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontFamily: font.mono,
+                          fontSize: 16,
+                          fontWeight: 700,
+                          marginRight: 12,
+                        }}
+                      >
+                        {f.avatar}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div
+                          style={{
+                            fontFamily: font.mono,
+                            fontSize: 13,
+                            color: color.text,
+                          }}
+                        >
+                          {f.name}
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: font.mono,
+                            fontSize: 11,
+                            color: color.dim,
+                          }}
+                        >
+                          @{f.username}
+                        </div>
+                      </div>
+                      {f.status === "friend" ? (
+                        <span
+                          style={{
+                            fontFamily: font.mono,
+                            fontSize: 11,
+                            color: color.dim,
+                            padding: "8px 14px",
+                          }}
+                        >
+                          Friends
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => f.status === "none" && onAddFriend(f.id)}
+                          disabled={f.status === "pending"}
+                          style={{
+                            background: f.status === "pending" ? "transparent" : color.accent,
+                            color: f.status === "pending" ? color.dim : "#000",
+                            border: f.status === "pending" ? `1px solid ${color.borderMid}` : "none",
+                            borderRadius: 8,
+                            padding: "8px 14px",
+                            fontFamily: font.mono,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: f.status === "pending" ? "default" : "pointer",
+                          }}
+                        >
+                          {f.status === "pending" ? "Pending" : "Add"}
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </>
+            ) : (
+              <>
+                <div
                   style={{
-                    background: f.status === "pending" ? "transparent" : color.accent,
-                    color: f.status === "pending" ? color.dim : "#000",
-                    border: f.status === "pending" ? `1px solid ${color.borderMid}` : "none",
-                    borderRadius: 8,
-                    padding: "8px 14px",
                     fontFamily: font.mono,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    cursor: f.status === "pending" ? "default" : "pointer",
+                    fontSize: 10,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.15em",
+                    color: color.dim,
+                    marginBottom: 12,
                   }}
                 >
-                  {f.status === "pending" ? "Pending" : "Add"}
-                </button>
-              </div>
-            ))}
+                  Suggestions
+                </div>
+                {filteredSuggestions.length === 0 ? (
+                  <p
+                    style={{
+                      textAlign: "center",
+                      color: color.faint,
+                      fontFamily: font.mono,
+                      fontSize: 12,
+                      padding: "32px 0",
+                    }}
+                  >
+                    Search for friends by name or username
+                  </p>
+                ) : (
+                  filteredSuggestions.map((f) => (
+                    <div
+                      key={f.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "12px 0",
+                        borderBottom: `1px solid ${color.border}`,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: "50%",
+                          background: color.borderLight,
+                          color: color.dim,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontFamily: font.mono,
+                          fontSize: 16,
+                          fontWeight: 700,
+                          marginRight: 12,
+                        }}
+                      >
+                        {f.avatar}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div
+                          style={{
+                            fontFamily: font.mono,
+                            fontSize: 13,
+                            color: color.text,
+                          }}
+                        >
+                          {f.name}
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: font.mono,
+                            fontSize: 11,
+                            color: color.dim,
+                          }}
+                        >
+                          @{f.username}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => f.status === "none" && onAddFriend(f.id)}
+                        disabled={f.status === "pending"}
+                        style={{
+                          background: f.status === "pending" ? "transparent" : color.accent,
+                          color: f.status === "pending" ? color.dim : "#000",
+                          border: f.status === "pending" ? `1px solid ${color.borderMid}` : "none",
+                          borderRadius: 8,
+                          padding: "8px 14px",
+                          fontFamily: font.mono,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: f.status === "pending" ? "default" : "pointer",
+                        }}
+                      >
+                        {f.status === "pending" ? "Pending" : "Add"}
+                      </button>
+                    </div>
+                  ))
+                )}
+              </>
+            )}
           </>
         )}
       </div>
@@ -4779,6 +4960,29 @@ export default function Home() {
             showToast("Failed to accept request");
           }
         }}
+        onSearchUsers={!isDemoMode && userId ? async (query) => {
+          const results = await db.searchUsers(query);
+          const friendIds = new Set(friends.map((f) => f.odbc).filter(Boolean));
+          const pendingIds = new Set(
+            suggestions.filter((s) => s.status === "pending" || s.status === "incoming").map((s) => s.odbc).filter(Boolean)
+          );
+
+          return results
+            .filter((p) => p.id !== userId)
+            .map((p) => ({
+              id: parseInt(p.id.slice(0, 8), 16) || Date.now(),
+              odbc: p.id,
+              name: p.display_name,
+              username: p.username,
+              avatar: p.avatar_letter,
+              status: friendIds.has(p.id)
+                ? "friend" as const
+                : pendingIds.has(p.id)
+                  ? "pending" as const
+                  : "none" as const,
+              availability: p.availability,
+            }));
+        } : undefined}
       />
     </div>
   );
