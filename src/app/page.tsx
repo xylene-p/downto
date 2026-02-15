@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, CSSProperties } from "react";
+import { useState, useEffect, useRef, useCallback, CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
+import * as db from "@/lib/db";
+import type { Profile } from "@/lib/types";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -314,6 +316,7 @@ const Grain = () => (
 // ─── Paste IG Link Modal ────────────────────────────────────────────────────
 
 interface ScrapedEvent {
+  type?: "event" | "movie";
   title: string;
   venue: string;
   date: string;
@@ -321,6 +324,12 @@ interface ScrapedEvent {
   vibe: string[];
   igHandle: string;
   isPublicPost: boolean;
+  // Movie-specific
+  movieTitle?: string;
+  year?: string;
+  director?: string;
+  thumbnail?: string;
+  letterboxdUrl?: string;
 }
 
 const PasteModal = ({
@@ -396,15 +405,22 @@ const PasteModal = ({
       }
 
       setScraped({
+        type: data.type || "event",
         title: data.title,
         venue: data.venue,
         date: data.date,
         time: data.time,
         vibe: data.vibe,
-        igHandle: data.igHandle,
-        isPublicPost: data.isPublicPost,
+        igHandle: data.igHandle || "",
+        isPublicPost: data.isPublicPost || false,
+        // Movie-specific fields
+        movieTitle: data.movieTitle,
+        year: data.year,
+        director: data.director,
+        thumbnail: data.thumbnail,
+        letterboxdUrl: data.letterboxdUrl,
       });
-      setSharePublicly(data.isPublicPost);
+      setSharePublicly(data.isPublicPost || false);
     } catch (err) {
       setError("Network error. Please try again.");
     }
@@ -499,67 +515,6 @@ const PasteModal = ({
 
         {mode === "paste" && (
           <>
-            {!igConnected ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "24px 16px",
-                }}
-              >
-                <div style={{ fontSize: 40, marginBottom: 16 }}>📸</div>
-                <h3
-                  style={{
-                    fontFamily: font.serif,
-                    fontSize: 20,
-                    color: color.text,
-                    marginBottom: 8,
-                    fontWeight: 400,
-                  }}
-                >
-                  Connect Instagram
-                </h3>
-                <p
-                  style={{
-                    fontFamily: font.mono,
-                    fontSize: 11,
-                    color: color.dim,
-                    marginBottom: 20,
-                    lineHeight: 1.6,
-                  }}
-                >
-                  Link your IG to paste event links and auto-import details
-                </p>
-                <button
-                  onClick={onConnectIG}
-                  style={{
-                    background: "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: 12,
-                    padding: "14px 28px",
-                    fontFamily: font.mono,
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                  }}
-                >
-                  Connect Instagram
-                </button>
-                <p
-                  style={{
-                    fontFamily: font.mono,
-                    fontSize: 10,
-                    color: color.faint,
-                    marginTop: 16,
-                  }}
-                >
-                  or use Interest Check to post ideas without IG
-                </p>
-              </div>
-            ) : (
-            <>
             <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
               <input
                 ref={inputRef}
@@ -567,7 +522,7 @@ const PasteModal = ({
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handlePull()}
-                placeholder="https://instagram.com/p/..."
+                placeholder="paste an IG or Letterboxd link..."
                 style={{
                   flex: 1,
                   background: color.deep,
@@ -599,6 +554,50 @@ const PasteModal = ({
               </button>
             </div>
 
+        {!igConnected && !loading && !scraped && !error && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              padding: "12px 14px",
+              background: color.deep,
+              borderRadius: 10,
+              marginBottom: 14,
+              border: `1px solid ${color.borderLight}`,
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <div
+                style={{
+                  fontFamily: font.mono,
+                  fontSize: 11,
+                  color: color.muted,
+                  marginBottom: 2,
+                }}
+              >
+                Want to paste IG links?
+              </div>
+              <button
+                onClick={onConnectIG}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  fontFamily: font.mono,
+                  fontSize: 11,
+                  color: color.accent,
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                }}
+              >
+                Connect Instagram
+              </button>
+            </div>
+            <div style={{ fontSize: 20 }}>📸</div>
+          </div>
+        )}
+
         {loading && (
           <div
             style={{
@@ -620,7 +619,7 @@ const PasteModal = ({
                 animation: "spin 0.8s linear infinite",
               }}
             />
-            scraping event details...
+            {url.includes("letterboxd.com") ? "fetching movie details..." : "scraping event details..."}
           </div>
         )}
 
@@ -665,7 +664,155 @@ const PasteModal = ({
           </div>
         )}
 
-        {scraped && (
+        {scraped && scraped.type === "movie" && (
+          <div
+            style={{
+              background: color.deep,
+              borderRadius: 16,
+              padding: 20,
+              border: `1px solid ${color.borderLight}`,
+              animation: "fadeIn 0.3s ease",
+            }}
+          >
+            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
+              {scraped.thumbnail && (
+                <img
+                  src={scraped.thumbnail}
+                  alt={scraped.movieTitle || scraped.title}
+                  style={{
+                    width: 100,
+                    height: 150,
+                    objectFit: "cover",
+                    borderRadius: 10,
+                    flexShrink: 0,
+                  }}
+                />
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontFamily: font.serif,
+                    fontSize: 22,
+                    color: color.text,
+                    marginBottom: 4,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {scraped.movieTitle || scraped.title}
+                </div>
+                <div
+                  style={{
+                    fontFamily: font.mono,
+                    fontSize: 12,
+                    color: color.muted,
+                    marginBottom: 4,
+                  }}
+                >
+                  {scraped.year}
+                  {scraped.director && ` · ${scraped.director}`}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8 }}>
+                  {scraped.vibe.map((v) => (
+                    <span
+                      key={v}
+                      style={{
+                        background: "#1f1f1f",
+                        color: color.accent,
+                        padding: "3px 8px",
+                        borderRadius: 20,
+                        fontFamily: font.mono,
+                        fontSize: 10,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                      }}
+                    >
+                      {v}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {/* Editable date/time/venue for movie screening */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+              <input
+                type="text"
+                value={scraped.venue === "TBD" ? "" : scraped.venue}
+                onChange={(e) => setScraped({ ...scraped, venue: e.target.value })}
+                placeholder="Where are you watching?"
+                style={{
+                  background: color.surface,
+                  border: `1px solid ${color.borderMid}`,
+                  borderRadius: 10,
+                  padding: "10px 12px",
+                  color: color.text,
+                  fontFamily: font.mono,
+                  fontSize: 12,
+                  outline: "none",
+                }}
+              />
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  type="text"
+                  value={scraped.date === "TBD" ? "" : scraped.date}
+                  onChange={(e) => setScraped({ ...scraped, date: e.target.value })}
+                  placeholder="Date"
+                  style={{
+                    flex: 1,
+                    background: color.surface,
+                    border: `1px solid ${color.borderMid}`,
+                    borderRadius: 10,
+                    padding: "10px 12px",
+                    color: color.text,
+                    fontFamily: font.mono,
+                    fontSize: 12,
+                    outline: "none",
+                  }}
+                />
+                <input
+                  type="text"
+                  value={scraped.time === "TBD" ? "" : scraped.time}
+                  onChange={(e) => setScraped({ ...scraped, time: e.target.value })}
+                  placeholder="Time"
+                  style={{
+                    flex: 1,
+                    background: color.surface,
+                    border: `1px solid ${color.borderMid}`,
+                    borderRadius: 10,
+                    padding: "10px 12px",
+                    color: color.text,
+                    fontFamily: font.mono,
+                    fontSize: 12,
+                    outline: "none",
+                  }}
+                />
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                onSubmit(scraped, false);
+                onClose();
+              }}
+              style={{
+                width: "100%",
+                background: color.accent,
+                color: "#000",
+                border: "none",
+                borderRadius: 12,
+                padding: "14px",
+                fontFamily: font.mono,
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+              }}
+            >
+              Save Movie Night →
+            </button>
+          </div>
+        )}
+
+        {scraped && scraped.type !== "movie" && (
           <div
             style={{
               background: color.deep,
@@ -826,8 +973,6 @@ const PasteModal = ({
             </button>
           </div>
         )}
-          </>
-            )}
           </>
         )}
 
@@ -1742,7 +1887,7 @@ const CalendarView = ({ events }: { events: Event[] }) => {
 interface Squad {
   id: number;
   name: string;
-  event: string;
+  event?: string;
   members: { name: string; avatar: string }[];
   messages: { sender: string; text: string; time: string; isYou?: boolean }[];
   lastMsg: string;
@@ -2582,12 +2727,14 @@ const ProfileView = ({
   friends,
   onOpenFriends,
   onLogout,
+  profile,
 }: {
   igConnected: boolean;
   onConnectIG: () => void;
   friends: Friend[];
   onOpenFriends: () => void;
   onLogout: () => void;
+  profile?: Profile | null;
 }) => {
   const [availability, setAvailability] = useState<AvailabilityStatus>("open");
   const [expiry, setExpiry] = useState<string | null>(null);
@@ -2635,6 +2782,9 @@ const ProfileView = ({
     }
   };
 
+  const displayName = profile?.display_name ?? "kat";
+  const avatarLetter = profile?.avatar_letter ?? displayName.charAt(0).toUpperCase();
+
   return (
   <div style={{ padding: "0 20px", animation: "fadeIn 0.3s ease" }}>
     <div style={{ textAlign: "center", paddingTop: 20 }}>
@@ -2654,13 +2804,13 @@ const ProfileView = ({
           margin: "0 auto 12px",
         }}
       >
-        K
+        {avatarLetter}
       </div>
       <h2 style={{ fontFamily: font.serif, fontSize: 24, color: color.text, fontWeight: 400 }}>
-        kat
+        {displayName}
       </h2>
       <p style={{ fontFamily: font.mono, fontSize: 11, color: color.dim, marginTop: 4 }}>
-        Brooklyn · 12 events saved · 3 squads formed
+        @{profile?.username ?? "you"}
       </p>
     </div>
 
@@ -3230,28 +3380,46 @@ export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [igConnected, setIgConnected] = useState(false);
 
   // Check auth state on mount and listen for changes
   useEffect(() => {
     // Check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         setIsLoggedIn(true);
         setUserId(session.user.id);
+        // Fetch profile
+        try {
+          const userProfile = await db.getCurrentProfile();
+          setProfile(userProfile);
+        } catch (err) {
+          console.error("Failed to fetch profile:", err);
+        }
       }
       setIsLoading(false);
     });
 
     // Listen for auth changes (magic link click)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         if (event === "SIGNED_IN" && session?.user) {
           setIsLoggedIn(true);
           setUserId(session.user.id);
+          // Fetch profile (small delay for trigger to complete on first signup)
+          setTimeout(async () => {
+            try {
+              const userProfile = await db.getCurrentProfile();
+              setProfile(userProfile);
+            } catch (err) {
+              console.error("Failed to fetch profile:", err);
+            }
+          }, 500);
         } else if (event === "SIGNED_OUT") {
           setIsLoggedIn(false);
           setUserId(null);
+          setProfile(null);
         }
       }
     );
@@ -3284,6 +3452,135 @@ export default function Home() {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 2000);
   };
+
+  // Load real data when logged in (non-demo mode)
+  const loadRealData = useCallback(async () => {
+    if (isDemoMode || !userId) return;
+
+    try {
+      // Load saved events
+      const savedEvents = await db.getSavedEvents();
+      const transformedEvents: Event[] = savedEvents.map((se) => ({
+        id: parseInt(se.event!.id.slice(0, 8), 16) || Date.now(), // Convert UUID to number for compatibility
+        title: se.event!.title,
+        venue: se.event!.venue ?? "",
+        date: se.event!.date_display ?? "",
+        time: se.event!.time_display ?? "",
+        vibe: se.event!.vibes,
+        image: se.event!.image_url ?? "",
+        igHandle: se.event!.ig_handle ?? "",
+        saved: true,
+        isDown: se.is_down,
+        peopleDown: [], // TODO: fetch separately
+        neighborhood: se.event!.neighborhood ?? undefined,
+      }));
+      setEvents(transformedEvents);
+
+      // Load public/tonight events
+      const publicEvents = await db.getPublicEvents();
+      const transformedTonight: Event[] = publicEvents.map((e) => ({
+        id: parseInt(e.id.slice(0, 8), 16) || Date.now(),
+        title: e.title,
+        venue: e.venue ?? "",
+        date: e.date_display ?? "Tonight",
+        time: e.time_display ?? "",
+        vibe: e.vibes,
+        image: e.image_url ?? "",
+        igHandle: e.ig_handle ?? "",
+        saved: false,
+        isDown: false,
+        isPublic: true,
+        peopleDown: [],
+        neighborhood: e.neighborhood ?? undefined,
+      }));
+      setTonightEvents(transformedTonight.length > 0 ? transformedTonight : MOCK_TONIGHT);
+
+      // Load friends
+      const friendsList = await db.getFriends();
+      const transformedFriends: Friend[] = friendsList.map((p) => ({
+        id: parseInt(p.id.slice(0, 8), 16) || Date.now(),
+        name: p.display_name,
+        username: p.username,
+        avatar: p.avatar_letter,
+        status: "friend" as const,
+        availability: p.availability,
+      }));
+      setFriends(transformedFriends);
+
+      // Load interest checks
+      const activeChecks = await db.getActiveChecks();
+      const transformedChecks: InterestCheck[] = activeChecks.map((c) => {
+        const now = new Date();
+        const created = new Date(c.created_at);
+        const expires = new Date(c.expires_at);
+        const msElapsed = now.getTime() - created.getTime();
+        const totalDuration = expires.getTime() - created.getTime();
+        const expiryPercent = Math.min(100, (msElapsed / totalDuration) * 100);
+        const msRemaining = expires.getTime() - now.getTime();
+        const hoursRemaining = Math.floor(msRemaining / (1000 * 60 * 60));
+        const minsRemaining = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
+        const minsElapsed = Math.floor(msElapsed / (1000 * 60));
+        const hoursElapsed = Math.floor(msElapsed / (1000 * 60 * 60));
+
+        return {
+          id: parseInt(c.id.slice(0, 8), 16) || Date.now(),
+          text: c.text,
+          author: c.author.display_name,
+          timeAgo: hoursElapsed > 0 ? `${hoursElapsed}h` : minsElapsed > 0 ? `${minsElapsed}m` : "now",
+          expiresIn: hoursRemaining > 0 ? `${hoursRemaining}h` : minsRemaining > 0 ? `${minsRemaining}m` : "expired",
+          expiryPercent,
+          responses: c.responses.map((r) => ({
+            name: r.user?.display_name ?? "Unknown",
+            avatar: r.user?.avatar_letter ?? "?",
+            status: r.response,
+          })),
+        };
+      });
+      setChecks(transformedChecks);
+
+      // Load squads (separate try/catch so other data still loads if this fails)
+      try {
+        const squadsList = await db.getSquads();
+        const transformedSquads: Squad[] = squadsList.map((s) => ({
+          id: parseInt(s.id.slice(0, 8), 16) || Date.now(),
+          name: s.name,
+          event: s.event ? `${s.event.title} — ${s.event.date_display}` : undefined,
+          members: [], // Simplified - will load members separately when needed
+          messages: [],
+          lastMsg: "",
+          time: "",
+        }));
+        setSquads(transformedSquads);
+      } catch (squadErr) {
+        console.warn("Failed to load squads:", squadErr);
+        // Continue without squads
+      }
+
+    } catch (err) {
+      console.error("Failed to load data:", err);
+      // Fall back to empty states - user can still use the app
+    }
+  }, [isDemoMode, userId]);
+
+  // Helper for time ago formatting
+  const formatTimeAgo = (date: Date): string => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays > 0) return `${diffDays}d`;
+    if (diffHours > 0) return `${diffHours}h`;
+    if (diffMins > 0) return `${diffMins}m`;
+    return "now";
+  };
+
+  // Trigger data load when logged in
+  useEffect(() => {
+    if (isLoggedIn && !isDemoMode) {
+      loadRealData();
+    }
+  }, [isLoggedIn, isDemoMode, loadRealData]);
 
   const toggleSave = (id: number) => {
     setEvents((prev) =>
@@ -4091,8 +4388,10 @@ export default function Home() {
               await supabase.auth.signOut();
               setIsLoggedIn(false);
               setUserId(null);
+              setProfile(null);
               setIsDemoMode(false);
             }}
+            profile={profile}
           />
         )}
       </div>
@@ -4262,52 +4561,149 @@ export default function Home() {
           setIgConnected(true);
           showToast("Instagram connected! 📸");
         }}
-        onSubmit={(e, sharePublicly) => {
-          if (sharePublicly) {
+        onSubmit={async (e, sharePublicly) => {
+          const title = e.type === "movie" ? (e.movieTitle || e.title) : e.title;
+          const venue = e.venue || "TBD";
+          const dateDisplay = e.date || "TBD";
+          const timeDisplay = e.time || "TBD";
+          const vibes = e.vibe;
+          const imageUrl = e.thumbnail || "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&q=80";
+          const igHandle = e.igHandle || "";
+
+          // Save to database if logged in (not demo mode)
+          if (!isDemoMode && userId) {
+            try {
+              // Create the event in the database
+              const dbEvent = await db.createEvent({
+                title,
+                venue,
+                neighborhood: null,
+                date: null, // Could parse dateDisplay to actual date
+                date_display: dateDisplay,
+                time_display: timeDisplay,
+                vibes,
+                image_url: imageUrl,
+                ig_handle: igHandle,
+                ig_url: null,
+                is_public: sharePublicly,
+                created_by: userId,
+              });
+
+              // Save it to user's saved events
+              await db.saveEvent(dbEvent.id);
+              await db.toggleDown(dbEvent.id, true);
+
+              // Add to local state with the real ID
+              const newEvent: Event = {
+                id: parseInt(dbEvent.id.slice(0, 8), 16) || Date.now(),
+                title,
+                venue,
+                date: dateDisplay,
+                time: timeDisplay,
+                vibe: vibes,
+                image: imageUrl,
+                igHandle,
+                saved: true,
+                isDown: true,
+                isPublic: sharePublicly,
+                peopleDown: [],
+              };
+              setEvents((prev) => [newEvent, ...prev]);
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : String(err);
+              console.error("Failed to save event:", msg);
+              showToast("Failed to save - try again");
+              return;
+            }
+          } else {
+            // Demo mode - just use local state
+            const newEvent: Event = {
+              id: Date.now(),
+              title,
+              venue,
+              date: dateDisplay,
+              time: timeDisplay,
+              vibe: vibes,
+              image: imageUrl,
+              igHandle,
+              saved: true,
+              isDown: true,
+              isPublic: sharePublicly,
+              peopleDown: [],
+            };
+            setEvents((prev) => [newEvent, ...prev]);
+          }
+
+          if (e.type === "movie") {
+            showToast("Movie night saved! 🎬");
+          } else if (sharePublicly) {
             showToast("Saved & shared on Tonight! ✶");
           } else {
             showToast("Event saved! 🎯");
           }
         }}
-        onInterestCheck={(idea) => {
-          const newCheck: InterestCheck = {
-            id: Date.now(),
-            text: idea,
-            author: "You",
-            timeAgo: "now",
-            expiresIn: "24h",
-            expiryPercent: 0,
-            responses: [],
-            isYours: true,
-          };
-          setChecks((prev) => [newCheck, ...prev]);
-          showToast("Sent to friends! 📣");
+        onInterestCheck={async (idea) => {
+          // Save to database if logged in (not demo mode)
+          if (!isDemoMode && userId) {
+            try {
+              const dbCheck = await db.createInterestCheck(idea);
+              const newCheck: InterestCheck = {
+                id: parseInt(dbCheck.id.slice(0, 8), 16) || Date.now(),
+                text: idea,
+                author: profile?.display_name || "You",
+                timeAgo: "now",
+                expiresIn: "24h",
+                expiryPercent: 0,
+                responses: [],
+                isYours: true,
+              };
+              setChecks((prev) => [newCheck, ...prev]);
+              showToast("Sent to friends! 📣");
+            } catch (err) {
+              console.error("Failed to create interest check:", err);
+              showToast("Failed to send - try again");
+            }
+          } else {
+            // Demo mode - local state + simulated responses
+            const newCheck: InterestCheck = {
+              id: Date.now(),
+              text: idea,
+              author: "You",
+              timeAgo: "now",
+              expiresIn: "24h",
+              expiryPercent: 0,
+              responses: [],
+              isYours: true,
+            };
+            setChecks((prev) => [newCheck, ...prev]);
+            showToast("Sent to friends! 📣");
 
-          // Simulate friends responding
-          setTimeout(() => {
-            setChecks((prev) =>
-              prev.map((c) =>
-                c.id === newCheck.id
-                  ? { ...c, responses: [{ name: "Sara", avatar: "S", status: "down" as const }] }
-                  : c
-              )
-            );
-          }, 3000);
-          setTimeout(() => {
-            setChecks((prev) =>
-              prev.map((c) =>
-                c.id === newCheck.id
-                  ? {
-                      ...c,
-                      responses: [
-                        ...c.responses,
-                        { name: "Nickon", avatar: "N", status: "down" as const },
-                      ],
-                    }
-                  : c
-              )
-            );
-          }, 6000);
+            // Simulate friends responding (demo mode only)
+            setTimeout(() => {
+              setChecks((prev) =>
+                prev.map((c) =>
+                  c.id === newCheck.id
+                    ? { ...c, responses: [{ name: "Sara", avatar: "S", status: "down" as const }] }
+                    : c
+                )
+              );
+            }, 3000);
+            setTimeout(() => {
+              setChecks((prev) =>
+                prev.map((c) =>
+                  c.id === newCheck.id
+                    ? {
+                        ...c,
+                        responses: [
+                          ...c.responses,
+                          { name: "Nickon", avatar: "N", status: "down" as const },
+                        ],
+                      }
+                    : c
+                )
+              );
+            }, 6000);
+          }
         }}
       />
       <SocialDrawer

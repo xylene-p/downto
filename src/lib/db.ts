@@ -73,7 +73,9 @@ export async function createEvent(event: Omit<Event, 'id' | 'created_at'>): Prom
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    throw new Error(`createEvent failed: ${error.message} (${error.code})`);
+  }
   return data;
 }
 
@@ -166,9 +168,10 @@ export async function getFriends(): Promise<Profile[]> {
   if (error) throw error;
 
   // Return the other person in each friendship
-  return (data ?? []).map((f: { requester: Profile; addressee: Profile }) =>
-    f.requester.id === user.id ? f.addressee : f.requester
-  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data ?? []).map((f: any) =>
+    f.requester?.id === user.id ? f.addressee : f.requester
+  ).filter(Boolean) as Profile[];
 }
 
 export async function getPendingRequests(): Promise<(Friendship & { requester: Profile })[]> {
@@ -286,14 +289,25 @@ export async function getSquads(): Promise<Squad[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
+  // First get squads the user is a member of
+  const { data: memberOf, error: memberError } = await supabase
+    .from('squad_members')
+    .select('squad_id')
+    .eq('user_id', user.id);
+
+  if (memberError) throw memberError;
+  if (!memberOf || memberOf.length === 0) return [];
+
+  const squadIds = memberOf.map(m => m.squad_id);
+
+  // Then fetch those squads with their data
   const { data, error } = await supabase
     .from('squads')
     .select(`
       *,
-      event:events(*),
-      members:squad_members(*, user:profiles(*)),
-      messages:messages(*, sender:profiles(*))
+      event:events(*)
     `)
+    .in('id', squadIds)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
