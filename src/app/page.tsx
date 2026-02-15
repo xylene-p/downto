@@ -554,12 +554,9 @@ const PasteModal = ({
               </button>
             </div>
 
-        {!igConnected && !loading && !scraped && !error && (
+        {!loading && !scraped && !error && (
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
               padding: "12px 14px",
               background: color.deep,
               borderRadius: 10,
@@ -567,34 +564,37 @@ const PasteModal = ({
               border: `1px solid ${color.borderLight}`,
             }}
           >
-            <div style={{ flex: 1 }}>
-              <div
-                style={{
-                  fontFamily: font.mono,
-                  fontSize: 11,
-                  color: color.muted,
-                  marginBottom: 2,
-                }}
-              >
-                Want to paste IG links?
-              </div>
-              <button
-                onClick={onConnectIG}
-                style={{
-                  background: "none",
-                  border: "none",
-                  padding: 0,
-                  fontFamily: font.mono,
-                  fontSize: 11,
-                  color: color.accent,
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                }}
-              >
-                Connect Instagram
-              </button>
+            <div
+              style={{
+                fontFamily: font.mono,
+                fontSize: 11,
+                color: color.muted,
+                lineHeight: 1.5,
+              }}
+            >
+              Paste a Letterboxd or Instagram link to pull event details.
+              {!igConnected && (
+                <>
+                  {" "}
+                  <button
+                    onClick={onConnectIG}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      fontFamily: font.mono,
+                      fontSize: 11,
+                      color: color.accent,
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                    }}
+                  >
+                    Connect Instagram
+                  </button>{" "}
+                  for IG links.
+                </>
+              )}
             </div>
-            <div style={{ fontSize: 20 }}>📸</div>
           </div>
         )}
 
