@@ -2275,6 +2275,8 @@ const GroupsView = ({
 
 interface Friend {
   id: number;
+  odbc?: string; // Real user UUID from database
+  friendshipId?: string; // Friendship UUID (for accepting requests)
   name: string;
   username: string;
   avatar: string;
@@ -3499,6 +3501,7 @@ export default function Home() {
       const friendsList = await db.getFriends();
       const transformedFriends: Friend[] = friendsList.map((p) => ({
         id: parseInt(p.id.slice(0, 8), 16) || Date.now(),
+        odbc: p.id,
         name: p.display_name,
         username: p.username,
         avatar: p.avatar_letter,
@@ -3506,6 +3509,20 @@ export default function Home() {
         availability: p.availability,
       }));
       setFriends(transformedFriends);
+
+      // Load pending friend requests (incoming)
+      const pendingRequests = await db.getPendingRequests();
+      const incomingFriends: Friend[] = pendingRequests.map((f) => ({
+        id: parseInt(f.requester!.id.slice(0, 8), 16) || Date.now(),
+        odbc: f.requester!.id,
+        friendshipId: f.id,
+        name: f.requester!.display_name,
+        username: f.requester!.username,
+        avatar: f.requester!.avatar_letter,
+        status: "incoming" as const,
+      }));
+      // Add incoming requests to suggestions
+      setSuggestions((prev) => [...incomingFriends, ...prev.filter(s => s.status !== "incoming")]);
 
       // Load interest checks
       const activeChecks = await db.getActiveChecks();
@@ -4716,18 +4733,50 @@ export default function Home() {
         onClose={() => setFriendsOpen(false)}
         friends={friends}
         suggestions={suggestions}
-        onAddFriend={(id) => {
-          setSuggestions((prev) =>
-            prev.map((s) => (s.id === id ? { ...s, status: "pending" as const } : s))
-          );
-          showToast("Friend request sent! 🤝");
-        }}
-        onAcceptRequest={(id) => {
+        onAddFriend={async (id) => {
           const person = suggestions.find((s) => s.id === id);
-          if (person) {
+          if (!person?.odbc) {
+            // Demo mode - just update local state
+            setSuggestions((prev) =>
+              prev.map((s) => (s.id === id ? { ...s, status: "pending" as const } : s))
+            );
+            showToast("Friend request sent! 🤝");
+            return;
+          }
+
+          // Real mode - send to database
+          try {
+            await db.sendFriendRequest(person.odbc);
+            setSuggestions((prev) =>
+              prev.map((s) => (s.id === id ? { ...s, status: "pending" as const } : s))
+            );
+            showToast("Friend request sent! 🤝");
+          } catch (err) {
+            console.error("Failed to send friend request:", err);
+            showToast("Failed to send request");
+          }
+        }}
+        onAcceptRequest={async (id) => {
+          const person = suggestions.find((s) => s.id === id);
+          if (!person) return;
+
+          if (!person.friendshipId) {
+            // Demo mode - just update local state
             setFriends((prev) => [...prev, { ...person, status: "friend" as const, availability: "open" as const }]);
             setSuggestions((prev) => prev.filter((s) => s.id !== id));
             showToast(`${person.name} added! 🎉`);
+            return;
+          }
+
+          // Real mode - accept in database
+          try {
+            await db.acceptFriendRequest(person.friendshipId);
+            setFriends((prev) => [...prev, { ...person, status: "friend" as const, availability: "open" as const }]);
+            setSuggestions((prev) => prev.filter((s) => s.id !== id));
+            showToast(`${person.name} added! 🎉`);
+          } catch (err) {
+            console.error("Failed to accept friend request:", err);
+            showToast("Failed to accept request");
           }
         }}
       />
