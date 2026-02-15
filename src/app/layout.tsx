@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "down? — find your crew",
-  description: "Save events. See who's going. Form crews.",
+  title: "down to",
+  description: "Save events. See who's going.",
   openGraph: {
-    title: "down?",
-    description: "Save events. See who's going. Form crews.",
+    title: "down to",
+    description: "Save events. See who's going.",
     siteName: "downto.xyz",
   },
 };
