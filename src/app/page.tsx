@@ -116,6 +116,7 @@ const DEMO_EVENTS: Event[] = [
 // Interest checks - casual event ideas (expire like stories)
 interface InterestCheck {
   id: number;
+  dbId?: string;
   text: string;
   author: string;
   timeAgo: string;
@@ -4116,6 +4117,7 @@ export default function Home() {
 
         return {
           id: parseInt(c.id.slice(0, 8), 16) || Date.now(),
+          dbId: c.id,
           text: c.text,
           author: c.author.display_name,
           timeAgo: hoursElapsed > 0 ? `${hoursElapsed}h` : minsElapsed > 0 ? `${minsElapsed}m` : "now",
@@ -4827,8 +4829,15 @@ export default function Home() {
                                   &#9998;
                                 </button>
                                 <button
-                                  onClick={() => {
+                                  onClick={async () => {
                                     setChecks((prev) => prev.filter((c) => c.id !== check.id));
+                                    if (check.dbId) {
+                                      try {
+                                        await db.deleteInterestCheck(check.dbId);
+                                      } catch (err) {
+                                        console.error("Failed to delete check:", err);
+                                      }
+                                    }
                                     showToast("Check removed");
                                   }}
                                   style={{
@@ -5612,6 +5621,7 @@ export default function Home() {
               const dbCheck = await db.createInterestCheck(idea);
               const newCheck: InterestCheck = {
                 id: parseInt(dbCheck.id.slice(0, 8), 16) || Date.now(),
+                dbId: dbCheck.id,
                 text: idea,
                 author: profile?.display_name || "You",
                 timeAgo: "now",

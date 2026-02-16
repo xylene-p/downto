@@ -384,6 +384,19 @@ export async function createInterestCheck(text: string, expiresInHours = 24): Pr
   return data;
 }
 
+export async function deleteInterestCheck(checkId: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { error } = await supabase
+    .from('interest_checks')
+    .delete()
+    .eq('id', checkId)
+    .eq('author_id', user.id);
+
+  if (error) throw error;
+}
+
 export async function respondToCheck(
   checkId: string,
   response: 'down' | 'maybe' | 'nah'
