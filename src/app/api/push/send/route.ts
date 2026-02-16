@@ -21,15 +21,18 @@ function getServiceClient() {
 export async function POST(request: NextRequest) {
   // Validate Supabase webhook secret (sent in x-supabase-webhook-secret header)
   const secret = request.headers.get('x-supabase-webhook-secret');
+  console.log('[push/send] secret match:', secret === webhookSecret, 'secret present:', !!secret);
   if (secret !== webhookSecret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const body = await request.json();
+  console.log('[push/send] webhook body:', JSON.stringify(body));
 
   // Supabase webhook sends { type, table, record, ... }
   const notification = body.record;
   if (!notification?.user_id) {
+    console.log('[push/send] no user_id in payload');
     return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
   }
 
@@ -40,6 +43,8 @@ export async function POST(request: NextRequest) {
     .from('push_subscriptions')
     .select('*')
     .eq('user_id', notification.user_id);
+
+  console.log('[push/send] subscriptions:', subscriptions?.length, 'error:', error?.message);
 
   if (error || !subscriptions?.length) {
     return NextResponse.json({ sent: 0 });
@@ -66,8 +71,10 @@ export async function POST(request: NextRequest) {
           payload
         );
         sent++;
+        console.log('[push/send] sent to', sub.endpoint.slice(0, 50));
       } catch (err: unknown) {
         const statusCode = (err as { statusCode?: number }).statusCode;
+        console.log('[push/send] error sending:', statusCode, (err as Error).message);
         if (statusCode === 404 || statusCode === 410) {
           staleEndpoints.push(sub.endpoint);
         }
@@ -84,5 +91,6 @@ export async function POST(request: NextRequest) {
       .in('endpoint', staleEndpoints);
   }
 
+  console.log('[push/send] result:', { sent, cleaned: staleEndpoints.length });
   return NextResponse.json({ sent, cleaned: staleEndpoints.length });
 }
