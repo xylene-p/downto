@@ -1286,6 +1286,35 @@ const EventCard = ({
             filter: "brightness(0.6) contrast(1.1)",
           }}
         />
+        {onLongPress && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onLongPress();
+            }}
+            style={{
+              position: "absolute",
+              top: 12,
+              left: 12,
+              background: "rgba(0,0,0,0.6)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+              color: "#aaa",
+              border: "none",
+              padding: "6px 8px",
+              borderRadius: 20,
+              fontFamily: font.mono,
+              fontSize: 11,
+              cursor: "pointer",
+              zIndex: 2,
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            <span style={{ fontSize: 12 }}>&#9998;</span>
+          </button>
+        )}
         <div style={{ position: "absolute", top: 12, right: 12 }}>
           <span
             style={{
@@ -3899,6 +3928,8 @@ export default function Home() {
   } | null>(null);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [newlyAddedId, setNewlyAddedId] = useState<number | null>(null);
+  const [editingCheckId, setEditingCheckId] = useState<number | null>(null);
+  const [editingCheckText, setEditingCheckText] = useState("");
   const [autoSelectSquadId, setAutoSelectSquadId] = useState<number | null>(null);
   const [notifications, setNotifications] = useState<{ id: string; type: string; title: string; body: string | null; related_user_id: string | null; related_squad_id: string | null; related_check_id: string | null; is_read: boolean; created_at: string }[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -4138,12 +4169,65 @@ export default function Home() {
     loadNotifications();
 
     // Subscribe to new notifications in realtime
-    const channel = db.subscribeToNotifications(userId, (newNotif) => {
+    const channel = db.subscribeToNotifications(userId, async (newNotif) => {
       setNotifications((prev) => [newNotif, ...prev]);
       setUnreadCount((prev) => prev + 1);
-      // Show toast for friend requests
-      if (newNotif.type === "friend_request" && newNotif.body) {
-        showToast(newNotif.body);
+
+      if (newNotif.type === "friend_request" && newNotif.related_user_id) {
+        if (newNotif.body) showToast(newNotif.body);
+        try {
+          const [profile, friendshipId] = await Promise.all([
+            db.getProfileById(newNotif.related_user_id),
+            db.getFriendshipWith(newNotif.related_user_id),
+          ]);
+          if (profile) {
+            const incoming: Friend = {
+              id: parseInt(profile.id.slice(0, 8), 16) || Date.now(),
+              odbc: profile.id,
+              friendshipId: friendshipId ?? undefined,
+              name: profile.display_name,
+              username: profile.username,
+              avatar: profile.avatar_letter,
+              status: "incoming",
+            };
+            setSuggestions((prev) => {
+              if (prev.some((s) => s.odbc === profile.id)) return prev;
+              return [incoming, ...prev];
+            });
+          }
+        } catch (err) {
+          console.warn("Failed to fetch incoming friend profile:", err);
+        }
+      } else if (newNotif.type === "friend_accepted" && newNotif.related_user_id) {
+        if (newNotif.body) showToast(newNotif.body);
+        const relatedId = newNotif.related_user_id;
+        setSuggestions((prev) => {
+          const person = prev.find((s) => s.odbc === relatedId);
+          if (person) {
+            setFriends((prevFriends) => {
+              if (prevFriends.some((f) => f.odbc === relatedId)) return prevFriends;
+              return [...prevFriends, { ...person, status: "friend" as const, availability: "open" as const }];
+            });
+            return prev.filter((s) => s.odbc !== relatedId);
+          }
+          db.getProfileById(relatedId).then((profile) => {
+            if (profile) {
+              setFriends((prevFriends) => {
+                if (prevFriends.some((f) => f.odbc === relatedId)) return prevFriends;
+                return [...prevFriends, {
+                  id: parseInt(profile.id.slice(0, 8), 16) || Date.now(),
+                  odbc: profile.id,
+                  name: profile.display_name,
+                  username: profile.username,
+                  avatar: profile.avatar_letter,
+                  status: "friend" as const,
+                  availability: "open" as const,
+                }];
+              });
+            }
+          }).catch(() => {});
+          return prev;
+        });
       }
     });
 
@@ -4625,19 +4709,121 @@ export default function Home() {
                             {check.expiresIn} left
                           </span>
                         </div>
-                        <p
-                          style={{
-                            fontFamily: font.serif,
-                            fontSize: 18,
-                            color: color.text,
-                            margin: 0,
-                            marginBottom: 12,
-                            fontWeight: 400,
-                            lineHeight: 1.4,
-                          }}
-                        >
-                          {check.text}
-                        </p>
+                        {editingCheckId === check.id ? (
+                          <div style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}>
+                            <input
+                              autoFocus
+                              value={editingCheckText}
+                              onChange={(e) => setEditingCheckText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && editingCheckText.trim()) {
+                                  setChecks((prev) =>
+                                    prev.map((c) =>
+                                      c.id === check.id ? { ...c, text: editingCheckText.trim() } : c
+                                    )
+                                  );
+                                  setEditingCheckId(null);
+                                  showToast("Check updated!");
+                                } else if (e.key === "Escape") {
+                                  setEditingCheckId(null);
+                                }
+                              }}
+                              style={{
+                                flex: 1,
+                                background: color.deep,
+                                border: `1px solid ${color.accent}`,
+                                borderRadius: 10,
+                                padding: "10px 12px",
+                                color: color.text,
+                                fontFamily: font.serif,
+                                fontSize: 16,
+                                outline: "none",
+                              }}
+                            />
+                            <button
+                              onClick={() => {
+                                if (editingCheckText.trim()) {
+                                  setChecks((prev) =>
+                                    prev.map((c) =>
+                                      c.id === check.id ? { ...c, text: editingCheckText.trim() } : c
+                                    )
+                                  );
+                                  setEditingCheckId(null);
+                                  showToast("Check updated!");
+                                }
+                              }}
+                              style={{
+                                background: color.accent,
+                                color: "#000",
+                                border: "none",
+                                borderRadius: 8,
+                                padding: "8px 12px",
+                                fontFamily: font.mono,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                              }}
+                            >
+                              Save
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 12 }}>
+                            <p
+                              style={{
+                                fontFamily: font.serif,
+                                fontSize: 18,
+                                color: color.text,
+                                margin: 0,
+                                fontWeight: 400,
+                                lineHeight: 1.4,
+                                flex: 1,
+                              }}
+                            >
+                              {check.text}
+                            </p>
+                            {check.isYours && (
+                              <div style={{ display: "flex", gap: 4, flexShrink: 0, marginTop: 2 }}>
+                                <button
+                                  onClick={() => {
+                                    setEditingCheckId(check.id);
+                                    setEditingCheckText(check.text);
+                                  }}
+                                  style={{
+                                    background: "rgba(255,255,255,0.06)",
+                                    border: "none",
+                                    color: color.dim,
+                                    borderRadius: 6,
+                                    padding: "4px 8px",
+                                    fontFamily: font.mono,
+                                    fontSize: 10,
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  &#9998;
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setChecks((prev) => prev.filter((c) => c.id !== check.id));
+                                    showToast("Check removed");
+                                  }}
+                                  style={{
+                                    background: "rgba(255,255,255,0.06)",
+                                    border: "none",
+                                    color: "#ff6b6b",
+                                    borderRadius: 6,
+                                    padding: "4px 8px",
+                                    fontFamily: font.mono,
+                                    fontSize: 10,
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  &#10005;
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <div
                           style={{
                             display: "flex",
@@ -4821,7 +5007,7 @@ export default function Home() {
                         onToggleDown={() => toggleDown(e.id)}
                         onOpenSocial={() => setSocialEvent(e)}
                         onLongPress={
-                          (e.createdBy === userId || isDemoMode) ? () => setEditingEvent(e) : undefined
+                          (e.createdBy === userId || (!e.createdBy && e.dbId) || isDemoMode) ? () => setEditingEvent(e) : undefined
                         }
                         isNew={e.id === newlyAddedId}
                       />
