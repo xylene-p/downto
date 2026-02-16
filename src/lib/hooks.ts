@@ -157,7 +157,7 @@ export function useFriends() {
       ]);
 
       setFriends(
-        friendsList.map((p) => ({
+        friendsList.map(({ profile: p }) => ({
           id: p.id,
           name: p.display_name,
           username: p.username,

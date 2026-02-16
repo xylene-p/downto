@@ -2575,6 +2575,7 @@ const FriendsModal = ({
   suggestions,
   onAddFriend,
   onAcceptRequest,
+  onRemoveFriend,
   onSearchUsers,
 }: {
   open: boolean;
@@ -2583,6 +2584,7 @@ const FriendsModal = ({
   suggestions: Friend[];
   onAddFriend: (id: number) => void;
   onAcceptRequest: (id: number) => void;
+  onRemoveFriend?: (id: number) => void;
   onSearchUsers?: (query: string) => Promise<Friend[]>;
 }) => {
   const [search, setSearch] = useState("");
@@ -2829,12 +2831,32 @@ const FriendsModal = ({
                       style={{
                         fontSize: 12,
                         opacity: 0.8,
+                        marginRight: onRemoveFriend ? 8 : 0,
                       }}
                     >
                       {f.availability === "open" && "✨"}
                       {f.availability === "awkward" && "👀"}
                       {f.availability === "not-available" && "🌙"}
                     </span>
+                  )}
+                  {onRemoveFriend && (
+                    <button
+                      onClick={() => onRemoveFriend(f.id)}
+                      style={{
+                        background: "transparent",
+                        border: `1px solid ${color.borderMid}`,
+                        borderRadius: 8,
+                        padding: "6px 10px",
+                        fontFamily: font.mono,
+                        fontSize: 10,
+                        color: color.dim,
+                        cursor: "pointer",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      Remove
+                    </button>
                   )}
                 </div>
               ))
@@ -4034,9 +4056,10 @@ export default function Home() {
 
       // Load friends
       const friendsList = await db.getFriends();
-      const transformedFriends: Friend[] = friendsList.map((p) => ({
+      const transformedFriends: Friend[] = friendsList.map(({ profile: p, friendshipId }) => ({
         id: parseInt(p.id.slice(0, 8), 16) || Date.now(),
         odbc: p.id,
+        friendshipId,
         name: p.display_name,
         username: p.username,
         avatar: p.avatar_letter,
@@ -5944,6 +5967,26 @@ export default function Home() {
           } catch (err) {
             console.error("Failed to accept friend request:", err);
             showToast("Failed to accept request");
+          }
+        }}
+        onRemoveFriend={async (id) => {
+          const person = friends.find((f) => f.id === id);
+          if (!person) return;
+
+          if (!person.friendshipId) {
+            // Demo mode
+            setFriends((prev) => prev.filter((f) => f.id !== id));
+            showToast(`Removed ${person.name}`);
+            return;
+          }
+
+          try {
+            await db.removeFriend(person.friendshipId);
+            setFriends((prev) => prev.filter((f) => f.id !== id));
+            showToast(`Removed ${person.name}`);
+          } catch (err) {
+            console.error("Failed to remove friend:", err);
+            showToast("Failed to remove friend");
           }
         }}
         onSearchUsers={!isDemoMode && userId ? async (query) => {

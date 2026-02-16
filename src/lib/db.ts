@@ -44,6 +44,32 @@ export async function updateProfile(updates: Partial<Profile>): Promise<Profile>
   return data;
 }
 
+export async function getProfileById(id: string): Promise<Profile | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) return null;
+  return data;
+}
+
+export async function getFriendshipWith(userId: string): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('friendships')
+    .select('id')
+    .or(`and(requester_id.eq.${user.id},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${user.id})`)
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data.id;
+}
+
 // ============================================================================
 // EVENTS
 // ============================================================================
@@ -222,13 +248,14 @@ export async function getPeopleDownBatch(
 // FRIENDSHIPS
 // ============================================================================
 
-export async function getFriends(): Promise<Profile[]> {
+export async function getFriends(): Promise<{ profile: Profile; friendshipId: string }[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
   const { data, error } = await supabase
     .from('friendships')
     .select(`
+      id,
       requester:profiles!requester_id(*),
       addressee:profiles!addressee_id(*)
     `)
@@ -237,11 +264,12 @@ export async function getFriends(): Promise<Profile[]> {
 
   if (error) throw error;
 
-  // Return the other person in each friendship
+  // Return the other person in each friendship along with friendship ID
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data ?? []).map((f: any) =>
-    f.requester?.id === user.id ? f.addressee : f.requester
-  ).filter(Boolean) as Profile[];
+  return (data ?? []).map((f: any) => ({
+    profile: (f.requester?.id === user.id ? f.addressee : f.requester) as Profile,
+    friendshipId: f.id as string,
+  })).filter(r => r.profile);
 }
 
 export async function getPendingRequests(): Promise<(Friendship & { requester: Profile })[]> {
