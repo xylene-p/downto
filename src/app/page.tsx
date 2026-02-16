@@ -4103,6 +4103,7 @@ export default function Home() {
             avatar: r.user?.avatar_letter ?? "?",
             status: r.response,
           })),
+          isYours: c.author_id === userId,
         };
       });
       setChecks(transformedChecks);
