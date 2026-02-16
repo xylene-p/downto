@@ -3904,6 +3904,7 @@ export default function Home() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushSupported, setPushSupported] = useState(false);
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
 
   const showToast = (msg: string) => {
@@ -4151,7 +4152,9 @@ export default function Home() {
 
   // Register service worker and check push subscription status
   useEffect(() => {
-    if (!isLoggedIn || isDemoMode || !isPushSupported()) return;
+    if (!isLoggedIn || isDemoMode) return;
+    if (!isPushSupported()) return;
+    setPushSupported(true);
 
     (async () => {
       const reg = await registerServiceWorker();
@@ -5103,7 +5106,7 @@ export default function Home() {
             }}
             profile={profile}
             pushEnabled={pushEnabled}
-            pushSupported={isPushSupported()}
+            pushSupported={pushSupported}
             onTogglePush={handleTogglePush}
           />
         )}
