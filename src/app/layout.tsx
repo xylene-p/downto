@@ -3,6 +3,12 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "down to",
   description: "Save events. See who's going.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "down to",
+  },
   openGraph: {
     title: "down to",
     description: "Save events. See who's going.",
@@ -30,6 +36,7 @@ export default function RootLayout({
         />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content="#0a0a0a" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
       <body
         style={{

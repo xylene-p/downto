@@ -4,6 +4,12 @@ import { useState, useEffect, useRef, useCallback, CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
 import * as db from "@/lib/db";
 import type { Profile } from "@/lib/types";
+import {
+  isPushSupported,
+  registerServiceWorker,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from "@/lib/pushNotifications";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -288,6 +294,10 @@ const GlobalStyles = () => (
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }
+    }
+    @keyframes accentGlow {
+      0% { border-color: #E8FF5A; box-shadow: 0 0 12px rgba(232,255,90,0.4); }
+      100% { border-color: rgba(255,255,255,0.06); box-shadow: none; }
     }
     
     ::-webkit-scrollbar { width: 0; }
@@ -1217,12 +1227,14 @@ const EventCard = ({
   onToggleDown,
   onOpenSocial,
   onLongPress,
+  isNew,
 }: {
   event: Event;
   onToggleSave: () => void;
   onToggleDown: () => void;
   onOpenSocial: () => void;
   onLongPress?: () => void;
+  isNew?: boolean;
 }) => {
   const [hovered, setHovered] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1257,9 +1269,10 @@ const EventCard = ({
         borderRadius: 20,
         overflow: "hidden",
         marginBottom: 16,
-        border: `1px solid ${hovered ? color.borderMid : color.border}`,
+        border: `1px solid ${isNew ? color.accent : hovered ? color.borderMid : color.border}`,
         transition: "all 0.3s ease",
         transform: hovered ? "translateY(-2px)" : "none",
+        ...(isNew ? { animation: "accentGlow 2s ease-out forwards" } : {}),
       }}
     >
       <div style={{ position: "relative", height: 180, overflow: "hidden" }}>
@@ -2154,12 +2167,21 @@ const DEMO_SQUADS: Squad[] = [
 const GroupsView = ({
   squads,
   onSquadUpdate,
+  autoSelectSquadId,
 }: {
   squads: Squad[];
   onSquadUpdate: (squads: Squad[]) => void;
+  autoSelectSquadId?: number | null;
 }) => {
   const [selectedSquad, setSelectedSquad] = useState<Squad | null>(null);
   const [newMsg, setNewMsg] = useState("");
+
+  useEffect(() => {
+    if (autoSelectSquadId != null) {
+      const squad = squads.find((s) => s.id === autoSelectSquadId);
+      if (squad) setSelectedSquad(squad);
+    }
+  }, [autoSelectSquadId]);
 
   const handleSend = () => {
     if (!newMsg.trim() || !selectedSquad) return;
@@ -3128,6 +3150,9 @@ const ProfileView = ({
   onOpenFriends,
   onLogout,
   profile,
+  pushEnabled,
+  pushSupported,
+  onTogglePush,
 }: {
   igConnected: boolean;
   onConnectIG: () => void;
@@ -3135,6 +3160,9 @@ const ProfileView = ({
   onOpenFriends: () => void;
   onLogout: () => void;
   profile?: Profile | null;
+  pushEnabled: boolean;
+  pushSupported: boolean;
+  onTogglePush: () => void;
 }) => {
   const [availability, setAvailability] = useState<AvailabilityStatus>("open");
   const [expiry, setExpiry] = useState<string | null>(null);
@@ -3528,7 +3556,28 @@ const ProfileView = ({
           <span style={{ color: color.accent }}>Connect →</span>
         )}
       </div>
-      {["Calendar Sync (Google/Apple)", "Notification Preferences", "Privacy & Visibility"].map(
+      {pushSupported && (
+        <div
+          onClick={onTogglePush}
+          style={{
+            padding: "14px 0",
+            borderBottom: `1px solid ${color.border}`,
+            fontFamily: font.mono,
+            fontSize: 12,
+            color: color.muted,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            cursor: "pointer",
+          }}
+        >
+          <span>Push Notifications</span>
+          <span style={{ color: pushEnabled ? color.accent : color.borderMid, fontSize: 11 }}>
+            {pushEnabled ? "✓ Enabled" : "Enable →"}
+          </span>
+        </div>
+      )}
+      {["Calendar Sync (Google/Apple)", "Privacy & Visibility"].map(
         (s) => (
           <div
             key={s}
@@ -3846,11 +3895,16 @@ export default function Home() {
     startedBy: string;
     ideaBy: string;
     members: string[];
+    squadId: number;
   } | null>(null);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [newlyAddedId, setNewlyAddedId] = useState<number | null>(null);
+  const [autoSelectSquadId, setAutoSelectSquadId] = useState<number | null>(null);
   const [notifications, setNotifications] = useState<{ id: string; type: string; title: string; body: string | null; related_user_id: string | null; related_squad_id: string | null; related_check_id: string | null; is_read: boolean; created_at: string }[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -4095,6 +4149,61 @@ export default function Home() {
     return () => { channel.unsubscribe(); };
   }, [isLoggedIn, isDemoMode, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Register service worker and check push subscription status
+  useEffect(() => {
+    if (!isLoggedIn || isDemoMode || !isPushSupported()) return;
+
+    (async () => {
+      const reg = await registerServiceWorker();
+      if (!reg) return;
+      swRegistrationRef.current = reg;
+
+      // Check if already subscribed
+      const existing = await reg.pushManager.getSubscription();
+      setPushEnabled(!!existing);
+    })();
+  }, [isLoggedIn, isDemoMode]);
+
+  // Listen for service worker notification click messages
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'NOTIFICATION_CLICK') {
+        const nType = event.data.notificationType;
+        if (nType === 'friend_request' || nType === 'friend_accepted') {
+          setTab('profile');
+        } else if (nType === 'squad_message') {
+          setTab('groups');
+        } else if (nType === 'check_response') {
+          setTab('feed');
+        }
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handler);
+    return () => navigator.serviceWorker.removeEventListener('message', handler);
+  }, []);
+
+  const handleTogglePush = async () => {
+    const reg = swRegistrationRef.current;
+    if (!reg) return;
+
+    if (pushEnabled) {
+      await unsubscribeFromPush(reg);
+      setPushEnabled(false);
+      showToast("Push notifications disabled");
+    } else {
+      const sub = await subscribeToPush(reg);
+      if (sub) {
+        setPushEnabled(true);
+        showToast("Push notifications enabled!");
+      } else {
+        showToast("Could not enable push — check browser permissions");
+      }
+    }
+  };
+
   const toggleSave = (id: number) => {
     setEvents((prev) =>
       prev.map((e) => {
@@ -4187,6 +4296,7 @@ export default function Home() {
       startedBy: "You",
       ideaBy: check.author,
       members: memberNames,
+      squadId: newSquad.id,
     });
     setTimeout(() => setSquadNotification(null), 4000);
 
@@ -4710,6 +4820,7 @@ export default function Home() {
                         onLongPress={
                           (e.createdBy === userId || isDemoMode) ? () => setEditingEvent(e) : undefined
                         }
+                        isNew={e.id === newlyAddedId}
                       />
                     ))}
                   </>
@@ -4973,7 +5084,7 @@ export default function Home() {
           </div>
         )}
         {tab === "calendar" && <CalendarView events={events} />}
-        {tab === "groups" && <GroupsView squads={squads} onSquadUpdate={setSquads} />}
+        {tab === "groups" && <GroupsView squads={squads} onSquadUpdate={setSquads} autoSelectSquadId={autoSelectSquadId} />}
         {tab === "profile" && (
           <ProfileView
             igConnected={igConnected}
@@ -4991,6 +5102,9 @@ export default function Home() {
               setIsDemoMode(false);
             }}
             profile={profile}
+            pushEnabled={pushEnabled}
+            pushSupported={isPushSupported()}
+            onTogglePush={handleTogglePush}
           />
         )}
       </div>
@@ -5089,6 +5203,11 @@ export default function Home() {
       {/* Squad formation notification */}
       {squadNotification && (
         <div
+          onClick={() => {
+            setAutoSelectSquadId(squadNotification.squadId);
+            setTab("groups");
+            setSquadNotification(null);
+          }}
           style={{
             position: "fixed",
             top: 60,
@@ -5101,6 +5220,7 @@ export default function Home() {
             zIndex: 250,
             animation: "toastIn 0.3s ease",
             boxShadow: `0 8px 32px rgba(232, 255, 90, 0.2)`,
+            cursor: "pointer",
           }}
         >
           <div
@@ -5163,6 +5283,17 @@ export default function Home() {
               </div>
             )}
           </div>
+          <div
+            style={{
+              fontFamily: font.mono,
+              fontSize: 10,
+              color: color.accent,
+              marginTop: 10,
+              opacity: 0.7,
+            }}
+          >
+            Tap to open chat →
+          </div>
         </div>
       )}
 
@@ -5224,6 +5355,8 @@ export default function Home() {
                 peopleDown: [],
               };
               setEvents((prev) => [newEvent, ...prev]);
+              setNewlyAddedId(newEvent.id);
+              setTimeout(() => setNewlyAddedId(null), 2500);
             } catch (err) {
               const msg = err instanceof Error ? err.message : String(err);
               console.error("Failed to save event:", msg);
@@ -5247,6 +5380,8 @@ export default function Home() {
               peopleDown: [],
             };
             setEvents((prev) => [newEvent, ...prev]);
+            setNewlyAddedId(newEvent.id);
+            setTimeout(() => setNewlyAddedId(null), 2500);
           }
 
           if (e.type === "movie") {
