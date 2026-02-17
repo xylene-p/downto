@@ -9,6 +9,7 @@ import type {
   Squad,
   Message,
   Notification,
+  CrewPoolEntry,
 } from './types';
 
 // ============================================================================
@@ -124,6 +125,16 @@ export async function updateEvent(
   return data;
 }
 
+export async function findEventByIgUrl(igUrl: string): Promise<import('./types').Event | null> {
+  const { data } = await supabase
+    .from('events')
+    .select('*')
+    .eq('ig_url', igUrl)
+    .limit(1)
+    .maybeSingle();
+  return data;
+}
+
 // ============================================================================
 // SAVED EVENTS
 // ============================================================================
@@ -195,7 +206,7 @@ export async function getPeopleDown(eventId: string): Promise<(SavedEvent & { us
 
 export async function getPeopleDownBatch(
   eventIds: string[]
-): Promise<Record<string, { name: string; avatar: string; mutual: boolean }[]>> {
+): Promise<Record<string, { name: string; avatar: string; mutual: boolean; userId: string }[]>> {
   if (eventIds.length === 0) return {};
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -227,7 +238,7 @@ export async function getPeopleDownBatch(
     }
   }
 
-  const result: Record<string, { name: string; avatar: string; mutual: boolean }[]> = {};
+  const result: Record<string, { name: string; avatar: string; mutual: boolean; userId: string }[]> = {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const row of (data ?? []) as any[]) {
     const eventId = row.event_id;
@@ -238,6 +249,7 @@ export async function getPeopleDownBatch(
         name: profile.display_name,
         avatar: profile.avatar_letter,
         mutual: friendIds.has(profile.id),
+        userId: profile.id,
       });
     }
   }
@@ -770,4 +782,106 @@ export function subscribeToNotifications(
       (payload) => callback(payload.new as Notification)
     )
     .subscribe();
+}
+
+// ============================================================================
+// SQUAD LOGISTICS
+// ============================================================================
+
+export async function updateSquadLogistics(
+  squadId: string,
+  updates: { meeting_spot?: string; arrival_time?: string; transport_notes?: string }
+): Promise<void> {
+  const { error } = await supabase
+    .from('squads')
+    .update(updates)
+    .eq('id', squadId);
+
+  if (error) throw error;
+}
+
+// ============================================================================
+// CREW POOL
+// ============================================================================
+
+export async function joinCrewPool(eventId: string): Promise<CrewPoolEntry> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { data, error } = await supabase
+    .from('crew_pool')
+    .insert({ event_id: eventId, user_id: user.id })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function leaveCrewPool(eventId: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { error } = await supabase
+    .from('crew_pool')
+    .delete()
+    .eq('event_id', eventId)
+    .eq('user_id', user.id);
+
+  if (error) throw error;
+}
+
+export async function getCrewPool(eventId: string): Promise<(CrewPoolEntry & { user: Profile })[]> {
+  const { data, error } = await supabase
+    .from('crew_pool')
+    .select('*, user:profiles(*)')
+    .eq('event_id', eventId)
+    .order('joined_at', { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function removeFromCrewPool(eventId: string, userIds: string[]): Promise<void> {
+  const { error } = await supabase
+    .from('crew_pool')
+    .delete()
+    .eq('event_id', eventId)
+    .in('user_id', userIds);
+
+  if (error) throw error;
+}
+
+export async function getEventSocialSignal(eventId: string): Promise<{ totalDown: number; friendsDown: number }> {
+  const { data: { user } } = await supabase.auth.getUser();
+  const currentUserId = user?.id;
+
+  const { data, error } = await supabase
+    .from('saved_events')
+    .select('user_id')
+    .eq('event_id', eventId)
+    .eq('is_down', true);
+
+  if (error) throw error;
+
+  const allDown = (data ?? []).filter(d => d.user_id !== currentUserId);
+  const totalDown = allDown.length;
+
+  if (!currentUserId || totalDown === 0) return { totalDown, friendsDown: 0 };
+
+  // Get friend IDs
+  const { data: friendships } = await supabase
+    .from('friendships')
+    .select('requester_id, addressee_id')
+    .eq('status', 'accepted')
+    .or(`requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`);
+
+  const friendIds = new Set(
+    (friendships ?? []).map(f =>
+      f.requester_id === currentUserId ? f.addressee_id : f.requester_id
+    )
+  );
+
+  const friendsDown = allDown.filter(d => friendIds.has(d.user_id)).length;
+  return { totalDown, friendsDown };
 }

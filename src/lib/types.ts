@@ -10,6 +10,7 @@ export interface Profile {
   avatar_letter: string;
   availability: 'open' | 'awkward' | 'not-available';
   ig_handle: string | null;
+  onboarded: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -82,11 +83,23 @@ export interface Squad {
   check_id: string | null;
   created_by: string;
   created_at: string;
+  meeting_spot: string | null;
+  arrival_time: string | null;
+  transport_notes: string | null;
   // Joined data
   event?: Event;
   check?: InterestCheck;
   members?: SquadMember[];
   messages?: Message[];
+}
+
+export interface CrewPoolEntry {
+  id: string;
+  event_id: string;
+  user_id: string;
+  joined_at: string;
+  // Joined data
+  user?: Profile;
 }
 
 export interface SquadMember {

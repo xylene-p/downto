@@ -17,6 +17,7 @@ interface Person {
   name: string;
   avatar: string;
   mutual: boolean;
+  userId?: string;
 }
 
 interface Event {
@@ -353,6 +354,7 @@ interface ScrapedEvent {
   vibe: string[];
   igHandle: string;
   isPublicPost: boolean;
+  igUrl?: string;
   // Movie-specific
   movieTitle?: string;
   year?: string;
@@ -391,6 +393,7 @@ const PasteModal = ({
   });
   const inputRef = useRef<HTMLInputElement>(null);
   const ideaRef = useRef<HTMLTextAreaElement>(null);
+  const [socialSignal, setSocialSignal] = useState<{ totalDown: number; friendsDown: number } | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -408,6 +411,7 @@ const PasteModal = ({
       setMode("paste");
       setError(null);
       setManual({ title: "", venue: "", date: "", time: "", vibe: "" });
+      setSocialSignal(null);
     }
   }, [open, mode]);
 
@@ -442,6 +446,7 @@ const PasteModal = ({
         vibe: data.vibe,
         igHandle: data.igHandle || "",
         isPublicPost: data.isPublicPost || false,
+        igUrl: data.igUrl,
         // Movie-specific fields
         movieTitle: data.movieTitle,
         year: data.year,
@@ -450,6 +455,21 @@ const PasteModal = ({
         letterboxdUrl: data.letterboxdUrl,
       });
       setSharePublicly(data.isPublicPost || false);
+
+      // Check for existing event with this IG URL → social signal
+      if (data.igUrl) {
+        try {
+          const existingEvent = await db.findEventByIgUrl(data.igUrl);
+          if (existingEvent) {
+            const signal = await db.getEventSocialSignal(existingEvent.id);
+            if (signal.totalDown > 0) {
+              setSocialSignal(signal);
+            }
+          }
+        } catch {
+          // Non-critical — just skip the signal
+        }
+      }
     } catch (err) {
       setError("Network error. Please try again.");
     }
@@ -817,8 +837,8 @@ const PasteModal = ({
               </div>
             </div>
             <button
-              onClick={() => {
-                onSubmit(scraped, false);
+              onClick={async () => {
+                await onSubmit(scraped, false);
                 onClose();
               }}
               style={{
@@ -900,6 +920,29 @@ const PasteModal = ({
                 </span>
               ))}
             </div>
+            {/* Social signal — shows when existing event has people down */}
+            {socialSignal && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "10px 14px",
+                  background: "rgba(232,255,90,0.06)",
+                  borderRadius: 10,
+                  marginBottom: 14,
+                  border: `1px solid ${color.border}`,
+                }}
+              >
+                <span style={{ fontSize: 14 }}>👥</span>
+                <span style={{ fontFamily: font.mono, fontSize: 12, color: color.text }}>
+                  {socialSignal.totalDown} {socialSignal.totalDown === 1 ? "person" : "people"} down
+                  {socialSignal.friendsDown > 0 && (
+                    <span style={{ color: color.accent }}> · {socialSignal.friendsDown} {socialSignal.friendsDown === 1 ? "friend" : "friends"}</span>
+                  )}
+                </span>
+              </div>
+            )}
             {/* Public post indicator and share toggle */}
             {scraped.isPublicPost && (
               <div
@@ -979,8 +1022,8 @@ const PasteModal = ({
               </div>
             )}
             <button
-              onClick={() => {
-                onSubmit(scraped, sharePublicly);
+              onClick={async () => {
+                await onSubmit(scraped, sharePublicly);
                 onClose();
               }}
               style={{
@@ -1735,19 +1778,110 @@ const EditEventModal = ({
 
 // ─── Social Drawer ──────────────────────────────────────────────────────────
 
-const SocialDrawer = ({
+const EventLobby = ({
   event,
   open,
   onClose,
+  onStartSquad,
+  onJoinCrewPool,
+  crewPoolCount,
+  inCrewPool,
+  isDemoMode,
 }: {
   event: Event | null;
   open: boolean;
   onClose: () => void;
+  onStartSquad: (event: Event, selectedUserIds: string[]) => void;
+  onJoinCrewPool: (event: Event) => void;
+  crewPoolCount: number;
+  inCrewPool: boolean;
+  isDemoMode: boolean;
 }) => {
+  const [selectingMembers, setSelectingMembers] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Reset selection state when drawer opens/closes
+  useEffect(() => {
+    if (!open) {
+      setSelectingMembers(false);
+      setSelectedIds(new Set());
+    }
+  }, [open]);
 
   if (!open || !event) return null;
-  const mutuals = event.peopleDown.filter((p) => p.mutual);
+  const friends = event.peopleDown.filter((p) => p.mutual);
   const others = event.peopleDown.filter((p) => !p.mutual);
+  const maxSquadPick = 4; // max 4 others + you = 5 total
+  const slotsAvailable = maxSquadPick;
+
+  const toggleSelect = (userId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else if (next.size < maxSquadPick) {
+        next.add(userId);
+      }
+      return next;
+    });
+  };
+
+  const PersonRow = ({ p, isFriend, selectable }: { p: Person; isFriend: boolean; selectable: boolean }) => (
+    <div
+      key={p.name}
+      onClick={() => selectable && p.userId && toggleSelect(p.userId)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "10px 0",
+        borderBottom: `1px solid ${isFriend ? "#222" : color.surface}`,
+        cursor: selectable ? "pointer" : "default",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: "50%",
+            background: isFriend ? color.accent : color.borderLight,
+            color: isFriend ? "#000" : color.dim,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: font.mono,
+            fontSize: 14,
+            fontWeight: 700,
+          }}
+        >
+          {p.avatar}
+        </div>
+        <span style={{ fontFamily: font.mono, fontSize: 13, color: isFriend ? color.text : color.muted }}>
+          {p.name}
+        </span>
+      </div>
+      {selectingMembers && selectable && p.userId && (
+        <div
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: 6,
+            border: `2px solid ${selectedIds.has(p.userId) ? color.accent : color.borderMid}`,
+            background: selectedIds.has(p.userId) ? color.accent : "transparent",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.15s ease",
+          }}
+        >
+          {selectedIds.has(p.userId) && (
+            <span style={{ color: "#000", fontSize: 14, fontWeight: 700 }}>&#10003;</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div
@@ -1814,7 +1948,8 @@ const SocialDrawer = ({
           {event.title}
         </p>
 
-        {mutuals.length > 0 && (
+        {/* Friends section */}
+        {friends.length > 0 && (
           <>
             <div
               style={{
@@ -1826,46 +1961,15 @@ const SocialDrawer = ({
                 marginBottom: 12,
               }}
             >
-              Friends ({mutuals.length})
+              Friends ({friends.length})
             </div>
-            {mutuals.map((p) => (
-              <div
-                key={p.name}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "10px 0",
-                  borderBottom: `1px solid #222`,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: "50%",
-                      background: color.accent,
-                      color: "#000",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontFamily: font.mono,
-                      fontSize: 14,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {p.avatar}
-                  </div>
-                  <span style={{ fontFamily: font.mono, fontSize: 13, color: color.text }}>
-                    {p.name}
-                  </span>
-                </div>
-              </div>
+            {friends.map((p) => (
+              <PersonRow key={p.name} p={p} isFriend selectable={selectingMembers} />
             ))}
           </>
         )}
 
+        {/* Others section */}
         {others.length > 0 && (
           <>
             <div
@@ -1882,62 +1986,111 @@ const SocialDrawer = ({
               Also down ({others.length})
             </div>
             {others.map((p) => (
-              <div
-                key={p.name}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "10px 0",
-                  borderBottom: `1px solid ${color.surface}`,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: "50%",
-                      background: color.borderLight,
-                      color: color.dim,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontFamily: font.mono,
-                      fontSize: 14,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {p.avatar}
-                  </div>
-                  <span style={{ fontFamily: font.mono, fontSize: 13, color: color.muted }}>
-                    {p.name}
-                  </span>
-                </div>
-              </div>
+              <PersonRow key={p.name} p={p} isFriend={false} selectable={false} />
             ))}
           </>
         )}
 
-        <button
-          style={{
-            width: "100%",
-            marginTop: 24,
-            background: color.accent,
-            color: "#000",
-            border: "none",
-            borderRadius: 12,
-            padding: "14px",
-            fontFamily: font.mono,
-            fontSize: 12,
-            fontWeight: 700,
-            cursor: "pointer",
-            textTransform: "uppercase",
-            letterSpacing: "0.1em",
-          }}
-        >
-          Start a Group Chat →
-        </button>
+        {/* CTAs */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
+          {/* Start a squad — visible when friends are down */}
+          {friends.length > 0 && !selectingMembers && (
+            <button
+              onClick={() => setSelectingMembers(true)}
+              style={{
+                width: "100%",
+                background: color.accent,
+                color: "#000",
+                border: "none",
+                borderRadius: 12,
+                padding: "14px",
+                fontFamily: font.mono,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+              }}
+            >
+              Start a Squad ({slotsAvailable}/{maxSquadPick} slots) →
+            </button>
+          )}
+
+          {/* Confirm selection */}
+          {selectingMembers && (
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => { setSelectingMembers(false); setSelectedIds(new Set()); }}
+                style={{
+                  flex: 1,
+                  background: "transparent",
+                  color: color.dim,
+                  border: `1px solid ${color.borderMid}`,
+                  borderRadius: 12,
+                  padding: "14px",
+                  fontFamily: font.mono,
+                  fontSize: 12,
+                  cursor: "pointer",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (selectedIds.size > 0) {
+                    onStartSquad(event, Array.from(selectedIds));
+                    setSelectingMembers(false);
+                    setSelectedIds(new Set());
+                  }
+                }}
+                disabled={selectedIds.size === 0}
+                style={{
+                  flex: 2,
+                  background: selectedIds.size > 0 ? color.accent : color.borderMid,
+                  color: selectedIds.size > 0 ? "#000" : color.dim,
+                  border: "none",
+                  borderRadius: 12,
+                  padding: "14px",
+                  fontFamily: font.mono,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: selectedIds.size > 0 ? "pointer" : "default",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                }}
+              >
+                Create Squad ({selectedIds.size} selected) →
+              </button>
+            </div>
+          )}
+
+          {/* Find a crew — always visible, not during member selection */}
+          {!selectingMembers && event.dbId && !isDemoMode && (
+            <button
+              onClick={() => onJoinCrewPool(event)}
+              style={{
+                width: "100%",
+                background: inCrewPool ? color.card : "transparent",
+                color: inCrewPool ? color.accent : color.text,
+                border: `1px solid ${inCrewPool ? color.accent : color.borderMid}`,
+                borderRadius: 12,
+                padding: "14px",
+                fontFamily: font.mono,
+                fontSize: 12,
+                fontWeight: inCrewPool ? 700 : 400,
+                cursor: "pointer",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+              }}
+            >
+              {inCrewPool
+                ? `In crew pool · ${crewPoolCount} looking`
+                : `Find a Crew${crewPoolCount > 0 ? ` · ${crewPoolCount} looking` : ""}`}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -2154,10 +2307,14 @@ interface Squad {
   checkDbId?: string;
   name: string;
   event?: string;
+  eventDate?: string;
   members: { name: string; avatar: string }[];
   messages: { sender: string; text: string; time: string; isYou?: boolean }[];
   lastMsg: string;
   time: string;
+  meetingSpot?: string;
+  arrivalTime?: string;
+  transportNotes?: string;
 }
 
 const DEMO_SQUADS: Squad[] = [
@@ -2205,16 +2362,21 @@ const GroupsView = ({
   onSquadUpdate,
   autoSelectSquadId,
   onSendMessage,
+  onUpdateLogistics,
   userId,
 }: {
   squads: Squad[];
   onSquadUpdate: (squadsOrUpdater: Squad[] | ((prev: Squad[]) => Squad[])) => void;
   autoSelectSquadId?: number | null;
   onSendMessage?: (squadDbId: string, text: string) => Promise<void>;
+  onUpdateLogistics?: (squadDbId: string, field: string, value: string) => Promise<void>;
   userId?: string | null;
 }) => {
   const [selectedSquad, setSelectedSquad] = useState<Squad | null>(null);
   const [newMsg, setNewMsg] = useState("");
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [fieldValue, setFieldValue] = useState("");
+  const logisticsInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (autoSelectSquadId != null) {
@@ -2352,6 +2514,114 @@ const GroupsView = ({
             ))}
           </div>
         </div>
+
+        {/* Logistics card — pinned between header and messages for event-linked squads */}
+        {selectedSquad.event && selectedSquad.dbId && (() => {
+          // Check if event date has passed — hide if so
+          // eventDate is like "Fri, Feb 14" — do a simple check: if it exists, show the card
+          // (precise date parsing would require the ISO date field; for now always show for event squads)
+
+          const saveField = async (field: string, value: string) => {
+            if (!selectedSquad.dbId || !onUpdateLogistics) return;
+            try {
+              await onUpdateLogistics(selectedSquad.dbId, field, value);
+              const key = field === "meeting_spot" ? "meetingSpot" : field === "arrival_time" ? "arrivalTime" : "transportNotes";
+              const updated = { ...selectedSquad, [key]: value };
+              setSelectedSquad(updated);
+              onSquadUpdate((prev) => prev.map((s) => s.id === updated.id ? updated : s));
+            } catch (err) {
+              console.error("Failed to save logistics:", err);
+            }
+            setEditingField(null);
+          };
+
+          const fields = [
+            { key: "meeting_spot", label: "Meeting spot", value: selectedSquad.meetingSpot, placeholder: "e.g. L train entrance" },
+            { key: "arrival_time", label: "Arrival time", value: selectedSquad.arrivalTime, placeholder: "e.g. 11:30 PM" },
+            { key: "transport_notes", label: "Getting there", value: selectedSquad.transportNotes, placeholder: "e.g. taking the G" },
+          ];
+
+          return (
+            <div
+              style={{
+                margin: "0 20px",
+                padding: "14px 16px",
+                background: color.deep,
+                border: `1px solid ${color.border}`,
+                borderRadius: 14,
+                marginTop: 12,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: font.mono,
+                  fontSize: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.15em",
+                  color: color.accent,
+                  marginBottom: 10,
+                }}
+              >
+                Logistics
+              </div>
+              {fields.map((f) => (
+                <div key={f.key} style={{ marginBottom: 8 }}>
+                  <div style={{ fontFamily: font.mono, fontSize: 10, color: color.dim, marginBottom: 4 }}>
+                    {f.label}
+                  </div>
+                  {editingField === f.key ? (
+                    <input
+                      ref={logisticsInputRef}
+                      autoFocus
+                      type="text"
+                      value={fieldValue}
+                      onChange={(e) => setFieldValue(e.target.value)}
+                      onBlur={() => saveField(f.key, fieldValue)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveField(f.key, fieldValue);
+                        if (e.key === "Escape") setEditingField(null);
+                      }}
+                      placeholder={f.placeholder}
+                      style={{
+                        width: "100%",
+                        background: color.card,
+                        border: `1px solid ${color.accent}`,
+                        borderRadius: 8,
+                        padding: "8px 10px",
+                        color: color.text,
+                        fontFamily: font.mono,
+                        fontSize: 12,
+                        outline: "none",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      onClick={() => {
+                        setEditingField(f.key);
+                        setFieldValue(f.value || "");
+                      }}
+                      style={{
+                        padding: "8px 10px",
+                        background: color.card,
+                        border: `1px solid ${color.border}`,
+                        borderRadius: 8,
+                        fontFamily: font.mono,
+                        fontSize: 12,
+                        color: f.value ? color.text : color.faint,
+                        cursor: "pointer",
+                        transition: "border-color 0.2s",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.borderColor = color.borderMid)}
+                      onMouseLeave={(e) => (e.currentTarget.style.borderColor = color.border)}
+                    >
+                      {f.value || f.placeholder}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* Messages */}
         <div
@@ -4057,6 +4327,202 @@ const AuthScreen = ({ onLogin, onDemoMode }: { onLogin: () => void; onDemoMode: 
   );
 };
 
+// ─── Profile Setup Screen ───────────────────────────────────────────────────
+
+const ProfileSetupScreen = ({
+  profile,
+  onComplete,
+}: {
+  profile: Profile;
+  onComplete: (updated: Profile) => void;
+}) => {
+  const [displayName, setDisplayName] = useState(profile.display_name || "");
+  const [igHandle, setIgHandle] = useState(profile.ig_handle || "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const updates: Partial<Profile> & { onboarded: true } = { onboarded: true };
+      if (displayName.trim()) updates.display_name = displayName.trim();
+      if (igHandle.trim()) updates.ig_handle = igHandle.trim().replace(/^@/, "");
+      const updated = await db.updateProfile(updates);
+      onComplete(updated);
+    } catch (err) {
+      console.error("Failed to save profile:", err);
+      setSaving(false);
+    }
+  };
+
+  const handleSkip = async () => {
+    setSaving(true);
+    try {
+      const updated = await db.updateProfile({ onboarded: true } as Partial<Profile>);
+      onComplete(updated);
+    } catch (err) {
+      console.error("Failed to skip setup:", err);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        maxWidth: 420,
+        margin: "0 auto",
+        minHeight: "100vh",
+        background: color.bg,
+        padding: "60px 24px",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <GlobalStyles />
+      <Grain />
+
+      <h1
+        style={{
+          fontFamily: font.serif,
+          fontSize: 48,
+          color: color.text,
+          fontWeight: 400,
+          marginBottom: 8,
+        }}
+      >
+        set up
+      </h1>
+      <p
+        style={{
+          fontFamily: font.mono,
+          fontSize: 12,
+          color: color.dim,
+          marginBottom: 40,
+        }}
+      >
+        how should people know you?
+      </p>
+
+      {/* Display name */}
+      <label
+        style={{
+          fontFamily: font.mono,
+          fontSize: 11,
+          color: color.muted,
+          marginBottom: 8,
+          display: "block",
+        }}
+      >
+        display name
+      </label>
+      <input
+        type="text"
+        value={displayName}
+        onChange={(e) => setDisplayName(e.target.value)}
+        placeholder="your name"
+        style={{
+          width: "100%",
+          padding: "14px 16px",
+          background: color.card,
+          border: `1px solid ${color.borderMid}`,
+          borderRadius: 12,
+          color: color.text,
+          fontFamily: font.mono,
+          fontSize: 14,
+          outline: "none",
+          marginBottom: 24,
+          boxSizing: "border-box",
+        }}
+      />
+
+      {/* IG handle */}
+      <label
+        style={{
+          fontFamily: font.mono,
+          fontSize: 11,
+          color: color.muted,
+          marginBottom: 8,
+          display: "block",
+        }}
+      >
+        instagram handle (optional)
+      </label>
+      <div style={{ position: "relative", marginBottom: 40 }}>
+        <span
+          style={{
+            position: "absolute",
+            left: 16,
+            top: "50%",
+            transform: "translateY(-50%)",
+            fontFamily: font.mono,
+            fontSize: 14,
+            color: color.dim,
+          }}
+        >
+          @
+        </span>
+        <input
+          type="text"
+          value={igHandle}
+          onChange={(e) => setIgHandle(e.target.value.replace(/^@/, ""))}
+          placeholder="yourhandle"
+          style={{
+            width: "100%",
+            padding: "14px 16px 14px 32px",
+            background: color.card,
+            border: `1px solid ${color.borderMid}`,
+            borderRadius: 12,
+            color: color.text,
+            fontFamily: font.mono,
+            fontSize: 14,
+            outline: "none",
+            boxSizing: "border-box",
+          }}
+        />
+      </div>
+
+      {/* Let's go button */}
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        style={{
+          width: "100%",
+          padding: "16px",
+          background: color.accent,
+          border: "none",
+          borderRadius: 12,
+          color: color.bg,
+          fontFamily: font.mono,
+          fontSize: 14,
+          fontWeight: 700,
+          cursor: saving ? "default" : "pointer",
+          opacity: saving ? 0.6 : 1,
+          marginBottom: 16,
+        }}
+      >
+        {saving ? "saving..." : "let's go"}
+      </button>
+
+      {/* Skip link */}
+      <button
+        onClick={handleSkip}
+        disabled={saving}
+        style={{
+          background: "transparent",
+          border: "none",
+          color: color.dim,
+          fontFamily: font.mono,
+          fontSize: 12,
+          cursor: "pointer",
+          textDecoration: "underline",
+          alignSelf: "center",
+        }}
+      >
+        skip for now
+      </button>
+    </div>
+  );
+};
+
 // ─── Main App ───────────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -4068,41 +4534,63 @@ export default function Home() {
 
   // Check auth state on mount and listen for changes
   useEffect(() => {
-    // Check current session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        setIsLoggedIn(true);
-        setUserId(session.user.id);
-        // Fetch profile
+    let initialSessionHandled = false;
+
+    const fetchProfileById = async (userId: string, retries = 1) => {
+      let userProfile: Profile | null = null;
+      for (let attempt = 0; attempt < retries; attempt++) {
         try {
-          const userProfile = await db.getCurrentProfile();
-          setProfile(userProfile);
+          // Use getProfileById instead of getCurrentProfile to avoid extra getUser() call
+          userProfile = await db.getProfileById(userId);
+          if (userProfile) break;
         } catch (err) {
-          console.error("Failed to fetch profile:", err);
+          // Profile not ready yet, will retry
+        }
+        if (attempt < retries - 1) {
+          await new Promise(r => setTimeout(r, 500));
         }
       }
-      setIsLoading(false);
-    });
+      return userProfile;
+    };
 
-    // Listen for auth changes (magic link click)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === "SIGNED_IN" && session?.user) {
+    const handleSession = async (session: typeof undefined extends never ? never : any, isNewSignIn: boolean) => {
+      try {
+        if (session?.user) {
           setIsLoggedIn(true);
           setUserId(session.user.id);
-          // Fetch profile (small delay for trigger to complete on first signup)
-          setTimeout(async () => {
-            try {
-              const userProfile = await db.getCurrentProfile();
-              setProfile(userProfile);
-            } catch (err) {
-              console.error("Failed to fetch profile:", err);
-            }
-          }, 500);
+
+          const retries = isNewSignIn ? 5 : 1;
+          const userProfile = await fetchProfileById(session.user.id, retries);
+
+          if (userProfile) {
+            setProfile(userProfile);
+            if (userProfile.ig_handle) setIgConnected(true);
+          } else {
+            console.error("Failed to fetch profile");
+          }
+        }
+      } catch (err) {
+        console.error("handleSession error:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // onAuthStateChange fires INITIAL_SESSION on setup, then possibly SIGNED_IN
+    // Handle whichever comes first as the initial session check
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "INITIAL_SESSION" || (event === "SIGNED_IN" && !initialSessionHandled)) {
+          initialSessionHandled = true;
+          await handleSession(session, false);
+        } else if (event === "SIGNED_IN" && initialSessionHandled) {
+          // Genuine new sign-in (e.g. magic link click) after initial load
+          await handleSession(session, true);
         } else if (event === "SIGNED_OUT") {
           setIsLoggedIn(false);
           setUserId(null);
           setProfile(null);
+          setIsLoading(false);
         }
       }
     );
@@ -4119,6 +4607,8 @@ export default function Home() {
   const [squads, setSquads] = useState<Squad[]>([]);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [socialEvent, setSocialEvent] = useState<Event | null>(null);
+  const [crewPoolCount, setCrewPoolCount] = useState(0);
+  const [inCrewPool, setInCrewPool] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [suggestions, setSuggestions] = useState<Friend[]>([]); // Loaded from DB or demo data
@@ -4362,11 +4852,15 @@ export default function Home() {
             dbId: s.id,
             name: s.name,
             event: s.event ? `${s.event.title} — ${s.event.date_display}` : undefined,
+            eventDate: s.event?.date_display ?? undefined,
             members,
             messages,
             lastMsg: lastMessage ? `${lastMessage.sender}: ${lastMessage.text}` : "",
             time: lastMessage ? lastMessage.time : fmtTime(s.created_at),
             checkDbId: s.check_id ?? undefined,
+            meetingSpot: s.meeting_spot ?? undefined,
+            arrivalTime: s.arrival_time ?? undefined,
+            transportNotes: s.transport_notes ?? undefined,
           };
         });
         setSquads(transformedSquads);
@@ -4400,6 +4894,24 @@ export default function Home() {
       console.error("Failed to load data:", err);
     }
   }, [isDemoMode, userId]);
+
+  // Load crew pool info when EventLobby opens
+  useEffect(() => {
+    if (!socialEvent?.dbId || isDemoMode) {
+      setCrewPoolCount(0);
+      setInCrewPool(false);
+      return;
+    }
+    (async () => {
+      try {
+        const pool = await db.getCrewPool(socialEvent.dbId!);
+        setCrewPoolCount(pool.length);
+        setInCrewPool(pool.some((entry) => entry.user_id === userId));
+      } catch (err) {
+        console.warn("Failed to load crew pool:", err);
+      }
+    })();
+  }, [socialEvent?.dbId, isDemoMode, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Helper for time ago formatting
   const formatTimeAgo = (date: Date): string => {
@@ -4762,6 +5274,168 @@ export default function Home() {
     setTab("groups");
   };
 
+  const startSquadFromEvent = async (event: Event, selectedUserIds: string[]) => {
+    const squadName = event.title.slice(0, 30) + (event.title.length > 30 ? "..." : "");
+
+    let squadDbId: string | undefined;
+    if (!isDemoMode && event.dbId) {
+      try {
+        const dbSquad = await db.createSquad(squadName, selectedUserIds, event.dbId);
+        await db.sendMessage(dbSquad.id, `squad's up for ${event.title}! 🔥`);
+        squadDbId = dbSquad.id;
+      } catch (err: any) {
+        console.error("Failed to create squad:", err);
+        showToast(`Failed to create squad: ${err?.message || err}`);
+        return;
+      }
+    }
+
+    // Build member display from the people down list
+    const selectedPeople = event.peopleDown.filter((p) => p.userId && selectedUserIds.includes(p.userId));
+
+    const newSquad: Squad = {
+      id: Date.now(),
+      dbId: squadDbId,
+      name: squadName,
+      event: `${event.title} — ${event.date}`,
+      eventDate: event.date,
+      members: [
+        { name: "You", avatar: profile?.avatar_letter ?? "Y" },
+        ...selectedPeople.map((p) => ({ name: p.name, avatar: p.avatar })),
+      ],
+      messages: [
+        {
+          sender: "system",
+          text: `✨ Squad formed for "${event.title}"`,
+          time: "now",
+        },
+        {
+          sender: "system",
+          text: `📍 ${event.venue} · ${event.date} ${event.time}`,
+          time: "now",
+        },
+        {
+          sender: "You",
+          text: `squad's up for ${event.title}! 🔥`,
+          time: "now",
+          isYou: true,
+        },
+      ],
+      lastMsg: `You: squad's up for ${event.title}! 🔥`,
+      time: "now",
+    };
+    setSquads((prev) => [newSquad, ...prev]);
+
+    setSquadNotification({
+      squadName: event.title,
+      startedBy: "You",
+      ideaBy: "event",
+      members: selectedPeople.map((p) => p.name),
+      squadId: newSquad.id,
+    });
+    setTimeout(() => setSquadNotification(null), 4000);
+
+    setSocialEvent(null);
+    setTab("groups");
+  };
+
+  const handleJoinCrewPool = async (event: Event) => {
+    if (!event.dbId || isDemoMode) return;
+
+    try {
+      if (inCrewPool) {
+        await db.leaveCrewPool(event.dbId);
+        setInCrewPool(false);
+        setCrewPoolCount((prev) => Math.max(0, prev - 1));
+        showToast("Left crew pool");
+        return;
+      }
+
+      await db.joinCrewPool(event.dbId);
+      setInCrewPool(true);
+      setCrewPoolCount((prev) => prev + 1);
+      showToast("You're in the crew pool!");
+
+      // Check if pool is large enough to auto-form a squad
+      const pool = await db.getCrewPool(event.dbId);
+      if (pool.length >= 4) {
+        // Take up to 5 from the pool (prioritize mutual friends first)
+        const { data: { user } } = await supabase.auth.getUser();
+        const currentUserId = user?.id;
+
+        // Get friend IDs for priority
+        let friendIds: Set<string> = new Set();
+        if (currentUserId) {
+          const friendsList = await db.getFriends();
+          friendIds = new Set(friendsList.map((f) => f.profile.id));
+        }
+
+        const withoutSelf = pool.filter((entry) => entry.user_id !== currentUserId);
+        const mutualFirst = [
+          ...withoutSelf.filter((entry) => friendIds.has(entry.user_id)),
+          ...withoutSelf.filter((entry) => !friendIds.has(entry.user_id)),
+        ];
+        const crewMembers = mutualFirst.slice(0, 4); // up to 4 others + you = 5
+
+        const crewName = `Crew for ${event.title.slice(0, 25)}${event.title.length > 25 ? "..." : ""}`;
+        const memberIds = crewMembers.map((m) => m.user_id);
+
+        const dbSquad = await db.createSquad(crewName, memberIds, event.dbId);
+        await db.sendMessage(dbSquad.id, `crew matched! let's go 🎉`);
+
+        // Remove matched users from pool
+        const allMatchedIds = [currentUserId!, ...memberIds];
+        await db.removeFromCrewPool(event.dbId, allMatchedIds);
+
+        const newSquad: Squad = {
+          id: Date.now(),
+          dbId: dbSquad.id,
+          name: crewName,
+          event: `${event.title} — ${event.date}`,
+          eventDate: event.date,
+          members: [
+            { name: "You", avatar: profile?.avatar_letter ?? "Y" },
+            ...crewMembers.map((m) => ({
+              name: m.user?.display_name ?? "Unknown",
+              avatar: m.user?.avatar_letter ?? "?",
+            })),
+          ],
+          messages: [
+            { sender: "system", text: `🎲 Crew matched!`, time: "now" },
+            { sender: "system", text: `📍 ${event.venue} · ${event.date} ${event.time}`, time: "now" },
+            { sender: "You", text: `crew matched! let's go 🎉`, time: "now", isYou: true },
+          ],
+          lastMsg: "You: crew matched! let's go 🎉",
+          time: "now",
+        };
+        setSquads((prev) => [newSquad, ...prev]);
+        setInCrewPool(false);
+        setCrewPoolCount(0);
+
+        setSquadNotification({
+          squadName: crewName,
+          startedBy: "crew match",
+          ideaBy: "event",
+          members: crewMembers.map((m) => m.user?.display_name ?? "Unknown"),
+          squadId: newSquad.id,
+        });
+        setTimeout(() => setSquadNotification(null), 4000);
+
+        setSocialEvent(null);
+        setTab("groups");
+      }
+    } catch (err: any) {
+      // Ignore duplicate (already in pool)
+      const code = err && typeof err === 'object' && 'code' in err ? err.code : '';
+      if (code === '23505') {
+        showToast("Already in the crew pool");
+        return;
+      }
+      console.error("Failed to join crew pool:", err);
+      showToast("Failed to join crew pool");
+    }
+  };
+
   const tabIcons: Record<Tab, string> = {
     feed: "⚡",
     calendar: "📅",
@@ -4815,6 +5489,18 @@ export default function Home() {
           setSuggestions(DEMO_SUGGESTIONS);
           setNotifications(DEMO_NOTIFICATIONS);
           setUnreadCount(DEMO_NOTIFICATIONS.filter(n => !n.is_read).length);
+        }}
+      />
+    );
+  }
+
+  if (profile && !profile.onboarded) {
+    return (
+      <ProfileSetupScreen
+        profile={profile}
+        onComplete={(updated) => {
+          setProfile(updated);
+          if (updated.ig_handle) setIgConnected(true);
         }}
       />
     );
@@ -5761,6 +6447,9 @@ export default function Home() {
             onSendMessage={async (squadDbId, text) => {
               await db.sendMessage(squadDbId, text);
             }}
+            onUpdateLogistics={async (squadDbId, field, value) => {
+              await db.updateSquadLogistics(squadDbId, { [field]: value });
+            }}
             userId={userId}
           />
         )}
@@ -6002,28 +6691,43 @@ export default function Home() {
           const vibes = e.vibe;
           const imageUrl = e.thumbnail || "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&q=80";
           const igHandle = e.igHandle || "";
+          const igUrl = e.igUrl || null;
 
           // Save to database if logged in (not demo mode)
           if (!isDemoMode && userId) {
             try {
-              // Create the event in the database
-              const dbEvent = await db.createEvent({
-                title,
-                venue,
-                neighborhood: null,
-                date: null, // Could parse dateDisplay to actual date
-                date_display: dateDisplay,
-                time_display: timeDisplay,
-                vibes,
-                image_url: imageUrl,
-                ig_handle: igHandle,
-                ig_url: null,
-                is_public: sharePublicly,
-                created_by: userId,
-              });
+              // Check for existing event with same IG URL (dedup)
+              let dbEvent: Awaited<ReturnType<typeof db.createEvent>> | null = null;
+              if (igUrl) {
+                dbEvent = await db.findEventByIgUrl(igUrl);
+              }
+
+              if (!dbEvent) {
+                // Create the event in the database
+                dbEvent = await db.createEvent({
+                  title,
+                  venue,
+                  neighborhood: null,
+                  date: null, // Could parse dateDisplay to actual date
+                  date_display: dateDisplay,
+                  time_display: timeDisplay,
+                  vibes,
+                  image_url: imageUrl,
+                  ig_handle: igHandle,
+                  ig_url: igUrl,
+                  is_public: sharePublicly,
+                  created_by: userId,
+                });
+              }
 
               // Save it to user's saved events
-              await db.saveEvent(dbEvent.id);
+              try {
+                await db.saveEvent(dbEvent.id);
+              } catch (saveErr: unknown) {
+                // Ignore duplicate save (unique constraint on user_id + event_id)
+                const code = saveErr && typeof saveErr === 'object' && 'code' in saveErr ? (saveErr as { code: string }).code : '';
+                if (code !== '23505') throw saveErr;
+              }
               await db.toggleDown(dbEvent.id, true);
 
               // Add to local state with the real ID
@@ -6031,16 +6735,16 @@ export default function Home() {
                 id: parseInt(dbEvent.id.slice(0, 8), 16) || Date.now(),
                 dbId: dbEvent.id,
                 createdBy: userId,
-                title,
-                venue,
-                date: dateDisplay,
-                time: timeDisplay,
-                vibe: vibes,
-                image: imageUrl,
-                igHandle,
+                title: dbEvent.title || title,
+                venue: dbEvent.venue || venue,
+                date: dbEvent.date_display || dateDisplay,
+                time: dbEvent.time_display || timeDisplay,
+                vibe: dbEvent.vibes || vibes,
+                image: dbEvent.image_url || imageUrl,
+                igHandle: dbEvent.ig_handle || igHandle,
                 saved: true,
                 isDown: true,
-                isPublic: sharePublicly,
+                isPublic: dbEvent.is_public ?? sharePublicly,
                 peopleDown: [],
               };
               setEvents((prev) => [newEvent, ...prev]);
@@ -6146,10 +6850,15 @@ export default function Home() {
           }
         }}
       />
-      <SocialDrawer
+      <EventLobby
         event={socialEvent}
         open={!!socialEvent}
         onClose={() => setSocialEvent(null)}
+        onStartSquad={startSquadFromEvent}
+        onJoinCrewPool={handleJoinCrewPool}
+        crewPoolCount={crewPoolCount}
+        inCrewPool={inCrewPool}
+        isDemoMode={isDemoMode}
       />
       {/* Notifications Panel */}
       {notificationsOpen && (
