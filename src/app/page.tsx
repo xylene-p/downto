@@ -1740,8 +1740,6 @@ const SocialDrawer = ({
   open: boolean;
   onClose: () => void;
 }) => {
-  const [pinged, setPinged] = useState<Set<string>>(new Set());
-  const [waved, setWaved] = useState<Set<string>>(new Set());
 
   if (!open || !event) return null;
   const mutuals = event.peopleDown.filter((p) => p.mutual);
@@ -1859,23 +1857,6 @@ const SocialDrawer = ({
                     {p.name}
                   </span>
                 </div>
-                <button
-                  onClick={() => setPinged((s) => new Set(s).add(p.name))}
-                  style={{
-                    background: pinged.has(p.name) ? color.accent : "#222",
-                    color: pinged.has(p.name) ? "#000" : color.accent,
-                    border: "none",
-                    borderRadius: 8,
-                    padding: "6px 12px",
-                    fontFamily: font.mono,
-                    fontSize: 10,
-                    cursor: "pointer",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                  }}
-                >
-                  {pinged.has(p.name) ? "Pinged ✓" : "Ping"}
-                </button>
               </div>
             ))}
           </>
@@ -1929,23 +1910,6 @@ const SocialDrawer = ({
                     {p.name}
                   </span>
                 </div>
-                <button
-                  onClick={() => setWaved((s) => new Set(s).add(p.name))}
-                  style={{
-                    background: waved.has(p.name) ? "rgba(232,255,90,0.15)" : color.surface,
-                    color: waved.has(p.name) ? color.accent : color.dim,
-                    border: `1px solid ${waved.has(p.name) ? color.accent : color.borderMid}`,
-                    borderRadius: 8,
-                    padding: "6px 12px",
-                    fontFamily: font.mono,
-                    fontSize: 10,
-                    cursor: "pointer",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                  }}
-                >
-                  {waved.has(p.name) ? "Waved 👋" : "Wave"}
-                </button>
               </div>
             ))}
           </>
@@ -1980,28 +1944,52 @@ const SocialDrawer = ({
 const CalendarView = ({ events }: { events: Event[] }) => {
   const saved = events.filter((e) => e.saved);
 
-  // Extract day numbers from saved events (e.g., "Fri, Feb 14" -> 14)
-  const savedDays = saved.map((e) => {
-    const match = e.date.match(/\d+/);
-    return match ? parseInt(match[0]) : null;
-  }).filter(Boolean) as number[];
+  // Build a 2-week grid starting from Monday of the current week
+  const today = new Date();
+  const todayDate = today.getDate();
+  const todayMonth = today.getMonth();
+  const todayYear = today.getFullYear();
 
-  const days = [
-    { label: "M", num: 10 },
-    { label: "T", num: 11, today: true },
-    { label: "W", num: 12 },
-    { label: "T", num: 13 },
-    { label: "F", num: 14 },
-    { label: "S", num: 15 },
-    { label: "S", num: 16 },
-    { label: "M", num: 17 },
-    { label: "T", num: 18 },
-    { label: "W", num: 19 },
-    { label: "T", num: 20 },
-    { label: "F", num: 21 },
-    { label: "S", num: 22 },
-    { label: "S", num: 23 },
-  ].map((d) => ({ ...d, event: savedDays.includes(d.num) }));
+  // Find Monday of this week (0=Sun, 1=Mon, ...)
+  const dayOfWeek = today.getDay();
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(todayYear, todayMonth, todayDate + mondayOffset);
+
+  const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
+  const MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"];
+
+  // Build date keys from saved events for matching (e.g., "Feb 14" -> "2-14")
+  const MONTH_ABBREVS: Record<string, number> = {
+    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
+  };
+  const savedDateKeys = new Set(
+    saved.map((e) => {
+      const match = e.date.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d+)/);
+      if (!match) return "";
+      return `${MONTH_ABBREVS[match[1]]}-${parseInt(match[2])}`;
+    }).filter(Boolean)
+  );
+
+  const days = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+    const dateKey = `${d.getMonth()}-${d.getDate()}`;
+    return {
+      label: DAY_LABELS[i % 7],
+      num: d.getDate(),
+      today: d.getDate() === todayDate && d.getMonth() === todayMonth && d.getFullYear() === todayYear,
+      event: savedDateKeys.has(dateKey),
+    };
+  });
+
+  // Header: show month(s) covered by the 2-week span
+  const startMonth = monday.getMonth();
+  const endDate = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 13);
+  const endMonth = endDate.getMonth();
+  const monthLabel = startMonth === endMonth
+    ? `${MONTH_NAMES[startMonth]} ${monday.getFullYear()}`
+    : `${MONTH_NAMES[startMonth]} – ${MONTH_NAMES[endMonth]} ${endDate.getFullYear()}`;
 
   return (
     <div style={{ padding: "0 20px", animation: "fadeIn 0.3s ease" }}>
@@ -2017,7 +2005,7 @@ const CalendarView = ({ events }: { events: Event[] }) => {
         Your Events
       </h2>
       <p style={{ fontFamily: font.mono, fontSize: 11, color: color.dim, marginBottom: 24 }}>
-        February 2026
+        {monthLabel}
       </p>
 
       <div
@@ -2035,7 +2023,7 @@ const CalendarView = ({ events }: { events: Event[] }) => {
               textAlign: "center",
               padding: "8px 0",
               borderRadius: 10,
-              background: (d as any).today ? "#222" : "transparent",
+              background: d.today ? "#222" : "transparent",
             }}
           >
             <div
@@ -2052,13 +2040,13 @@ const CalendarView = ({ events }: { events: Event[] }) => {
               style={{
                 fontFamily: font.mono,
                 fontSize: 13,
-                color: (d as any).event ? color.accent : color.dim,
-                fontWeight: (d as any).event ? 700 : 400,
+                color: d.event ? color.accent : color.dim,
+                fontWeight: d.event ? 700 : 400,
               }}
             >
               {d.num}
             </div>
-            {(d as any).event && (
+            {d.event && (
               <div
                 style={{
                   width: 4,
@@ -4381,12 +4369,12 @@ export default function Home() {
     return "now";
   };
 
-  // Trigger data load when logged in
+  // Trigger data load when logged in and on tab change
   useEffect(() => {
     if (isLoggedIn && !isDemoMode) {
       loadRealData();
     }
-  }, [isLoggedIn, isDemoMode, loadRealData]);
+  }, [isLoggedIn, isDemoMode, loadRealData, tab]);
 
   // Load notifications and subscribe to realtime updates
   useEffect(() => {

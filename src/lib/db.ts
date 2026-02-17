@@ -290,6 +290,26 @@ export async function sendFriendRequest(userId: string): Promise<Friendship> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
+  // Check if the other user already sent us a pending request — if so, accept it
+  const { data: existing } = await supabase
+    .from('friendships')
+    .select('*')
+    .eq('requester_id', userId)
+    .eq('addressee_id', user.id)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (existing) {
+    const { data: accepted, error: acceptError } = await supabase
+      .from('friendships')
+      .update({ status: 'accepted' })
+      .eq('id', existing.id)
+      .select()
+      .single();
+    if (acceptError) throw acceptError;
+    return accepted;
+  }
+
   const { data, error } = await supabase
     .from('friendships')
     .insert({ requester_id: user.id, addressee_id: userId })
