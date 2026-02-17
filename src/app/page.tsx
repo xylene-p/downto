@@ -2539,14 +2539,14 @@ const GroupsView = ({
   if (selectedSquad) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 160px)" }}>
-        {/* Chat header */}
+        {/* Chat header — compact */}
         <div
           style={{
-            padding: "0 20px 16px",
+            padding: "0 20px 12px",
             borderBottom: `1px solid ${color.border}`,
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <button
               onClick={() => setSelectedSquad(null)}
               style={{
@@ -2578,48 +2578,60 @@ const GroupsView = ({
               </button>
             )}
           </div>
-          <h2
-            style={{
-              fontFamily: font.serif,
-              fontSize: 22,
-              color: color.text,
-              fontWeight: 400,
-              marginBottom: 4,
-            }}
-          >
-            {selectedSquad.name}
-          </h2>
-          <p
-            style={{
-              fontFamily: font.mono,
-              fontSize: 10,
-              color: color.dim,
-              marginBottom: 12,
-            }}
-          >
-            {selectedSquad.event}
-          </p>
-          <div style={{ display: "flex", gap: 6 }}>
-            {selectedSquad.members.map((m) => (
-              <div
-                key={m.name}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <h2
                 style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  background: m.name === "You" ? color.accent : color.borderLight,
-                  color: m.name === "You" ? "#000" : color.dim,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontFamily: font.mono,
-                  fontSize: 11,
-                  fontWeight: 700,
+                  fontFamily: font.serif,
+                  fontSize: 18,
+                  color: color.text,
+                  fontWeight: 400,
+                  margin: 0,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                 }}
               >
-                {m.avatar}
-              </div>
-            ))}
+                {selectedSquad.name}
+              </h2>
+              {selectedSquad.event && (
+                <p
+                  style={{
+                    fontFamily: font.mono,
+                    fontSize: 10,
+                    color: color.dim,
+                    margin: "2px 0 0",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {selectedSquad.event}
+                </p>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 4, marginLeft: 12, flexShrink: 0 }}>
+              {selectedSquad.members.map((m) => (
+                <div
+                  key={m.name}
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: "50%",
+                    background: m.name === "You" ? color.accent : color.borderLight,
+                    color: m.name === "You" ? "#000" : color.dim,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontFamily: font.mono,
+                    fontSize: 10,
+                    fontWeight: 700,
+                  }}
+                >
+                  {m.avatar}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -2854,50 +2866,59 @@ const GroupsView = ({
           style={{
             flex: 1,
             overflowY: "auto",
-            padding: "16px 20px",
+            padding: "12px 20px",
             display: "flex",
             flexDirection: "column",
-            gap: 12,
+            gap: 2,
           }}
         >
-          {selectedSquad.messages.map((msg, i) =>
-            msg.sender === "system" ? (
-              <div
-                key={i}
-                style={{
-                  textAlign: "center",
-                  padding: "8px 0",
-                }}
-              >
-                <span
+          {selectedSquad.messages.map((msg, i) => {
+            const prev = i > 0 ? selectedSquad.messages[i - 1] : null;
+            const next = i < selectedSquad.messages.length - 1 ? selectedSquad.messages[i + 1] : null;
+            const sameSenderAsPrev = prev && prev.sender === msg.sender && prev.sender !== "system";
+            const sameSenderAsNext = next && next.sender === msg.sender && next.sender !== "system";
+            const isFirstInGroup = !sameSenderAsPrev;
+            const isLastInGroup = !sameSenderAsNext;
+
+            if (msg.sender === "system") {
+              return (
+                <div
+                  key={i}
                   style={{
-                    fontFamily: font.mono,
-                    fontSize: 11,
-                    color: color.dim,
-                    background: color.border,
-                    padding: "6px 12px",
-                    borderRadius: 12,
+                    textAlign: "center",
+                    padding: "4px 0",
                   }}
                 >
-                  {msg.text}
-                </span>
-              </div>
-            ) : (
+                  <span
+                    style={{
+                      fontFamily: font.mono,
+                      fontSize: 10,
+                      color: color.dim,
+                    }}
+                  >
+                    {msg.text}
+                  </span>
+                </div>
+              );
+            }
+
+            return (
               <div
                 key={i}
                 style={{
                   display: "flex",
                   flexDirection: "column",
                   alignItems: msg.isYou ? "flex-end" : "flex-start",
+                  marginTop: isFirstInGroup ? 8 : 0,
                 }}
               >
-                {!msg.isYou && (
+                {isFirstInGroup && !msg.isYou && (
                   <span
                     style={{
                       fontFamily: font.mono,
                       fontSize: 10,
                       color: color.dim,
-                      marginBottom: 4,
+                      marginBottom: 3,
                     }}
                   >
                     {msg.sender}
@@ -2907,28 +2928,33 @@ const GroupsView = ({
                   style={{
                     background: msg.isYou ? color.accent : color.card,
                     color: msg.isYou ? "#000" : color.text,
-                    padding: "10px 14px",
-                    borderRadius: msg.isYou ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                    padding: "8px 12px",
+                    borderRadius: msg.isYou
+                      ? `${isFirstInGroup ? 16 : 8}px 16px ${isLastInGroup ? 4 : 8}px 16px`
+                      : `16px ${isFirstInGroup ? 16 : 8}px ${isLastInGroup ? 8 : 8}px ${isLastInGroup ? 4 : 8}px`,
                     fontFamily: font.mono,
                     fontSize: 13,
                     maxWidth: "80%",
+                    lineHeight: 1.4,
                   }}
                 >
                   {msg.text}
                 </div>
-                <span
-                  style={{
-                    fontFamily: font.mono,
-                    fontSize: 9,
-                    color: color.faint,
-                    marginTop: 4,
-                  }}
-                >
-                  {msg.time}
-                </span>
+                {isLastInGroup && (
+                  <span
+                    style={{
+                      fontFamily: font.mono,
+                      fontSize: 9,
+                      color: color.faint,
+                      marginTop: 2,
+                    }}
+                  >
+                    {msg.time}
+                  </span>
+                )}
               </div>
-            )
-          )}
+            );
+          })}
         </div>
 
         {/* Input */}
@@ -5074,7 +5100,7 @@ export default function Home() {
         const transformedSquads: Squad[] = squadsList.map((s) => {
           const members = (s.members ?? []).map((m) => ({
             name: m.user_id === userId ? "You" : (m.user?.display_name ?? "Unknown"),
-            avatar: m.user_id === userId ? (profile?.avatar_letter ?? "Y") : (m.user?.avatar_letter ?? "?"),
+            avatar: m.user_id === userId ? (profile!.avatar_letter) : (m.user?.avatar_letter ?? "?"),
           }));
           const messages = (s.messages ?? [])
             .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
@@ -5437,7 +5463,7 @@ export default function Home() {
           }
           return {
             ...c,
-            responses: [...c.responses, { name: "You", avatar: "Y", status }],
+            responses: [...c.responses, { name: "You", avatar: profile!.avatar_letter, status }],
           };
         }
         return c;
@@ -5479,7 +5505,7 @@ export default function Home() {
       name: squadName,
       event: `${check.author}'s idea · ${check.expiresIn} left`,
       members: [
-        { name: "You", avatar: "Y" },
+        { name: "You", avatar: profile!.avatar_letter },
         ...downPeople.map((p) => ({ name: p.name, avatar: p.avatar })),
         ...(!check.isYours ? [{ name: check.author, avatar: check.author.charAt(0).toUpperCase() }] : []),
       ],
@@ -5560,7 +5586,7 @@ export default function Home() {
       event: `${event.title} — ${event.date}`,
       eventDate: event.date,
       members: [
-        { name: "You", avatar: profile?.avatar_letter ?? "Y" },
+        { name: "You", avatar: profile!.avatar_letter },
         ...selectedPeople.map((p) => ({ name: p.name, avatar: p.avatar })),
       ],
       messages: [
