@@ -18,3 +18,8 @@ Event saving app with social layer. Save events from Instagram to your calendar,
 - Auth + user accounts
 - Actual group chat formation
 - Calendar sync (Google/Apple)
+
+## Workflow
+- Always read TODO.md at the start of every session. Reference it for current project state and priorities.
+- Work on the next highest priority MVP blocker unless I say otherwise.
+- Update TODO.md when tasks are completed or new issues are found.
