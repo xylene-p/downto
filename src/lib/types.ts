@@ -111,7 +111,7 @@ export interface Message {
 export interface Notification {
   id: string;
   user_id: string;
-  type: 'friend_request' | 'friend_accepted' | 'check_response' | 'squad_message';
+  type: 'friend_request' | 'friend_accepted' | 'check_response' | 'squad_message' | 'squad_invite';
   title: string;
   body: string | null;
   related_user_id: string | null;

@@ -4440,6 +4440,10 @@ export default function Home() {
         } catch (err) {
           console.warn("Failed to fetch incoming friend profile:", err);
         }
+      } else if (newNotif.type === "squad_invite") {
+        if (newNotif.body) showToast(newNotif.body);
+        // Reload squads so the new squad appears
+        loadRealData();
       } else if (newNotif.type === "friend_accepted" && newNotif.related_user_id) {
         if (newNotif.body) showToast(newNotif.body);
         const relatedId = newNotif.related_user_id;
@@ -4566,7 +4570,7 @@ export default function Home() {
         const nType = event.data.notificationType;
         if (nType === 'friend_request' || nType === 'friend_accepted') {
           setTab('profile');
-        } else if (nType === 'squad_message') {
+        } else if (nType === 'squad_message' || nType === 'squad_invite') {
           setTab('groups');
         } else if (nType === 'check_response') {
           setTab('feed');
@@ -5720,7 +5724,7 @@ export default function Home() {
               >
                 {tabIcons[t]} {tabLabels[t]}
               </span>
-              {t === "groups" && notifications.some((n) => n.type === "squad_message" && !n.is_read) && (
+              {t === "groups" && notifications.some((n) => (n.type === "squad_message" || n.type === "squad_invite") && !n.is_read) && (
                 <div
                   style={{
                     position: "absolute",
@@ -6166,7 +6170,7 @@ export default function Home() {
                         setNotificationsOpen(false);
                         setFriendsInitialTab(n.type === "friend_request" ? "add" : "friends");
                         setFriendsOpen(true);
-                      } else if (n.type === "squad_message") {
+                      } else if (n.type === "squad_message" || n.type === "squad_invite") {
                         setNotificationsOpen(false);
                         setTab("groups");
                       } else if (n.type === "check_response") {
@@ -6195,6 +6199,7 @@ export default function Home() {
                         background: n.type === "friend_request" ? "#E8FF5A22"
                           : n.type === "friend_accepted" ? "#34C75922"
                           : n.type === "check_response" ? "#FF9F0A22"
+                          : n.type === "squad_invite" ? "#AF52DE22"
                           : "#5856D622",
                         display: "flex",
                         alignItems: "center",
@@ -6206,6 +6211,7 @@ export default function Home() {
                       {n.type === "friend_request" ? "👋"
                         : n.type === "friend_accepted" ? "🤝"
                         : n.type === "check_response" ? "🔥"
+                        : n.type === "squad_invite" ? "🚀"
                         : "💬"}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
