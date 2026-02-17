@@ -24,7 +24,7 @@ The core loop works end-to-end in production: magic-link auth, profile setup onb
 
 4. **No input validation on event creation.** The paste modal accepts any string. Empty titles, nonsensical dates, XSS payloads — nothing is validated client-side or server-side before hitting the database.
 
-5. **IG scraping fails silently on private posts.** The `/api/scrape` route gets a 403 from Instagram's oEmbed API for private posts and returns a generic error. Users don't get clear feedback about why their link didn't work or what to do instead.
+5. ~~**IG scraping fails silently on private posts.**~~ **DONE** — clear error messages explaining why + "Enter manually instead" fallback button.
 
 6. ~~**No error boundaries.**~~ **DONE** — `error.tsx` + `global-error.tsx` catch render errors with styled recovery UI.
 
@@ -42,7 +42,7 @@ The core loop works end-to-end in production: magic-link auth, profile setup onb
 
 **Can ship with (low risk at current scale):** #4 (validation — scrape API constrains most input), #5 (private posts — error shows, just not helpful), #7 (UUID collision — negligible at <100 users), #8 (session expiry — rare), #9 (subscription leaks — minor memory), #10 (rate limiting — no traffic yet)
 
-**Should add soon:** #5 (private IG post error messaging)
+**All "should add soon" items resolved.** Remaining blockers are low-risk at current scale.
 
 ## Remaining: Event Lobby Polish
 
@@ -67,7 +67,7 @@ The core loop works end-to-end in production: magic-link auth, profile setup onb
 ## Known Bugs
 
 - **Duplicate numeric IDs possible** — `parseInt(uuid.slice(0, 8), 16)` used for local IDs can collide, causing wrong-event-editing bugs or state corruption.
-- **IG scraping broken for private posts** — returns a generic error with no user-facing explanation or fallback to manual entry.
+- ~~**IG scraping broken for private posts**~~ **FIXED** — clear error messages + manual entry fallback.
 - **`events.date` stored as null for manually created events** — the `date` column (ISO date) is never populated from manual entry, only `date_display` (human string) is set. Calendar view or date-based queries won't work properly.
 - **Hooks file (`hooks.ts`) is dead code** — a full set of hooks was written but `page.tsx` does all the same work inline. The two will drift.
 - **Missing database indexes** — no indexes on `notifications.user_id`, `saved_events.user_id`, `friendships.requester_id/addressee_id`, or other frequently queried columns.
@@ -112,4 +112,5 @@ The core loop works end-to-end in production: magic-link auth, profile setup onb
 - Share publicly toggle on event creation
 - Crew → squad terminology rename throughout UI
 - Error boundaries (`error.tsx` + `global-error.tsx`) with styled recovery page
+- Clear error messages for private/restricted IG posts with manual entry fallback
 - Leave squad (self-removal from squad chat with confirmation modal, RLS-enforced — no kick)

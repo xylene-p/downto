@@ -193,8 +193,8 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       return NextResponse.json({
-        error: "Could not access this post. It may be private or restricted.",
-        isPublicPost: false,
+        error: "This post looks private or restricted. Try a public post, or enter the details manually.",
+        isPrivate: true,
       }, { status: 403 });
     }
 
@@ -222,8 +222,8 @@ export async function POST(request: NextRequest) {
 
     if (!caption && !thumbnail) {
       return NextResponse.json({
-        error: "Could not extract post data. The post may be private.",
-        isPublicPost: false,
+        error: "Couldn't read this post — it might be private or age-restricted. Try a different post, or enter the details manually.",
+        isPrivate: true,
       }, { status: 403 });
     }
 
@@ -243,7 +243,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Scrape error:", error);
     return NextResponse.json({
-      error: "Failed to scrape post"
+      error: "Something went wrong fetching that post. Try again, or enter the details manually."
     }, { status: 500 });
   }
 }
