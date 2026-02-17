@@ -3382,6 +3382,7 @@ const ProfileView = ({
   pushEnabled,
   pushSupported,
   onTogglePush,
+  onAvailabilityChange,
 }: {
   igConnected: boolean;
   onConnectIG: () => void;
@@ -3392,8 +3393,11 @@ const ProfileView = ({
   pushEnabled: boolean;
   pushSupported: boolean;
   onTogglePush: () => void;
+  onAvailabilityChange?: (status: AvailabilityStatus) => void;
 }) => {
-  const [availability, setAvailability] = useState<AvailabilityStatus>("open");
+  const [availability, setAvailability] = useState<AvailabilityStatus>(
+    profile?.availability ?? "open"
+  );
   const [expiry, setExpiry] = useState<string | null>(null);
   const [showExpiryPicker, setShowExpiryPicker] = useState(false);
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -3407,6 +3411,7 @@ const ProfileView = ({
       setExpiry(null);
       setShowExpiryPicker(false);
       setShowCustomInput(false);
+      onAvailabilityChange?.("open");
     } else {
       setPendingStatus(status);
       setShowExpiryPicker(true);
@@ -3424,6 +3429,7 @@ const ProfileView = ({
       setExpiry(exp === "none" ? null : exp);
       setShowExpiryPicker(false);
       setShowCustomInput(false);
+      onAvailabilityChange?.(pendingStatus);
       setPendingStatus(null);
     }
   };
@@ -3434,6 +3440,7 @@ const ProfileView = ({
       setExpiry(customExpiry.trim());
       setShowExpiryPicker(false);
       setShowCustomInput(false);
+      onAvailabilityChange?.(pendingStatus);
       setPendingStatus(null);
       setCustomExpiry("");
     }
@@ -5581,6 +5588,16 @@ export default function Home() {
             pushEnabled={pushEnabled}
             pushSupported={pushSupported}
             onTogglePush={handleTogglePush}
+            onAvailabilityChange={async (status) => {
+              if (!isDemoMode) {
+                try {
+                  const updated = await db.updateProfile({ availability: status });
+                  setProfile(updated);
+                } catch (err) {
+                  console.error("Failed to update availability:", err);
+                }
+              }
+            }}
           />
         )}
       </div>
