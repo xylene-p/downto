@@ -6168,7 +6168,10 @@ export default function Home() {
                       // Navigate based on type
                       if (n.type === "friend_request" || n.type === "friend_accepted") {
                         setNotificationsOpen(false);
-                        setFriendsInitialTab(n.type === "friend_request" ? "add" : "friends");
+                        // If friend_request but already friends, show friends tab instead of empty add tab
+                        const alreadyFriends = n.type === "friend_request" && n.related_user_id &&
+                          friends.some((f) => f.odbc === n.related_user_id);
+                        setFriendsInitialTab(n.type === "friend_request" && !alreadyFriends ? "add" : "friends");
                         setFriendsOpen(true);
                       } else if (n.type === "squad_message" || n.type === "squad_invite") {
                         setNotificationsOpen(false);
