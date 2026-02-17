@@ -2634,12 +2634,13 @@ const FriendsModal = ({
     };
   }, [search, tab, onSearchUsers]);
 
-  // Reset search when modal closes
+  // Reset state when modal closes
   useEffect(() => {
     if (!open) {
       setSearch("");
       setSearchResults([]);
       setSearching(false);
+      setSelectedFriend(null);
     }
   }, [open]);
 
@@ -2783,11 +2784,13 @@ const FriendsModal = ({
               filteredFriends.map((f) => (
                 <div
                   key={f.id}
+                  onClick={() => setSelectedFriend(f)}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     padding: "12px 0",
                     borderBottom: `1px solid ${color.border}`,
+                    cursor: "pointer",
                   }}
                 >
                   <div
@@ -2833,7 +2836,6 @@ const FriendsModal = ({
                       style={{
                         fontSize: 12,
                         opacity: 0.8,
-                        marginRight: onRemoveFriend ? 8 : 0,
                       }}
                     >
                       {f.availability === "open" && "✨"}
@@ -2841,25 +2843,7 @@ const FriendsModal = ({
                       {f.availability === "not-available" && "🌙"}
                     </span>
                   )}
-                  {onRemoveFriend && (
-                    <button
-                      onClick={() => onRemoveFriend(f.id)}
-                      style={{
-                        background: "transparent",
-                        border: `1px solid ${color.borderMid}`,
-                        borderRadius: 8,
-                        padding: "6px 10px",
-                        fontFamily: font.mono,
-                        fontSize: 10,
-                        color: color.dim,
-                        cursor: "pointer",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                      }}
-                    >
-                      Remove
-                    </button>
-                  )}
+                  <span style={{ color: color.faint, fontSize: 16, marginLeft: 8 }}>›</span>
                 </div>
               ))
             )}
@@ -3175,6 +3159,123 @@ const FriendsModal = ({
           </>
         )}
       </div>
+
+      {/* Friend Profile Detail */}
+      {selectedFriend && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: color.surface,
+            borderRadius: "24px 24px 0 0",
+            padding: "32px 24px 40px",
+            zIndex: 10,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            animation: "slideUp 0.2s ease-out",
+          }}
+        >
+          <button
+            onClick={() => setSelectedFriend(null)}
+            style={{
+              alignSelf: "flex-start",
+              background: "transparent",
+              border: "none",
+              color: color.dim,
+              fontFamily: font.mono,
+              fontSize: 13,
+              cursor: "pointer",
+              padding: "0 0 20px",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            ‹ Back
+          </button>
+
+          <div
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: "50%",
+              background: color.accent,
+              color: "#000",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontFamily: font.mono,
+              fontSize: 28,
+              fontWeight: 700,
+              marginBottom: 16,
+            }}
+          >
+            {selectedFriend.avatar}
+          </div>
+
+          <div
+            style={{
+              fontFamily: font.serif,
+              fontSize: 22,
+              color: color.text,
+              marginBottom: 4,
+            }}
+          >
+            {selectedFriend.name}
+          </div>
+
+          <div
+            style={{
+              fontFamily: font.mono,
+              fontSize: 13,
+              color: color.dim,
+              marginBottom: 8,
+            }}
+          >
+            @{selectedFriend.username}
+          </div>
+
+          {selectedFriend.availability && (
+            <div
+              style={{
+                fontFamily: font.mono,
+                fontSize: 12,
+                color: color.faint,
+                marginBottom: 32,
+              }}
+            >
+              {selectedFriend.availability === "open" && "✨ open to friends!"}
+              {selectedFriend.availability === "awkward" && "👀 awkward timing"}
+              {selectedFriend.availability === "not-available" && "🌙 not available"}
+            </div>
+          )}
+
+          {onRemoveFriend && (
+            <button
+              onClick={() => {
+                onRemoveFriend(selectedFriend.id);
+                setSelectedFriend(null);
+              }}
+              style={{
+                marginTop: "auto",
+                background: "transparent",
+                border: `1px solid rgba(255,107,107,0.3)`,
+                borderRadius: 10,
+                padding: "12px 24px",
+                fontFamily: font.mono,
+                fontSize: 12,
+                color: "#ff6b6b",
+                cursor: "pointer",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
+              Remove Friend
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
