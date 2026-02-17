@@ -32,7 +32,7 @@ The core loop works end-to-end in production: magic-link auth, profile setup onb
 
 8. **No logout confirmation or session expiry handling.** If the Supabase session expires mid-use, API calls fail silently. Users have to manually reload.
 
-9. **Realtime subscriptions may leak on re-renders.** `useEffect` dependency arrays are incomplete for realtime subscriptions, suppressed with `eslint-disable-line`. Tab switches trigger `loadRealData` re-runs but subscriptions may stack.
+9. ~~**Realtime subscriptions may leak on re-renders.**~~ **DONE** — stale closures fixed via refs for `showToast`, `loadRealData`, `onSquadUpdate`. eslint-disable comments removed.
 
 10. **No rate limiting on API routes.** The `/api/scrape`, `/api/push/subscribe`, and `/api/push/send` endpoints have no rate limiting.
 
@@ -68,14 +68,14 @@ The core loop works end-to-end in production: magic-link auth, profile setup onb
 
 - **Duplicate numeric IDs possible** — `parseInt(uuid.slice(0, 8), 16)` used for local IDs can collide, causing wrong-event-editing bugs or state corruption.
 - ~~**IG scraping broken for private posts**~~ **FIXED** — clear error messages + manual entry fallback.
-- **`events.date` stored as null for manually created events** — the `date` column (ISO date) is never populated from manual entry, only `date_display` (human string) is set. Calendar view or date-based queries won't work properly.
-- **Hooks file (`hooks.ts`) is dead code** — a full set of hooks was written but `page.tsx` does all the same work inline. The two will drift.
-- **Missing database indexes** — no indexes on `notifications.user_id`, `saved_events.user_id`, `friendships.requester_id/addressee_id`, or other frequently queried columns.
-- **eslint-disable on subscription effects** — `useEffect` dependency arrays are incomplete for realtime subscriptions, suppressed with `eslint-disable-line`.
+- ~~**`events.date` stored as null for manually created events**~~ **FIXED** — `parseDateToISO()` parses display strings to ISO dates.
+- ~~**Hooks file (`hooks.ts`) is dead code**~~ **FIXED** — deleted.
+- ~~**Missing database indexes**~~ **NOT A BUG** — all frequently-queried columns already have indexes from initial migration.
+- ~~**eslint-disable on subscription effects**~~ **FIXED** — stale closures fixed via refs, eslint-disable comments removed.
 
 ## Completed
 
-- Magic-link email authentication (Supabase Auth)
+- OTP code authentication (replaced magic link — fixes PWA redirect-to-Safari issue)
 - Profile auto-creation via DB trigger
 - Profile setup onboarding screen (display name, avatar, IG handle, `onboarded` flag)
 - First-login retry logic (inlined profile query with 3s timeout + safety timer)
@@ -118,3 +118,6 @@ The core loop works end-to-end in production: magic-link auth, profile setup onb
 - Compact squad chat layout (grouped messages, inline header with avatars)
 - Avatar letter fix — "You" uses actual profile letter, not hardcoded "Y"
 - Input validation — HTML stripping, length limits, sanitization on client + server
+- events.date ISO parsing — manual/scraped events now populate the ISO date column
+- Subscription stale closure fixes — refs for showToast, loadRealData, onSquadUpdate
+- Deleted dead hooks.ts

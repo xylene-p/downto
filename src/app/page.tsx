@@ -24,6 +24,38 @@ const sanitizeVibes = (vibes: string[]): string[] =>
     .filter((v) => v.length > 0)
     .slice(0, 5);
 
+/** Try to parse a human date string like "Sat, Feb 15" or "tonight" into YYYY-MM-DD */
+const parseDateToISO = (display: string): string | null => {
+  if (!display || display === "TBD") return null;
+  const lower = display.toLowerCase().trim();
+  const today = new Date();
+
+  if (lower === "tonight" || lower === "today") {
+    return today.toISOString().slice(0, 10);
+  }
+  if (lower === "tomorrow") {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().slice(0, 10);
+  }
+
+  // Try "Feb 15", "February 15", "Sat, Feb 15", "2/15", etc.
+  // Append current year and let Date.parse handle it
+  const year = today.getFullYear();
+  const withYear = `${display} ${year}`;
+  const parsed = new Date(withYear);
+  if (!isNaN(parsed.getTime())) {
+    // If the date is more than 2 months in the past, assume next year
+    const twoMonthsAgo = new Date(today);
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    if (parsed < twoMonthsAgo) {
+      parsed.setFullYear(year + 1);
+    }
+    return parsed.toISOString().slice(0, 10);
+  }
+  return null;
+};
+
 // ─── Data ────────────────────────────────────────────────────────────────────
 
 interface Person {
@@ -2480,6 +2512,8 @@ const GroupsView = ({
   onLeaveSquad?: (squadDbId: string) => Promise<void>;
   userId?: string | null;
 }) => {
+  const onSquadUpdateRef = useRef(onSquadUpdate);
+  onSquadUpdateRef.current = onSquadUpdate;
   const [selectedSquad, setSelectedSquad] = useState<Squad | null>(null);
   const [newMsg, setNewMsg] = useState("");
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -2518,7 +2552,7 @@ const GroupsView = ({
         };
       });
       // Also update the squad list
-      onSquadUpdate((prev) =>
+      onSquadUpdateRef.current((prev) =>
         prev.map((s) =>
           s.dbId === newMessage.squad_id
             ? { ...s, messages: [...s.messages, msg], lastMsg: `${senderName}: ${newMessage.text}`, time: "now" }
@@ -4419,7 +4453,7 @@ const AuthScreen = ({ onLogin, onDemoMode }: { onLogin: () => void; onDemoMode: 
   };
 
   const handleVerifyCode = async () => {
-    if (otp.length !== 6) return;
+    if (otp.length !== 8) return;
     setLoading(true);
     setError(null);
 
@@ -4549,7 +4583,7 @@ const AuthScreen = ({ onLogin, onDemoMode }: { onLogin: () => void; onDemoMode: 
               marginBottom: 20,
             }}
           >
-            We sent a 6-digit code to<br />
+            We sent a code to<br />
             <span style={{ color: color.accent }}>{email}</span>
           </p>
           <label
@@ -4569,9 +4603,9 @@ const AuthScreen = ({ onLogin, onDemoMode }: { onLogin: () => void; onDemoMode: 
             inputMode="numeric"
             autoComplete="one-time-code"
             value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 8))}
             onKeyDown={(e) => e.key === "Enter" && handleVerifyCode()}
-            placeholder="000000"
+            placeholder="00000000"
             autoFocus
             style={{
               background: color.card,
@@ -4589,17 +4623,17 @@ const AuthScreen = ({ onLogin, onDemoMode }: { onLogin: () => void; onDemoMode: 
           />
           <button
             onClick={handleVerifyCode}
-            disabled={otp.length !== 6 || loading}
+            disabled={otp.length !== 8 || loading}
             style={{
-              background: otp.length === 6 ? color.accent : color.borderMid,
-              color: otp.length === 6 ? "#000" : color.dim,
+              background: otp.length === 8 ? color.accent : color.borderMid,
+              color: otp.length === 8 ? "#000" : color.dim,
               border: "none",
               borderRadius: 12,
               padding: "16px",
               fontFamily: font.mono,
               fontSize: 14,
               fontWeight: 700,
-              cursor: otp.length === 6 ? "pointer" : "not-allowed",
+              cursor: otp.length === 8 ? "pointer" : "not-allowed",
               textTransform: "uppercase",
               letterSpacing: "0.1em",
               marginBottom: 12,
@@ -4972,6 +5006,8 @@ export default function Home() {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 2000);
   };
+  const showToastRef = useRef(showToast);
+  showToastRef.current = showToast;
 
   const handleEditEvent = async (updated: { title: string; venue: string; date: string; time: string; vibe: string[] }) => {
     if (!editingEvent) return;
@@ -5244,6 +5280,8 @@ export default function Home() {
       console.error("Failed to load data:", err);
     }
   }, [isDemoMode, userId]);
+  const loadRealDataRef = useRef(loadRealData);
+  loadRealDataRef.current = loadRealData;
 
   // Load squad pool members when EventLobby opens
   useEffect(() => {
@@ -5270,7 +5308,7 @@ export default function Home() {
         console.warn("Failed to load squad pool:", err);
       }
     })();
-  }, [socialEvent?.dbId, isDemoMode, userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [socialEvent?.dbId, isDemoMode, userId]);
 
   // Helper for time ago formatting
   const formatTimeAgo = (date: Date): string => {
@@ -5317,7 +5355,7 @@ export default function Home() {
       setUnreadCount((prev) => prev + 1);
 
       if (newNotif.type === "friend_request" && newNotif.related_user_id) {
-        if (newNotif.body) showToast(newNotif.body);
+        if (newNotif.body) showToastRef.current(newNotif.body);
         try {
           const [profile, friendshipId] = await Promise.all([
             db.getProfileById(newNotif.related_user_id),
@@ -5342,11 +5380,11 @@ export default function Home() {
           console.warn("Failed to fetch incoming friend profile:", err);
         }
       } else if (newNotif.type === "squad_invite") {
-        if (newNotif.body) showToast(newNotif.body);
+        if (newNotif.body) showToastRef.current(newNotif.body);
         // Reload squads so the new squad appears
-        loadRealData();
+        loadRealDataRef.current();
       } else if (newNotif.type === "friend_accepted" && newNotif.related_user_id) {
-        if (newNotif.body) showToast(newNotif.body);
+        if (newNotif.body) showToastRef.current(newNotif.body);
         const relatedId = newNotif.related_user_id;
         setSuggestions((prev) => {
           const person = prev.find((s) => s.odbc === relatedId);
@@ -5379,7 +5417,7 @@ export default function Home() {
     });
 
     return () => { channel.unsubscribe(); };
-  }, [isLoggedIn, isDemoMode, userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, isDemoMode, userId]);
 
   // Subscribe to realtime friendship changes
   useEffect(() => {
@@ -7056,7 +7094,7 @@ export default function Home() {
                   title,
                   venue,
                   neighborhood: null,
-                  date: null, // Could parse dateDisplay to actual date
+                  date: parseDateToISO(dateDisplay),
                   date_display: dateDisplay,
                   time_display: timeDisplay,
                   vibes,
