@@ -374,13 +374,14 @@ const PasteModal = ({
   open: boolean;
   onClose: () => void;
   onSubmit: (e: ScrapedEvent, sharePublicly: boolean) => void;
-  onInterestCheck: (idea: string) => void;
+  onInterestCheck: (idea: string, expiresInHours: number | null) => void;
   igConnected: boolean;
   onConnectIG: () => void;
 }) => {
   const [mode, setMode] = useState<"paste" | "idea" | "manual">("paste");
   const [url, setUrl] = useState("");
   const [idea, setIdea] = useState("");
+  const [checkTimer, setCheckTimer] = useState<number | null>(24);
   const [loading, setLoading] = useState(false);
   const [scraped, setScraped] = useState<ScrapedEvent | null>(null);
   const [sharePublicly, setSharePublicly] = useState(false);
@@ -1083,10 +1084,45 @@ const PasteModal = ({
                 }}
               />
             </div>
+            {/* Timer picker */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontFamily: font.mono, fontSize: 10, color: color.dim, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.15em" }}>
+                Expires in
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {[
+                  { label: "1h", hours: 1 as number | null },
+                  { label: "4h", hours: 4 as number | null },
+                  { label: "12h", hours: 12 as number | null },
+                  { label: "24h", hours: 24 as number | null },
+                  { label: "∞", hours: null as number | null },
+                ].map((opt) => (
+                  <button
+                    key={opt.label}
+                    onClick={() => setCheckTimer(opt.hours)}
+                    style={{
+                      flex: 1,
+                      padding: "10px 0",
+                      background: checkTimer === opt.hours ? color.accent : "transparent",
+                      color: checkTimer === opt.hours ? "#000" : color.muted,
+                      border: `1px solid ${checkTimer === opt.hours ? color.accent : color.borderMid}`,
+                      borderRadius: 10,
+                      fontFamily: font.mono,
+                      fontSize: 12,
+                      fontWeight: checkTimer === opt.hours ? 700 : 400,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <button
               onClick={() => {
                 if (idea.trim()) {
-                  onInterestCheck(idea);
+                  onInterestCheck(idea, checkTimer);
                   onClose();
                 }
               }}
@@ -1117,7 +1153,7 @@ const PasteModal = ({
                 textAlign: "center",
               }}
             >
-              your friends will be notified · responses are anonymous
+              your friends will be notified{checkTimer ? ` · expires in ${checkTimer}h` : ""}
             </p>
           </>
         )}
@@ -4764,15 +4800,24 @@ export default function Home() {
       const transformedChecks: InterestCheck[] = activeChecks.map((c) => {
         const now = new Date();
         const created = new Date(c.created_at);
-        const expires = new Date(c.expires_at);
         const msElapsed = now.getTime() - created.getTime();
-        const totalDuration = expires.getTime() - created.getTime();
-        const expiryPercent = Math.min(100, (msElapsed / totalDuration) * 100);
-        const msRemaining = expires.getTime() - now.getTime();
-        const hoursRemaining = Math.floor(msRemaining / (1000 * 60 * 60));
-        const minsRemaining = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
         const minsElapsed = Math.floor(msElapsed / (1000 * 60));
         const hoursElapsed = Math.floor(msElapsed / (1000 * 60 * 60));
+
+        let expiresIn: string;
+        let expiryPercent: number;
+        if (!c.expires_at) {
+          expiresIn = "open";
+          expiryPercent = 0;
+        } else {
+          const expires = new Date(c.expires_at);
+          const totalDuration = expires.getTime() - created.getTime();
+          expiryPercent = Math.min(100, (msElapsed / totalDuration) * 100);
+          const msRemaining = expires.getTime() - now.getTime();
+          const hoursRemaining = Math.floor(msRemaining / (1000 * 60 * 60));
+          const minsRemaining = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
+          expiresIn = hoursRemaining > 0 ? `${hoursRemaining}h` : minsRemaining > 0 ? `${minsRemaining}m` : "expired";
+        }
 
         return {
           id: parseInt(c.id.slice(0, 8), 16) || Date.now(),
@@ -4781,7 +4826,7 @@ export default function Home() {
           author: c.author.display_name,
           authorId: c.author_id,
           timeAgo: hoursElapsed > 0 ? `${hoursElapsed}h` : minsElapsed > 0 ? `${minsElapsed}m` : "now",
-          expiresIn: hoursRemaining > 0 ? `${hoursRemaining}h` : minsRemaining > 0 ? `${minsRemaining}m` : "expired",
+          expiresIn,
           expiryPercent,
           responses: c.responses.map((r) => ({
             name: r.user?.display_name ?? "Unknown",
@@ -5758,30 +5803,32 @@ export default function Home() {
                           cursor: check.squadLocalId ? "pointer" : undefined,
                         }}
                       >
-                        {/* Expiry progress bar */}
-                        <div
-                          style={{
-                            height: 3,
-                            background: color.border,
-                            position: "relative",
-                          }}
-                        >
+                        {/* Expiry progress bar — hidden for open (no expiry) checks */}
+                        {check.expiresIn !== "open" && (
                           <div
                             style={{
-                              position: "absolute",
-                              left: 0,
-                              top: 0,
-                              height: "100%",
-                              width: `${100 - check.expiryPercent}%`,
-                              background: check.expiryPercent > 75
-                                ? "#ff6b6b"
-                                : check.expiryPercent > 50
-                                ? "#ffaa5a"
-                                : "#4ade80",
-                              transition: "width 1s ease",
+                              height: 3,
+                              background: color.border,
+                              position: "relative",
                             }}
-                          />
-                        </div>
+                          >
+                            <div
+                              style={{
+                                position: "absolute",
+                                left: 0,
+                                top: 0,
+                                height: "100%",
+                                width: `${100 - check.expiryPercent}%`,
+                                background: check.expiryPercent > 75
+                                  ? "#ff6b6b"
+                                  : check.expiryPercent > 50
+                                  ? "#ffaa5a"
+                                  : "#4ade80",
+                                transition: "width 1s ease",
+                              }}
+                            />
+                          </div>
+                        )}
                         <div style={{ padding: 14 }}>
                         <div
                           style={{
@@ -5823,10 +5870,10 @@ export default function Home() {
                             style={{
                               fontFamily: font.mono,
                               fontSize: 10,
-                              color: check.expiryPercent > 75 ? "#ff6b6b" : color.faint,
+                              color: check.expiresIn === "open" ? color.dim : check.expiryPercent > 75 ? "#ff6b6b" : color.faint,
                             }}
                           >
-                            {check.expiresIn} left
+                            {check.expiresIn === "open" ? "open" : `${check.expiresIn} left`}
                           </span>
                         </div>
                         {editingCheckId === check.id ? (
@@ -6868,18 +6915,19 @@ export default function Home() {
             showToast("Event saved! 🎯");
           }
         }}
-        onInterestCheck={async (idea) => {
+        onInterestCheck={async (idea, expiresInHours) => {
+          const expiresLabel = expiresInHours == null ? "open" : expiresInHours >= 24 ? "24h" : `${expiresInHours}h`;
           // Save to database if logged in (not demo mode)
           if (!isDemoMode && userId) {
             try {
-              const dbCheck = await db.createInterestCheck(idea);
+              const dbCheck = await db.createInterestCheck(idea, expiresInHours);
               const newCheck: InterestCheck = {
                 id: parseInt(dbCheck.id.slice(0, 8), 16) || Date.now(),
                 dbId: dbCheck.id,
                 text: idea,
                 author: profile?.display_name || "You",
                 timeAgo: "now",
-                expiresIn: "24h",
+                expiresIn: expiresLabel,
                 expiryPercent: 0,
                 responses: [],
                 isYours: true,
@@ -6897,7 +6945,7 @@ export default function Home() {
               text: idea,
               author: "You",
               timeAgo: "now",
-              expiresIn: "24h",
+              expiresIn: expiresLabel,
               expiryPercent: 0,
               responses: [],
               isYours: true,

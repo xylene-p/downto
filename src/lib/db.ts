@@ -426,26 +426,30 @@ export async function getActiveChecks(): Promise<(InterestCheck & { author: Prof
       responses:check_responses(*, user:profiles(*)),
       squads(id)
     `)
-    .gt('expires_at', new Date().toISOString())
+    .or(`expires_at.gt.${new Date().toISOString()},expires_at.is.null`)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
   return data ?? [];
 }
 
-export async function createInterestCheck(text: string, expiresInHours = 24): Promise<InterestCheck> {
+export async function createInterestCheck(text: string, expiresInHours: number | null = 24): Promise<InterestCheck> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  const expiresAt = new Date();
-  expiresAt.setHours(expiresAt.getHours() + expiresInHours);
+  let expiresAt: string | null = null;
+  if (expiresInHours != null) {
+    const d = new Date();
+    d.setHours(d.getHours() + expiresInHours);
+    expiresAt = d.toISOString();
+  }
 
   const { data, error } = await supabase
     .from('interest_checks')
     .insert({
       author_id: user.id,
       text,
-      expires_at: expiresAt.toISOString(),
+      expires_at: expiresAt,
     })
     .select()
     .single();
@@ -592,6 +596,19 @@ export async function joinSquad(squadId: string): Promise<void> {
   const { error } = await supabase
     .from('squad_members')
     .insert({ squad_id: squadId, user_id: user.id });
+
+  if (error) throw error;
+}
+
+export async function leaveSquad(squadId: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { error } = await supabase
+    .from('squad_members')
+    .delete()
+    .eq('squad_id', squadId)
+    .eq('user_id', user.id);
 
   if (error) throw error;
 }

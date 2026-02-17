@@ -59,7 +59,7 @@ export interface InterestCheck {
   id: string;
   author_id: string;
   text: string;
-  expires_at: string;
+  expires_at: string | null;
   created_at: string;
   // Joined data
   author?: Profile;

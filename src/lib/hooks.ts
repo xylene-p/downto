@@ -361,20 +361,24 @@ function transformCheckToView(
 ): InterestCheckView {
   const now = new Date();
   const created = new Date(check.created_at);
-  const expires = new Date(check.expires_at);
-
   const msElapsed = now.getTime() - created.getTime();
-  const totalDuration = expires.getTime() - created.getTime();
-  const expiryPercent = Math.min(100, (msElapsed / totalDuration) * 100);
-
-  const msRemaining = expires.getTime() - now.getTime();
-  const hoursRemaining = Math.floor(msRemaining / (1000 * 60 * 60));
-  const minsRemaining = Math.floor(
-    (msRemaining % (1000 * 60 * 60)) / (1000 * 60)
-  );
-
   const minsElapsed = Math.floor(msElapsed / (1000 * 60));
   const hoursElapsed = Math.floor(msElapsed / (1000 * 60 * 60));
+
+  let expiresIn: string;
+  let expiryPercent: number;
+  if (!check.expires_at) {
+    expiresIn = "open";
+    expiryPercent = 0;
+  } else {
+    const expires = new Date(check.expires_at);
+    const totalDuration = expires.getTime() - created.getTime();
+    expiryPercent = Math.min(100, (msElapsed / totalDuration) * 100);
+    const msRemaining = expires.getTime() - now.getTime();
+    const hoursRemaining = Math.floor(msRemaining / (1000 * 60 * 60));
+    const minsRemaining = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
+    expiresIn = hoursRemaining > 0 ? `${hoursRemaining}h` : minsRemaining > 0 ? `${minsRemaining}m` : "expired";
+  }
 
   return {
     id: check.id,
@@ -387,12 +391,7 @@ function transformCheckToView(
         : minsElapsed > 0
           ? `${minsElapsed}m`
           : "now",
-    expiresIn:
-      hoursRemaining > 0
-        ? `${hoursRemaining}h`
-        : minsRemaining > 0
-          ? `${minsRemaining}m`
-          : "expired",
+    expiresIn,
     expiryPercent,
     responses: check.responses.map((r) => ({
       name: r.user?.display_name ?? "Unknown",
