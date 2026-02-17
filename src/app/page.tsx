@@ -1784,7 +1784,7 @@ const EventLobby = ({
   onClose,
   onStartSquad,
   onJoinSquadPool,
-  squadPoolCount,
+  squadPoolMembers,
   inSquadPool,
   isDemoMode,
 }: {
@@ -1793,26 +1793,30 @@ const EventLobby = ({
   onClose: () => void;
   onStartSquad: (event: Event, selectedUserIds: string[]) => void;
   onJoinSquadPool: (event: Event) => void;
-  squadPoolCount: number;
+  squadPoolMembers: Person[];
   inSquadPool: boolean;
   isDemoMode: boolean;
 }) => {
   const [selectingMembers, setSelectingMembers] = useState(false);
+  const [selectingPool, setSelectingPool] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Reset selection state when drawer opens/closes
   useEffect(() => {
     if (!open) {
       setSelectingMembers(false);
+      setSelectingPool(false);
       setSelectedIds(new Set());
     }
   }, [open]);
 
   if (!open || !event) return null;
-  const friends = event.peopleDown.filter((p) => p.mutual);
-  const others = event.peopleDown.filter((p) => !p.mutual);
+  // People in the squad pool should only appear in that section, not in down lists
+  const poolUserIds = new Set(squadPoolMembers.map((p) => p.userId));
+  const friends = event.peopleDown.filter((p) => p.mutual && !poolUserIds.has(p.userId));
+  const others = event.peopleDown.filter((p) => !p.mutual && !poolUserIds.has(p.userId));
   const maxSquadPick = 4; // max 4 others + you = 5 total
-  const slotsAvailable = maxSquadPick;
+  const isSelecting = selectingMembers || selectingPool;
 
   const toggleSelect = (userId: string) => {
     setSelectedIds((prev) => {
@@ -1991,12 +1995,34 @@ const EventLobby = ({
           </>
         )}
 
+        {/* Looking for a squad section — visible when in pool and there are pool members */}
+        {inSquadPool && squadPoolMembers.length > 0 && (
+          <>
+            <div
+              style={{
+                fontFamily: font.mono,
+                fontSize: 10,
+                textTransform: "uppercase",
+                letterSpacing: "0.15em",
+                color: color.accent,
+                marginTop: 20,
+                marginBottom: 12,
+              }}
+            >
+              Looking for a squad ({squadPoolMembers.length})
+            </div>
+            {squadPoolMembers.map((p) => (
+              <PersonRow key={p.userId || p.name} p={p} isFriend={false} selectable={selectingPool} />
+            ))}
+          </>
+        )}
+
         {/* CTAs */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
-          {/* Start a squad — visible when friends are down */}
-          {friends.length > 0 && !selectingMembers && (
+          {/* Start a squad with friends — visible when friends are down */}
+          {friends.length > 0 && !isSelecting && (
             <button
-              onClick={() => setSelectingMembers(true)}
+              onClick={() => { setSelectingMembers(true); setSelectedIds(new Set()); }}
               style={{
                 width: "100%",
                 background: color.accent,
@@ -2012,15 +2038,38 @@ const EventLobby = ({
                 letterSpacing: "0.1em",
               }}
             >
-              Start a Squad ({slotsAvailable}/{maxSquadPick} slots) →
+              Start a Squad with Friends →
             </button>
           )}
 
-          {/* Confirm selection */}
-          {selectingMembers && (
+          {/* Start a squad from pool — visible when in pool and pool has people */}
+          {inSquadPool && squadPoolMembers.length > 0 && !isSelecting && (
+            <button
+              onClick={() => { setSelectingPool(true); setSelectedIds(new Set()); }}
+              style={{
+                width: "100%",
+                background: color.accent,
+                color: "#000",
+                border: "none",
+                borderRadius: 12,
+                padding: "14px",
+                fontFamily: font.mono,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+              }}
+            >
+              Start a Squad from Pool →
+            </button>
+          )}
+
+          {/* Confirm selection (shared by both friend and pool selection modes) */}
+          {isSelecting && (
             <div style={{ display: "flex", gap: 8 }}>
               <button
-                onClick={() => { setSelectingMembers(false); setSelectedIds(new Set()); }}
+                onClick={() => { setSelectingMembers(false); setSelectingPool(false); setSelectedIds(new Set()); }}
                 style={{
                   flex: 1,
                   background: "transparent",
@@ -2042,6 +2091,7 @@ const EventLobby = ({
                   if (selectedIds.size > 0) {
                     onStartSquad(event, Array.from(selectedIds));
                     setSelectingMembers(false);
+                    setSelectingPool(false);
                     setSelectedIds(new Set());
                   }
                 }}
@@ -2066,8 +2116,8 @@ const EventLobby = ({
             </div>
           )}
 
-          {/* Find a squad — always visible, not during member selection */}
-          {!selectingMembers && event.dbId && !isDemoMode && (
+          {/* Looking for a squad toggle — always visible when not selecting */}
+          {!isSelecting && event.dbId && !isDemoMode && (
             <button
               onClick={() => onJoinSquadPool(event)}
               style={{
@@ -2086,8 +2136,8 @@ const EventLobby = ({
               }}
             >
               {inSquadPool
-                ? `In squad pool · ${squadPoolCount} looking`
-                : `Find a Squad${squadPoolCount > 0 ? ` · ${squadPoolCount} looking` : ""}`}
+                ? "Leave squad pool"
+                : `I'm looking for a squad${squadPoolMembers.length > 0 ? ` · ${squadPoolMembers.length} looking` : ""}`}
             </button>
           )}
         </div>
@@ -2308,6 +2358,7 @@ interface Squad {
   name: string;
   event?: string;
   eventDate?: string;
+  eventIsoDate?: string;
   members: { name: string; avatar: string }[];
   messages: { sender: string; text: string; time: string; isYou?: boolean }[];
   lastMsg: string;
@@ -2376,6 +2427,7 @@ const GroupsView = ({
   const [newMsg, setNewMsg] = useState("");
   const [editingField, setEditingField] = useState<string | null>(null);
   const [fieldValue, setFieldValue] = useState("");
+  const [logisticsOpen, setLogisticsOpen] = useState(false);
   const logisticsInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -2515,11 +2567,13 @@ const GroupsView = ({
           </div>
         </div>
 
-        {/* Logistics card — pinned between header and messages for event-linked squads */}
-        {selectedSquad.event && selectedSquad.dbId && (() => {
-          // Check if event date has passed — hide if so
-          // eventDate is like "Fri, Feb 14" — do a simple check: if it exists, show the card
-          // (precise date parsing would require the ISO date field; for now always show for event squads)
+        {/* Logistics card — pinned between header and messages for active squads */}
+        {selectedSquad.dbId && (() => {
+          // Hide logistics for past events
+          if (selectedSquad.eventIsoDate) {
+            const eventDay = new Date(selectedSquad.eventIsoDate + "T23:59:59");
+            if (eventDay < new Date()) return null;
+          }
 
           const saveField = async (field: string, value: string) => {
             if (!selectedSquad.dbId || !onUpdateLogistics) return;
@@ -2541,6 +2595,8 @@ const GroupsView = ({
             { key: "transport_notes", label: "Getting there", value: selectedSquad.transportNotes, placeholder: "e.g. taking the G" },
           ];
 
+          const filledCount = fields.filter((f) => f.value).length;
+
           return (
             <div
               style={{
@@ -2553,72 +2609,104 @@ const GroupsView = ({
               }}
             >
               <div
+                onClick={() => { if (!editingField) setLogisticsOpen((v) => !v); }}
                 style={{
-                  fontFamily: font.mono,
-                  fontSize: 10,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.15em",
-                  color: color.accent,
-                  marginBottom: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  cursor: "pointer",
+                  userSelect: "none",
                 }}
               >
-                Logistics
-              </div>
-              {fields.map((f) => (
-                <div key={f.key} style={{ marginBottom: 8 }}>
-                  <div style={{ fontFamily: font.mono, fontSize: 10, color: color.dim, marginBottom: 4 }}>
-                    {f.label}
-                  </div>
-                  {editingField === f.key ? (
-                    <input
-                      ref={logisticsInputRef}
-                      autoFocus
-                      type="text"
-                      value={fieldValue}
-                      onChange={(e) => setFieldValue(e.target.value)}
-                      onBlur={() => saveField(f.key, fieldValue)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") saveField(f.key, fieldValue);
-                        if (e.key === "Escape") setEditingField(null);
-                      }}
-                      placeholder={f.placeholder}
-                      style={{
-                        width: "100%",
-                        background: color.card,
-                        border: `1px solid ${color.accent}`,
-                        borderRadius: 8,
-                        padding: "8px 10px",
-                        color: color.text,
-                        fontFamily: font.mono,
-                        fontSize: 12,
-                        outline: "none",
-                      }}
-                    />
-                  ) : (
-                    <div
-                      onClick={() => {
-                        setEditingField(f.key);
-                        setFieldValue(f.value || "");
-                      }}
-                      style={{
-                        padding: "8px 10px",
-                        background: color.card,
-                        border: `1px solid ${color.border}`,
-                        borderRadius: 8,
-                        fontFamily: font.mono,
-                        fontSize: 12,
-                        color: f.value ? color.text : color.faint,
-                        cursor: "pointer",
-                        transition: "border-color 0.2s",
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.borderColor = color.borderMid)}
-                      onMouseLeave={(e) => (e.currentTarget.style.borderColor = color.border)}
-                    >
-                      {f.value || f.placeholder}
-                    </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span
+                    style={{
+                      fontFamily: font.mono,
+                      fontSize: 10,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.15em",
+                      color: color.accent,
+                    }}
+                  >
+                    Logistics
+                  </span>
+                  {!logisticsOpen && filledCount > 0 && (
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: color.dim }}>
+                      {filledCount}/{fields.length} set
+                    </span>
                   )}
                 </div>
-              ))}
+                <span
+                  style={{
+                    color: color.dim,
+                    fontSize: 12,
+                    transition: "transform 0.2s ease",
+                    transform: logisticsOpen ? "rotate(180deg)" : "rotate(0deg)",
+                    display: "inline-block",
+                  }}
+                >
+                  ▾
+                </span>
+              </div>
+              {logisticsOpen && (
+                <div style={{ marginTop: 10 }}>
+                  {fields.map((f) => (
+                    <div key={f.key} style={{ marginBottom: 8 }}>
+                      <div style={{ fontFamily: font.mono, fontSize: 10, color: color.dim, marginBottom: 4 }}>
+                        {f.label}
+                      </div>
+                      {editingField === f.key ? (
+                        <input
+                          ref={logisticsInputRef}
+                          autoFocus
+                          type="text"
+                          value={fieldValue}
+                          onChange={(e) => setFieldValue(e.target.value)}
+                          onBlur={() => saveField(f.key, fieldValue)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveField(f.key, fieldValue);
+                            if (e.key === "Escape") setEditingField(null);
+                          }}
+                          placeholder={f.placeholder}
+                          style={{
+                            width: "100%",
+                            background: color.card,
+                            border: `1px solid ${color.accent}`,
+                            borderRadius: 8,
+                            padding: "8px 10px",
+                            color: color.text,
+                            fontFamily: font.mono,
+                            fontSize: 12,
+                            outline: "none",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          onClick={() => {
+                            setEditingField(f.key);
+                            setFieldValue(f.value || "");
+                          }}
+                          style={{
+                            padding: "8px 10px",
+                            background: color.card,
+                            border: `1px solid ${color.border}`,
+                            borderRadius: 8,
+                            fontFamily: font.mono,
+                            fontSize: 12,
+                            color: f.value ? color.text : color.faint,
+                            cursor: "pointer",
+                            transition: "border-color 0.2s",
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.borderColor = color.borderMid)}
+                          onMouseLeave={(e) => (e.currentTarget.style.borderColor = color.border)}
+                        >
+                          {f.value || f.placeholder}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })()}
@@ -4604,7 +4692,7 @@ export default function Home() {
   const [squads, setSquads] = useState<Squad[]>([]);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [socialEvent, setSocialEvent] = useState<Event | null>(null);
-  const [squadPoolCount, setSquadPoolCount] = useState(0);
+  const [squadPoolMembers, setSquadPoolMembers] = useState<Person[]>([]);
   const [inSquadPool, setInSquadPool] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -4748,23 +4836,29 @@ export default function Home() {
       }));
       setEvents(transformedEvents);
 
-      const transformedTonight: Event[] = publicEvents.map((e) => ({
-        id: parseInt(e.id.slice(0, 8), 16) || Date.now(),
-        dbId: e.id,
-        createdBy: e.created_by ?? undefined,
-        title: e.title,
-        venue: e.venue ?? "",
-        date: e.date_display ?? "Tonight",
-        time: e.time_display ?? "",
-        vibe: e.vibes,
-        image: e.image_url ?? "",
-        igHandle: e.ig_handle ?? "",
-        saved: false,
-        isDown: false,
-        isPublic: true,
-        peopleDown: peopleDownMap[e.id] ?? [],
-        neighborhood: e.neighborhood ?? undefined,
-      }));
+      // Build a set of saved event IDs to cross-reference tonight events
+      const savedEventIdSet = new Set(savedEventIds);
+      const savedDownMap = new Map(savedEvents.map((se) => [se.event!.id, se.is_down]));
+
+      const transformedTonight: Event[] = publicEvents
+        .filter((e) => e.venue && e.date_display) // Hide events with no venue or date
+        .map((e) => ({
+          id: parseInt(e.id.slice(0, 8), 16) || Date.now(),
+          dbId: e.id,
+          createdBy: e.created_by ?? undefined,
+          title: e.title,
+          venue: e.venue ?? "",
+          date: e.date_display ?? "Tonight",
+          time: e.time_display ?? "",
+          vibe: e.vibes,
+          image: e.image_url ?? "",
+          igHandle: e.ig_handle ?? "",
+          saved: savedEventIdSet.has(e.id),
+          isDown: savedDownMap.get(e.id) ?? false,
+          isPublic: true,
+          peopleDown: peopleDownMap[e.id] ?? [],
+          neighborhood: e.neighborhood ?? undefined,
+        }));
       setTonightEvents(transformedTonight);
 
       // Load friends
@@ -4850,6 +4944,7 @@ export default function Home() {
             name: s.name,
             event: s.event ? `${s.event.title} — ${s.event.date_display}` : undefined,
             eventDate: s.event?.date_display ?? undefined,
+            eventIsoDate: s.event?.date ?? undefined,
             members,
             messages,
             lastMsg: lastMessage ? `${lastMessage.sender}: ${lastMessage.text}` : "",
@@ -4892,18 +4987,27 @@ export default function Home() {
     }
   }, [isDemoMode, userId]);
 
-  // Load squad pool info when EventLobby opens
+  // Load squad pool members when EventLobby opens
   useEffect(() => {
     if (!socialEvent?.dbId || isDemoMode) {
-      setSquadPoolCount(0);
+      setSquadPoolMembers([]);
       setInSquadPool(false);
       return;
     }
     (async () => {
       try {
         const pool = await db.getCrewPool(socialEvent.dbId!);
-        setSquadPoolCount(pool.length);
         setInSquadPool(pool.some((entry) => entry.user_id === userId));
+        // Convert pool entries to Person objects (exclude self)
+        const poolPeople: Person[] = pool
+          .filter((entry) => entry.user_id !== userId)
+          .map((entry) => ({
+            name: entry.user?.display_name ?? "Unknown",
+            avatar: entry.user?.avatar_letter ?? "?",
+            mutual: false,
+            userId: entry.user_id,
+          }));
+        setSquadPoolMembers(poolPeople);
       } catch (err) {
         console.warn("Failed to load squad pool:", err);
       }
@@ -5287,8 +5391,20 @@ export default function Home() {
       }
     }
 
-    // Build member display from the people down list
-    const selectedPeople = event.peopleDown.filter((p) => p.userId && selectedUserIds.includes(p.userId));
+    // Build member display from people down + pool members
+    const allCandidates = [...event.peopleDown, ...squadPoolMembers];
+    const selectedPeople = allCandidates.filter((p) => p.userId && selectedUserIds.includes(p.userId));
+
+    // Remove selected pool members from the pool
+    const poolSelectedIds = squadPoolMembers
+      .filter((p) => p.userId && selectedUserIds.includes(p.userId))
+      .map((p) => p.userId!);
+    if (poolSelectedIds.length > 0 && event.dbId) {
+      const allToRemove = inSquadPool ? [userId!, ...poolSelectedIds] : poolSelectedIds;
+      db.removeFromCrewPool(event.dbId, allToRemove).catch(() => {});
+      setSquadPoolMembers((prev) => prev.filter((p) => !poolSelectedIds.includes(p.userId!)));
+      if (inSquadPool) setInSquadPool(false);
+    }
 
     const newSquad: Squad = {
       id: Date.now(),
@@ -5343,93 +5459,34 @@ export default function Home() {
       if (inSquadPool) {
         await db.leaveCrewPool(event.dbId);
         setInSquadPool(false);
-        setSquadPoolCount((prev) => Math.max(0, prev - 1));
+        setSquadPoolMembers((prev) => prev.filter((p) => p.userId !== userId));
         showToast("Left squad pool");
         return;
       }
 
       await db.joinCrewPool(event.dbId);
       setInSquadPool(true);
-      setSquadPoolCount((prev) => prev + 1);
-      showToast("You're in the squad pool!");
+      showToast("You're looking for a squad!");
 
-      // Check if pool is large enough to auto-form a squad
+      // Refresh pool members to show the full list
       const pool = await db.getCrewPool(event.dbId);
-      if (pool.length >= 4) {
-        // Take up to 5 from the pool (prioritize mutual friends first)
-        const { data: { user } } = await supabase.auth.getUser();
-        const currentUserId = user?.id;
-
-        // Get friend IDs for priority
-        let friendIds: Set<string> = new Set();
-        if (currentUserId) {
-          const friendsList = await db.getFriends();
-          friendIds = new Set(friendsList.map((f) => f.profile.id));
-        }
-
-        const withoutSelf = pool.filter((entry) => entry.user_id !== currentUserId);
-        const mutualFirst = [
-          ...withoutSelf.filter((entry) => friendIds.has(entry.user_id)),
-          ...withoutSelf.filter((entry) => !friendIds.has(entry.user_id)),
-        ];
-        const poolMembers = mutualFirst.slice(0, 4); // up to 4 others + you = 5
-
-        const poolSquadName = `Squad for ${event.title.slice(0, 25)}${event.title.length > 25 ? "..." : ""}`;
-        const memberIds = poolMembers.map((m) => m.user_id);
-
-        const dbSquad = await db.createSquad(poolSquadName, memberIds, event.dbId);
-        await db.sendMessage(dbSquad.id, `squad matched! let's go 🎉`);
-
-        // Remove matched users from pool
-        const allMatchedIds = [currentUserId!, ...memberIds];
-        await db.removeFromCrewPool(event.dbId, allMatchedIds);
-
-        const newSquad: Squad = {
-          id: Date.now(),
-          dbId: dbSquad.id,
-          name: poolSquadName,
-          event: `${event.title} — ${event.date}`,
-          eventDate: event.date,
-          members: [
-            { name: "You", avatar: profile?.avatar_letter ?? "Y" },
-            ...poolMembers.map((m) => ({
-              name: m.user?.display_name ?? "Unknown",
-              avatar: m.user?.avatar_letter ?? "?",
-            })),
-          ],
-          messages: [
-            { sender: "system", text: `🎲 Squad matched!`, time: "now" },
-            { sender: "system", text: `📍 ${event.venue} · ${event.date} ${event.time}`, time: "now" },
-            { sender: "You", text: `squad matched! let's go 🎉`, time: "now", isYou: true },
-          ],
-          lastMsg: "You: squad matched! let's go 🎉",
-          time: "now",
-        };
-        setSquads((prev) => [newSquad, ...prev]);
-        setInSquadPool(false);
-        setSquadPoolCount(0);
-
-        setSquadNotification({
-          squadName: poolSquadName,
-          startedBy: "squad match",
-          ideaBy: "event",
-          members: poolMembers.map((m) => m.user?.display_name ?? "Unknown"),
-          squadId: newSquad.id,
-        });
-        setTimeout(() => setSquadNotification(null), 4000);
-
-        setSocialEvent(null);
-        setTab("groups");
-      }
+      const poolPeople: Person[] = pool
+        .filter((entry) => entry.user_id !== userId)
+        .map((entry) => ({
+          name: entry.user?.display_name ?? "Unknown",
+          avatar: entry.user?.avatar_letter ?? "?",
+          mutual: false,
+          userId: entry.user_id,
+        }));
+      setSquadPoolMembers(poolPeople);
     } catch (err: any) {
-      // Ignore duplicate (already in pool)
       const code = err && typeof err === 'object' && 'code' in err ? err.code : '';
       if (code === '23505') {
-        showToast("Already in the squad pool");
+        showToast("Already looking for a squad");
         return;
       }
       console.error("Failed to join squad pool:", err);
-      showToast("Failed to join squad pool");
+      showToast("Something went wrong");
     }
   };
 
@@ -6882,7 +6939,7 @@ export default function Home() {
         onClose={() => setSocialEvent(null)}
         onStartSquad={startSquadFromEvent}
         onJoinSquadPool={handleJoinSquadPool}
-        squadPoolCount={squadPoolCount}
+        squadPoolMembers={squadPoolMembers}
         inSquadPool={inSquadPool}
         isDemoMode={isDemoMode}
       />

@@ -1,13 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-interface InstagramOEmbed {
-  title: string;
-  author_name: string;
-  author_url: string;
-  thumbnail_url: string;
-  html: string;
-}
-
 // Extract event details from Instagram caption using heuristics
 function parseEventDetails(caption: string, authorName: string) {
   const lines = caption.split('\n').filter(l => l.trim());
@@ -191,38 +183,61 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Try Instagram oEmbed API
-    const oembedUrl = `https://api.instagram.com/oembed?url=${encodeURIComponent(url)}`;
-
-    const oembedResponse = await fetch(oembedUrl, {
+    // Scrape the Instagram page directly for embedded JSON data
+    const canonicalUrl = `https://www.instagram.com/${igMatch[1]}/${igMatch[2]}/`;
+    const response = await fetch(canonicalUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; downto/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
       },
     });
 
-    if (!oembedResponse.ok) {
+    if (!response.ok) {
       return NextResponse.json({
         error: "Could not access this post. It may be private or restricted.",
         isPublicPost: false,
       }, { status: 403 });
     }
 
-    const oembed: InstagramOEmbed = await oembedResponse.json();
+    const html = await response.text();
 
-    // Extract caption from the HTML embed
-    const captionMatch = oembed.html.match(/title="([^"]+)"/);
-    const caption = captionMatch ? captionMatch[1] : oembed.title || "";
+    // Extract caption from embedded JSON (Instagram embeds post data in the page)
+    const captionMatch = html.match(/"caption":\{[^}]*"text":"((?:[^"\\]|\\.)*)"/);
+    let caption = "";
+    if (captionMatch) {
+      try {
+        // Use JSON.parse to properly decode all unicode escapes
+        caption = JSON.parse(`"${captionMatch[1]}"`);
+      } catch {
+        caption = captionMatch[1];
+      }
+    }
+
+    // Extract author from og:url (format: instagram.com/username/p/...)
+    const authorMatch = html.match(/<meta property="og:url" content="https:\/\/www\.instagram\.com\/([^/]+)\//);
+    const authorName = authorMatch ? authorMatch[1] : "";
+
+    // Extract thumbnail from og:image
+    const ogImageMatch = html.match(/<meta property="og:image" content="([^"]+)"/);
+    const thumbnail = ogImageMatch ? ogImageMatch[1].replace(/&amp;/g, '&') : "";
+
+    if (!caption && !thumbnail) {
+      return NextResponse.json({
+        error: "Could not extract post data. The post may be private.",
+        isPublicPost: false,
+      }, { status: 403 });
+    }
 
     // Parse event details from caption
-    const eventDetails = parseEventDetails(caption, oembed.author_name);
+    const eventDetails = parseEventDetails(caption, authorName);
 
     return NextResponse.json({
       type: "event" as const,
       ...eventDetails,
-      thumbnail: oembed.thumbnail_url,
-      authorUrl: oembed.author_url,
+      thumbnail,
+      authorUrl: `https://www.instagram.com/${authorName}/`,
       isPublicPost: true,
       rawCaption: caption,
+      igUrl: canonicalUrl,
     });
 
   } catch (error) {
