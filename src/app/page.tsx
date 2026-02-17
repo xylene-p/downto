@@ -1783,18 +1783,18 @@ const EventLobby = ({
   open,
   onClose,
   onStartSquad,
-  onJoinCrewPool,
-  crewPoolCount,
-  inCrewPool,
+  onJoinSquadPool,
+  squadPoolCount,
+  inSquadPool,
   isDemoMode,
 }: {
   event: Event | null;
   open: boolean;
   onClose: () => void;
   onStartSquad: (event: Event, selectedUserIds: string[]) => void;
-  onJoinCrewPool: (event: Event) => void;
-  crewPoolCount: number;
-  inCrewPool: boolean;
+  onJoinSquadPool: (event: Event) => void;
+  squadPoolCount: number;
+  inSquadPool: boolean;
   isDemoMode: boolean;
 }) => {
   const [selectingMembers, setSelectingMembers] = useState(false);
@@ -2066,28 +2066,28 @@ const EventLobby = ({
             </div>
           )}
 
-          {/* Find a crew — always visible, not during member selection */}
+          {/* Find a squad — always visible, not during member selection */}
           {!selectingMembers && event.dbId && !isDemoMode && (
             <button
-              onClick={() => onJoinCrewPool(event)}
+              onClick={() => onJoinSquadPool(event)}
               style={{
                 width: "100%",
-                background: inCrewPool ? color.card : "transparent",
-                color: inCrewPool ? color.accent : color.text,
-                border: `1px solid ${inCrewPool ? color.accent : color.borderMid}`,
+                background: inSquadPool ? color.card : "transparent",
+                color: inSquadPool ? color.accent : color.text,
+                border: `1px solid ${inSquadPool ? color.accent : color.borderMid}`,
                 borderRadius: 12,
                 padding: "14px",
                 fontFamily: font.mono,
                 fontSize: 12,
-                fontWeight: inCrewPool ? 700 : 400,
+                fontWeight: inSquadPool ? 700 : 400,
                 cursor: "pointer",
                 textTransform: "uppercase",
                 letterSpacing: "0.1em",
               }}
             >
-              {inCrewPool
-                ? `In crew pool · ${crewPoolCount} looking`
-                : `Find a Crew${crewPoolCount > 0 ? ` · ${crewPoolCount} looking` : ""}`}
+              {inSquadPool
+                ? `In squad pool · ${squadPoolCount} looking`
+                : `Find a Squad${squadPoolCount > 0 ? ` · ${squadPoolCount} looking` : ""}`}
             </button>
           )}
         </div>
@@ -4604,8 +4604,8 @@ export default function Home() {
   const [squads, setSquads] = useState<Squad[]>([]);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [socialEvent, setSocialEvent] = useState<Event | null>(null);
-  const [crewPoolCount, setCrewPoolCount] = useState(0);
-  const [inCrewPool, setInCrewPool] = useState(false);
+  const [squadPoolCount, setSquadPoolCount] = useState(0);
+  const [inSquadPool, setInSquadPool] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [suggestions, setSuggestions] = useState<Friend[]>([]); // Loaded from DB or demo data
@@ -4892,20 +4892,20 @@ export default function Home() {
     }
   }, [isDemoMode, userId]);
 
-  // Load crew pool info when EventLobby opens
+  // Load squad pool info when EventLobby opens
   useEffect(() => {
     if (!socialEvent?.dbId || isDemoMode) {
-      setCrewPoolCount(0);
-      setInCrewPool(false);
+      setSquadPoolCount(0);
+      setInSquadPool(false);
       return;
     }
     (async () => {
       try {
         const pool = await db.getCrewPool(socialEvent.dbId!);
-        setCrewPoolCount(pool.length);
-        setInCrewPool(pool.some((entry) => entry.user_id === userId));
+        setSquadPoolCount(pool.length);
+        setInSquadPool(pool.some((entry) => entry.user_id === userId));
       } catch (err) {
-        console.warn("Failed to load crew pool:", err);
+        console.warn("Failed to load squad pool:", err);
       }
     })();
   }, [socialEvent?.dbId, isDemoMode, userId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -5336,22 +5336,22 @@ export default function Home() {
     setTab("groups");
   };
 
-  const handleJoinCrewPool = async (event: Event) => {
+  const handleJoinSquadPool = async (event: Event) => {
     if (!event.dbId || isDemoMode) return;
 
     try {
-      if (inCrewPool) {
+      if (inSquadPool) {
         await db.leaveCrewPool(event.dbId);
-        setInCrewPool(false);
-        setCrewPoolCount((prev) => Math.max(0, prev - 1));
-        showToast("Left crew pool");
+        setInSquadPool(false);
+        setSquadPoolCount((prev) => Math.max(0, prev - 1));
+        showToast("Left squad pool");
         return;
       }
 
       await db.joinCrewPool(event.dbId);
-      setInCrewPool(true);
-      setCrewPoolCount((prev) => prev + 1);
-      showToast("You're in the crew pool!");
+      setInSquadPool(true);
+      setSquadPoolCount((prev) => prev + 1);
+      showToast("You're in the squad pool!");
 
       // Check if pool is large enough to auto-form a squad
       const pool = await db.getCrewPool(event.dbId);
@@ -5372,13 +5372,13 @@ export default function Home() {
           ...withoutSelf.filter((entry) => friendIds.has(entry.user_id)),
           ...withoutSelf.filter((entry) => !friendIds.has(entry.user_id)),
         ];
-        const crewMembers = mutualFirst.slice(0, 4); // up to 4 others + you = 5
+        const poolMembers = mutualFirst.slice(0, 4); // up to 4 others + you = 5
 
-        const crewName = `Crew for ${event.title.slice(0, 25)}${event.title.length > 25 ? "..." : ""}`;
-        const memberIds = crewMembers.map((m) => m.user_id);
+        const poolSquadName = `Squad for ${event.title.slice(0, 25)}${event.title.length > 25 ? "..." : ""}`;
+        const memberIds = poolMembers.map((m) => m.user_id);
 
-        const dbSquad = await db.createSquad(crewName, memberIds, event.dbId);
-        await db.sendMessage(dbSquad.id, `crew matched! let's go 🎉`);
+        const dbSquad = await db.createSquad(poolSquadName, memberIds, event.dbId);
+        await db.sendMessage(dbSquad.id, `squad matched! let's go 🎉`);
 
         // Remove matched users from pool
         const allMatchedIds = [currentUserId!, ...memberIds];
@@ -5387,33 +5387,33 @@ export default function Home() {
         const newSquad: Squad = {
           id: Date.now(),
           dbId: dbSquad.id,
-          name: crewName,
+          name: poolSquadName,
           event: `${event.title} — ${event.date}`,
           eventDate: event.date,
           members: [
             { name: "You", avatar: profile?.avatar_letter ?? "Y" },
-            ...crewMembers.map((m) => ({
+            ...poolMembers.map((m) => ({
               name: m.user?.display_name ?? "Unknown",
               avatar: m.user?.avatar_letter ?? "?",
             })),
           ],
           messages: [
-            { sender: "system", text: `🎲 Crew matched!`, time: "now" },
+            { sender: "system", text: `🎲 Squad matched!`, time: "now" },
             { sender: "system", text: `📍 ${event.venue} · ${event.date} ${event.time}`, time: "now" },
-            { sender: "You", text: `crew matched! let's go 🎉`, time: "now", isYou: true },
+            { sender: "You", text: `squad matched! let's go 🎉`, time: "now", isYou: true },
           ],
-          lastMsg: "You: crew matched! let's go 🎉",
+          lastMsg: "You: squad matched! let's go 🎉",
           time: "now",
         };
         setSquads((prev) => [newSquad, ...prev]);
-        setInCrewPool(false);
-        setCrewPoolCount(0);
+        setInSquadPool(false);
+        setSquadPoolCount(0);
 
         setSquadNotification({
-          squadName: crewName,
-          startedBy: "crew match",
+          squadName: poolSquadName,
+          startedBy: "squad match",
           ideaBy: "event",
-          members: crewMembers.map((m) => m.user?.display_name ?? "Unknown"),
+          members: poolMembers.map((m) => m.user?.display_name ?? "Unknown"),
           squadId: newSquad.id,
         });
         setTimeout(() => setSquadNotification(null), 4000);
@@ -5425,11 +5425,11 @@ export default function Home() {
       // Ignore duplicate (already in pool)
       const code = err && typeof err === 'object' && 'code' in err ? err.code : '';
       if (code === '23505') {
-        showToast("Already in the crew pool");
+        showToast("Already in the squad pool");
         return;
       }
-      console.error("Failed to join crew pool:", err);
-      showToast("Failed to join crew pool");
+      console.error("Failed to join squad pool:", err);
+      showToast("Failed to join squad pool");
     }
   };
 
@@ -6881,9 +6881,9 @@ export default function Home() {
         open={!!socialEvent}
         onClose={() => setSocialEvent(null)}
         onStartSquad={startSquadFromEvent}
-        onJoinCrewPool={handleJoinCrewPool}
-        crewPoolCount={crewPoolCount}
-        inCrewPool={inCrewPool}
+        onJoinSquadPool={handleJoinSquadPool}
+        squadPoolCount={squadPoolCount}
+        inSquadPool={inSquadPool}
         isDemoMode={isDemoMode}
       />
       {/* Notifications Panel */}
