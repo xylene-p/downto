@@ -75,7 +75,7 @@ The core loop works end-to-end in production: magic-link auth, profile setup onb
 
 ## Completed
 
-- OTP code authentication (replaced magic link — fixes PWA redirect-to-Safari issue)
+- OTP code authentication (8-digit code, replaced magic link — fixes PWA redirect-to-Safari issue)
 - Profile auto-creation via DB trigger
 - Profile setup onboarding screen (display name, avatar, IG handle, `onboarded` flag)
 - First-login retry logic (inlined profile query with 3s timeout + safety timer)
