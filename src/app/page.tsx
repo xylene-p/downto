@@ -125,6 +125,7 @@ interface InterestCheck {
   expiryPercent: number; // 0-100, how much time has passed
   responses: { name: string; avatar: string; status: "down" | "maybe" | "nah"; odbc?: string }[];
   isYours?: boolean;
+  squadLocalId?: number; // local ID of the squad created from this check
 }
 
 const DEMO_CHECKS: InterestCheck[] = [
@@ -2148,6 +2149,7 @@ const CalendarView = ({ events }: { events: Event[] }) => {
 interface Squad {
   id: number;
   dbId?: string;
+  checkDbId?: string;
   name: string;
   event?: string;
   members: { name: string; avatar: string }[];
@@ -4361,9 +4363,23 @@ export default function Home() {
             messages,
             lastMsg: lastMessage ? `${lastMessage.sender}: ${lastMessage.text}` : "",
             time: lastMessage ? lastMessage.time : fmtTime(s.created_at),
+            checkDbId: s.check_id ?? undefined,
           };
         });
         setSquads(transformedSquads);
+
+        // Link checks to their squads
+        const checkToSquad = new Map<string, number>();
+        for (const sq of transformedSquads) {
+          if (sq.checkDbId) checkToSquad.set(sq.checkDbId, sq.id);
+        }
+        if (checkToSquad.size > 0) {
+          setChecks((prev) => prev.map((c) =>
+            c.dbId && checkToSquad.has(c.dbId)
+              ? { ...c, squadLocalId: checkToSquad.get(c.dbId) }
+              : c
+          ));
+        }
       } catch (squadErr) {
         console.warn("Failed to load squads:", squadErr);
       }
@@ -4718,6 +4734,9 @@ export default function Home() {
     };
     setSquads((prev) => [newSquad, ...prev]);
 
+    // Mark the check as having a squad
+    setChecks((prev) => prev.map((c) => c.id === check.id ? { ...c, squadLocalId: newSquad.id } : c));
+
     // Show notification
     setSquadNotification({
       squadName: check.text,
@@ -4974,12 +4993,17 @@ export default function Home() {
                     {checks.map((check) => (
                       <div
                         key={check.id}
+                        onClick={check.squadLocalId ? () => {
+                          setAutoSelectSquadId(check.squadLocalId!);
+                          setTab("groups");
+                        } : undefined}
                         style={{
                           background: check.isYours ? "rgba(232,255,90,0.05)" : color.card,
                           borderRadius: 14,
                           overflow: "hidden",
                           marginBottom: 8,
                           border: `1px solid ${check.isYours ? "rgba(232,255,90,0.2)" : color.border}`,
+                          cursor: check.squadLocalId ? "pointer" : undefined,
                         }}
                       >
                         {/* Expiry progress bar */}
@@ -5132,10 +5156,36 @@ export default function Home() {
                             >
                               {check.text}
                             </p>
-                            {check.isYours && (
+                            {check.isYours && check.squadLocalId && (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                  marginTop: 2,
+                                  padding: "5px 10px",
+                                  background: "rgba(175, 82, 222, 0.1)",
+                                  borderRadius: 8,
+                                  cursor: "pointer",
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setAutoSelectSquadId(check.squadLocalId!);
+                                  setTab("groups");
+                                }}
+                              >
+                                <span style={{ fontSize: 12 }}>💬</span>
+                                <span style={{ fontFamily: font.mono, fontSize: 10, color: "#AF52DE", fontWeight: 600 }}>
+                                  Squad chat started
+                                </span>
+                                <span style={{ fontFamily: font.mono, fontSize: 10, color: "#AF52DE", marginLeft: "auto" }}>→</span>
+                              </div>
+                            )}
+                            {check.isYours && !check.squadLocalId && (
                               <div style={{ display: "flex", gap: 4, flexShrink: 0, marginTop: 2 }}>
                                 <button
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setEditingCheckId(check.id);
                                     setEditingCheckText(check.text);
                                   }}
@@ -5153,7 +5203,8 @@ export default function Home() {
                                   &#9998;
                                 </button>
                                 <button
-                                  onClick={async () => {
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
                                     setChecks((prev) => prev.filter((c) => c.id !== check.id));
                                     if (check.dbId) {
                                       try {
@@ -5321,22 +5372,48 @@ export default function Home() {
                                 {myCheckResponses[check.id] === "maybe" ? "✓ Maybe" : "Maybe"}
                               </button>
                               {myCheckResponses[check.id] === "down" && (
-                                <button
-                                  onClick={() => startSquadFromCheck(check)}
-                                  style={{
-                                    background: "transparent",
-                                    color: color.accent,
-                                    border: `1px solid ${color.accent}`,
-                                    borderRadius: 8,
-                                    padding: "6px 10px",
-                                    fontFamily: font.mono,
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    cursor: "pointer",
-                                  }}
-                                >
-                                  Start Squad →
-                                </button>
+                                check.squadLocalId ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setAutoSelectSquadId(check.squadLocalId!);
+                                      setTab("groups");
+                                    }}
+                                    style={{
+                                      background: "rgba(175, 82, 222, 0.1)",
+                                      color: "#AF52DE",
+                                      border: "none",
+                                      borderRadius: 8,
+                                      padding: "6px 10px",
+                                      fontFamily: font.mono,
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    💬 Squad Chat →
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      startSquadFromCheck(check);
+                                    }}
+                                    style={{
+                                      background: "transparent",
+                                      color: color.accent,
+                                      border: `1px solid ${color.accent}`,
+                                      borderRadius: 8,
+                                      padding: "6px 10px",
+                                      fontFamily: font.mono,
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    Start Squad →
+                                  </button>
+                                )
                               )}
                             </div>
                           )}
