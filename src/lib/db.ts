@@ -405,13 +405,14 @@ export async function getSuggestedUsers(): Promise<Profile[]> {
 // INTEREST CHECKS
 // ============================================================================
 
-export async function getActiveChecks(): Promise<(InterestCheck & { author: Profile; responses: (CheckResponse & { user: Profile })[] })[]> {
+export async function getActiveChecks(): Promise<(InterestCheck & { author: Profile; responses: (CheckResponse & { user: Profile })[]; squads: { id: string }[] })[]> {
   const { data, error } = await supabase
     .from('interest_checks')
     .select(`
       *,
       author:profiles!author_id(*),
-      responses:check_responses(*, user:profiles(*))
+      responses:check_responses(*, user:profiles(*)),
+      squads(id)
     `)
     .gt('expires_at', new Date().toISOString())
     .order('created_at', { ascending: false });
@@ -559,6 +560,28 @@ export async function getSquads(): Promise<Squad[]> {
 
   if (error) throw error;
   return data ?? [];
+}
+
+export async function getSquadByCheckId(checkId: string): Promise<Squad | null> {
+  const { data, error } = await supabase
+    .from('squads')
+    .select('*')
+    .eq('check_id', checkId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function joinSquad(squadId: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { error } = await supabase
+    .from('squad_members')
+    .insert({ squad_id: squadId, user_id: user.id });
+
+  if (error) throw error;
 }
 
 export async function createSquad(

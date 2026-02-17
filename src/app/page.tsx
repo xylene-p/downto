@@ -126,6 +126,8 @@ interface InterestCheck {
   responses: { name: string; avatar: string; status: "down" | "maybe" | "nah"; odbc?: string }[];
   isYours?: boolean;
   squadLocalId?: number; // local ID of the squad created from this check
+  squadDbId?: string; // DB UUID of the squad
+  inSquad?: boolean; // whether current user is already a member
 }
 
 const DEMO_CHECKS: InterestCheck[] = [
@@ -4213,6 +4215,7 @@ export default function Home() {
             odbc: r.user_id,
           })),
           isYours: c.author_id === userId,
+          squadDbId: c.squads?.[0]?.id,
         };
       });
       setChecks(transformedChecks);
@@ -4369,16 +4372,25 @@ export default function Home() {
         setSquads(transformedSquads);
 
         // Link checks to their squads
-        const checkToSquad = new Map<string, number>();
+        const checkToSquad = new Map<string, { localId: number; dbId?: string; inSquad: boolean }>();
         for (const sq of transformedSquads) {
-          if (sq.checkDbId) checkToSquad.set(sq.checkDbId, sq.id);
+          if (sq.checkDbId) {
+            checkToSquad.set(sq.checkDbId, {
+              localId: sq.id,
+              dbId: sq.dbId,
+              inSquad: true, // if the squad shows up in getSquads, user is a member
+            });
+          }
         }
+        // Also check for squads the user is NOT a member of (via check_id on squads)
+        // These won't show up in getSquads, so we check via the checks themselves
         if (checkToSquad.size > 0) {
-          setChecks((prev) => prev.map((c) =>
-            c.dbId && checkToSquad.has(c.dbId)
-              ? { ...c, squadLocalId: checkToSquad.get(c.dbId) }
-              : c
-          ));
+          setChecks((prev) => prev.map((c) => {
+            if (!c.dbId) return c;
+            const sq = checkToSquad.get(c.dbId);
+            if (sq) return { ...c, squadLocalId: sq.localId, squadDbId: sq.dbId, inSquad: sq.inSquad };
+            return c;
+          }));
         }
       } catch (squadErr) {
         console.warn("Failed to load squads:", squadErr);
@@ -5392,6 +5404,34 @@ export default function Home() {
                                     }}
                                   >
                                     💬 Squad Chat →
+                                  </button>
+                                ) : check.squadDbId ? (
+                                  <button
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      try {
+                                        await db.joinSquad(check.squadDbId!);
+                                        showToast("Joined the squad! 🚀");
+                                        await loadRealData();
+                                        setTab("groups");
+                                      } catch (err: any) {
+                                        console.error("Failed to join squad:", err);
+                                        showToast("Failed to join squad");
+                                      }
+                                    }}
+                                    style={{
+                                      background: "transparent",
+                                      color: "#AF52DE",
+                                      border: "1px solid #AF52DE",
+                                      borderRadius: 8,
+                                      padding: "6px 10px",
+                                      fontFamily: font.mono,
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    Join Squad Chat →
                                   </button>
                                 ) : (
                                   <button
