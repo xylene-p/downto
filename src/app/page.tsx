@@ -11,6 +11,19 @@ import {
   unsubscribeFromPush,
 } from "@/lib/pushNotifications";
 
+// ─── Validation helpers ──────────────────────────────────────────────────────
+
+/** Strip HTML tags and trim whitespace */
+const sanitize = (s: string, maxLen = 200): string =>
+  s.replace(/<[^>]*>/g, "").trim().slice(0, maxLen);
+
+/** Sanitize an array of vibe tags */
+const sanitizeVibes = (vibes: string[]): string[] =>
+  vibes
+    .map((v) => sanitize(v, 30).toLowerCase().replace(/[^a-z0-9 -]/g, ""))
+    .filter((v) => v.length > 0)
+    .slice(0, 5);
+
 // ─── Data ────────────────────────────────────────────────────────────────────
 
 interface Person {
@@ -1066,7 +1079,8 @@ const PasteModal = ({
               <textarea
                 ref={ideaRef}
                 value={idea}
-                onChange={(e) => setIdea(e.target.value)}
+                onChange={(e) => setIdea(e.target.value.slice(0, 280))}
+                maxLength={280}
                 placeholder="e.g., rooftop picnic saturday? movie night? dinner at 7?"
                 style={{
                   width: "100%",
@@ -1122,7 +1136,7 @@ const PasteModal = ({
             <button
               onClick={() => {
                 if (idea.trim()) {
-                  onInterestCheck(idea, checkTimer);
+                  onInterestCheck(sanitize(idea, 280), checkTimer);
                   onClose();
                 }
               }}
@@ -1176,8 +1190,9 @@ const PasteModal = ({
                 <input
                   type="text"
                   value={manual.title}
-                  onChange={(e) => setManual({ ...manual, title: e.target.value })}
+                  onChange={(e) => setManual({ ...manual, title: e.target.value.slice(0, 100) })}
                   placeholder="Event name"
+                  maxLength={100}
                   style={{
                     background: color.deep,
                     border: `1px solid ${color.borderMid}`,
@@ -1192,8 +1207,9 @@ const PasteModal = ({
                 <input
                   type="text"
                   value={manual.venue}
-                  onChange={(e) => setManual({ ...manual, venue: e.target.value })}
+                  onChange={(e) => setManual({ ...manual, venue: e.target.value.slice(0, 100) })}
                   placeholder="Venue"
+                  maxLength={100}
                   style={{
                     background: color.deep,
                     border: `1px solid ${color.borderMid}`,
@@ -1209,8 +1225,9 @@ const PasteModal = ({
                   <input
                     type="text"
                     value={manual.date}
-                    onChange={(e) => setManual({ ...manual, date: e.target.value })}
+                    onChange={(e) => setManual({ ...manual, date: e.target.value.slice(0, 50) })}
                     placeholder="Date (e.g., Sat, Feb 15)"
+                    maxLength={50}
                     style={{
                       flex: 1,
                       background: color.deep,
@@ -1226,8 +1243,9 @@ const PasteModal = ({
                   <input
                     type="text"
                     value={manual.time}
-                    onChange={(e) => setManual({ ...manual, time: e.target.value })}
+                    onChange={(e) => setManual({ ...manual, time: e.target.value.slice(0, 50) })}
                     placeholder="Time"
+                    maxLength={50}
                     style={{
                       flex: 1,
                       background: color.deep,
@@ -1244,8 +1262,9 @@ const PasteModal = ({
                 <input
                   type="text"
                   value={manual.vibe}
-                  onChange={(e) => setManual({ ...manual, vibe: e.target.value })}
+                  onChange={(e) => setManual({ ...manual, vibe: e.target.value.slice(0, 100) })}
                   placeholder="Vibes (comma separated, e.g., techno, late night)"
+                  maxLength={100}
                   style={{
                     background: color.deep,
                     border: `1px solid ${color.borderMid}`,
@@ -4379,27 +4398,42 @@ const ProfileView = ({
 
 const AuthScreen = ({ onLogin, onDemoMode }: { onLogin: () => void; onDemoMode: () => void }) => {
   const [email, setEmail] = useState("");
-  const [step, setStep] = useState<"email" | "sent">("email");
+  const [otp, setOtp] = useState("");
+  const [step, setStep] = useState<"email" | "otp">("email");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSendLink = async () => {
+  const handleSendCode = async () => {
     if (!email.includes("@")) return;
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error } = await supabase.auth.signInWithOtp({ email });
+
+    setLoading(false);
+    if (error) {
+      setError(error.message);
+    } else {
+      setStep("otp");
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (otp.length !== 6) return;
+    setLoading(true);
+    setError(null);
+
+    const { error } = await supabase.auth.verifyOtp({
       email,
-      options: {
-        emailRedirectTo: window.location.origin,
-      },
+      token: otp,
+      type: "email",
     });
 
     setLoading(false);
     if (error) {
       setError(error.message);
     } else {
-      setStep("sent");
+      onLogin();
     }
   };
 
@@ -4471,7 +4505,7 @@ const AuthScreen = ({ onLogin, onDemoMode }: { onLogin: () => void; onDemoMode: 
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSendLink()}
+            onKeyDown={(e) => e.key === "Enter" && handleSendCode()}
             placeholder="you@email.com"
             style={{
               background: color.card,
@@ -4486,7 +4520,7 @@ const AuthScreen = ({ onLogin, onDemoMode }: { onLogin: () => void; onDemoMode: 
             }}
           />
           <button
-            onClick={handleSendLink}
+            onClick={handleSendCode}
             disabled={!email.includes("@") || loading}
             style={{
               background: email.includes("@") ? color.accent : color.borderMid,
@@ -4502,43 +4536,80 @@ const AuthScreen = ({ onLogin, onDemoMode }: { onLogin: () => void; onDemoMode: 
               letterSpacing: "0.1em",
             }}
           >
-            {loading ? "Sending..." : "Send Magic Link"}
+            {loading ? "Sending..." : "Send Code"}
           </button>
         </>
       ) : (
         <>
-          <div
+          <p
             style={{
-              background: color.card,
-              border: `1px solid ${color.accent}`,
-              borderRadius: 12,
-              padding: "24px",
-              textAlign: "center",
+              fontFamily: font.mono,
+              fontSize: 12,
+              color: color.dim,
+              marginBottom: 20,
             }}
           >
-            <p
-              style={{
-                fontFamily: font.serif,
-                fontSize: 20,
-                color: color.text,
-                marginBottom: 8,
-              }}
-            >
-              Check your email
-            </p>
-            <p
-              style={{
-                fontFamily: font.mono,
-                fontSize: 12,
-                color: color.dim,
-                marginBottom: 16,
-              }}
-            >
-              We sent a login link to<br />
-              <span style={{ color: color.accent }}>{email}</span>
-            </p>
+            We sent a 6-digit code to<br />
+            <span style={{ color: color.accent }}>{email}</span>
+          </p>
+          <label
+            style={{
+              fontFamily: font.mono,
+              fontSize: 10,
+              textTransform: "uppercase",
+              letterSpacing: "0.15em",
+              color: color.dim,
+              marginBottom: 8,
+            }}
+          >
+            Code
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            onKeyDown={(e) => e.key === "Enter" && handleVerifyCode()}
+            placeholder="000000"
+            autoFocus
+            style={{
+              background: color.card,
+              border: `1px solid ${color.borderMid}`,
+              borderRadius: 12,
+              padding: "16px",
+              color: color.text,
+              fontFamily: font.mono,
+              fontSize: 24,
+              letterSpacing: "0.3em",
+              textAlign: "center",
+              outline: "none",
+              marginBottom: 16,
+            }}
+          />
+          <button
+            onClick={handleVerifyCode}
+            disabled={otp.length !== 6 || loading}
+            style={{
+              background: otp.length === 6 ? color.accent : color.borderMid,
+              color: otp.length === 6 ? "#000" : color.dim,
+              border: "none",
+              borderRadius: 12,
+              padding: "16px",
+              fontFamily: font.mono,
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: otp.length === 6 ? "pointer" : "not-allowed",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              marginBottom: 12,
+            }}
+          >
+            {loading ? "Verifying..." : "Verify"}
+          </button>
+          <div style={{ display: "flex", justifyContent: "center", gap: 16 }}>
             <button
-              onClick={() => setStep("email")}
+              onClick={() => { setStep("email"); setOtp(""); setError(null); }}
               style={{
                 background: "transparent",
                 border: "none",
@@ -4549,7 +4620,21 @@ const AuthScreen = ({ onLogin, onDemoMode }: { onLogin: () => void; onDemoMode: 
                 textDecoration: "underline",
               }}
             >
-              Try a different email
+              Different email
+            </button>
+            <button
+              onClick={() => { setOtp(""); setError(null); handleSendCode(); }}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: color.dim,
+                fontFamily: font.mono,
+                fontSize: 11,
+                cursor: "pointer",
+                textDecoration: "underline",
+              }}
+            >
+              Resend code
             </button>
           </div>
         </>
@@ -6945,13 +7030,15 @@ export default function Home() {
           showToast("Instagram connected! 📸");
         }}
         onSubmit={async (e, sharePublicly) => {
-          const title = e.type === "movie" ? (e.movieTitle || e.title) : e.title;
-          const venue = e.venue || "TBD";
-          const dateDisplay = e.date || "TBD";
-          const timeDisplay = e.time || "TBD";
-          const vibes = e.vibe;
+          const rawTitle = e.type === "movie" ? (e.movieTitle || e.title) : e.title;
+          const title = sanitize(rawTitle, 100);
+          if (!title) { showToast("Event needs a title"); return; }
+          const venue = sanitize(e.venue || "TBD", 100);
+          const dateDisplay = sanitize(e.date || "TBD", 50);
+          const timeDisplay = sanitize(e.time || "TBD", 50);
+          const vibes = sanitizeVibes(e.vibe);
           const imageUrl = e.thumbnail || "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&q=80";
-          const igHandle = e.igHandle || "";
+          const igHandle = sanitize(e.igHandle || "", 30);
           const igUrl = e.igUrl || null;
 
           // Save to database if logged in (not demo mode)

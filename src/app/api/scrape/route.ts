@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+/** Strip HTML tags and trim */
+const strip = (s: string) => s.replace(/<[^>]*>/g, "").trim();
+
 // Extract event details from Instagram caption using heuristics
 function parseEventDetails(caption: string, authorName: string) {
   const lines = caption.split('\n').filter(l => l.trim());
@@ -96,12 +99,12 @@ function parseEventDetails(caption: string, authorName: string) {
   }
 
   return {
-    title: title.slice(0, 100),
-    venue,
-    date,
-    time,
-    vibe: vibes.length > 0 ? vibes : ['event'],
-    igHandle: `@${authorName}`,
+    title: strip(title).slice(0, 100) || "Event",
+    venue: strip(venue).slice(0, 100),
+    date: strip(date).slice(0, 50),
+    time: strip(time).slice(0, 50),
+    vibe: vibes.length > 0 ? vibes.map(v => strip(v).slice(0, 30)) : ['event'],
+    igHandle: `@${strip(authorName).slice(0, 30)}`,
   };
 }
 
@@ -142,16 +145,16 @@ async function scrapeLetterboxd(url: string) {
 
   return {
     type: "movie" as const,
-    title: `${movieTitle} screening`,
-    movieTitle,
-    year,
-    director,
+    title: strip(`${movieTitle} screening`).slice(0, 100),
+    movieTitle: strip(movieTitle).slice(0, 100),
+    year: strip(year).slice(0, 4),
+    director: strip(director).slice(0, 60),
     venue: "TBD",
     date: "TBD",
     time: "TBD",
-    vibe: genres.length > 0 ? genres : ["film", "movie night"],
+    vibe: genres.length > 0 ? genres.map(g => strip(g).slice(0, 30)) : ["film", "movie night"],
     thumbnail: ogImage,
-    description: ogDescription,
+    description: strip(ogDescription).slice(0, 500),
     letterboxdUrl: url,
   };
 }
@@ -160,8 +163,8 @@ export async function POST(request: NextRequest) {
   try {
     const { url } = await request.json();
 
-    if (!url || typeof url !== 'string') {
-      return NextResponse.json({ error: "URL is required" }, { status: 400 });
+    if (!url || typeof url !== 'string' || url.length > 500) {
+      return NextResponse.json({ error: "A valid URL is required" }, { status: 400 });
     }
 
     // Check if it's a Letterboxd URL

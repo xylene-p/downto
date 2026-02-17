@@ -22,7 +22,7 @@ The core loop works end-to-end in production: magic-link auth, profile setup onb
 
 3. ~~**Tonight feed "save" and "I'm down" don't persist.**~~ **DONE** — Tonight events now cross-reference saved events, persist via `db.saveEvent()` / `db.toggleDown()`.
 
-4. **No input validation on event creation.** The paste modal accepts any string. Empty titles, nonsensical dates, XSS payloads — nothing is validated client-side or server-side before hitting the database.
+4. ~~**No input validation on event creation.**~~ **DONE** — HTML stripping, length limits, and sanitization on both client and server.
 
 5. ~~**IG scraping fails silently on private posts.**~~ **DONE** — clear error messages explaining why + "Enter manually instead" fallback button.
 
@@ -117,3 +117,4 @@ The core loop works end-to-end in production: magic-link auth, profile setup onb
 - Auto-remove from crew pool on squad join (DB trigger prevents duplicate squad invitations from stale pool state)
 - Compact squad chat layout (grouped messages, inline header with avatars)
 - Avatar letter fix — "You" uses actual profile letter, not hardcoded "Y"
+- Input validation — HTML stripping, length limits, sanitization on client + server
