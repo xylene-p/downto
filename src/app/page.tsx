@@ -119,6 +119,7 @@ interface InterestCheck {
   dbId?: string;
   text: string;
   author: string;
+  authorId?: string;
   timeAgo: string;
   expiresIn: string; // e.g., "23h", "4h", "45m"
   expiryPercent: number; // 0-100, how much time has passed
@@ -4199,6 +4200,7 @@ export default function Home() {
           dbId: c.id,
           text: c.text,
           author: c.author.display_name,
+          authorId: c.author_id,
           timeAgo: hoursElapsed > 0 ? `${hoursElapsed}h` : minsElapsed > 0 ? `${minsElapsed}m` : "now",
           expiresIn: hoursRemaining > 0 ? `${hoursRemaining}h` : minsRemaining > 0 ? `${minsRemaining}m` : "expired",
           expiryPercent,
@@ -4669,7 +4671,10 @@ export default function Home() {
     let squadDbId: string | undefined;
     if (!isDemoMode && check.dbId) {
       try {
-        const memberIds = downPeople.map((p) => p.odbc).filter((id): id is string => !!id);
+        const memberIds = [
+          ...downPeople.map((p) => p.odbc).filter((id): id is string => !!id),
+          ...(check.authorId ? [check.authorId] : []),
+        ];
         const dbSquad = await db.createSquad(squadName, memberIds, undefined, check.dbId);
         await db.sendMessage(dbSquad.id, "let's make this happen! 🔥");
         squadDbId = dbSquad.id;
@@ -4688,6 +4693,7 @@ export default function Home() {
       members: [
         { name: "You", avatar: "Y" },
         ...downPeople.map((p) => ({ name: p.name, avatar: p.avatar })),
+        ...(!check.isYours ? [{ name: check.author, avatar: check.author.charAt(0).toUpperCase() }] : []),
       ],
       messages: [
         {
