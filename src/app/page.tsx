@@ -2450,6 +2450,7 @@ const GroupsView = ({
   autoSelectSquadId,
   onSendMessage,
   onUpdateLogistics,
+  onLeaveSquad,
   userId,
 }: {
   squads: Squad[];
@@ -2457,6 +2458,7 @@ const GroupsView = ({
   autoSelectSquadId?: number | null;
   onSendMessage?: (squadDbId: string, text: string) => Promise<void>;
   onUpdateLogistics?: (squadDbId: string, field: string, value: string) => Promise<void>;
+  onLeaveSquad?: (squadDbId: string) => Promise<void>;
   userId?: string | null;
 }) => {
   const [selectedSquad, setSelectedSquad] = useState<Squad | null>(null);
@@ -2464,6 +2466,7 @@ const GroupsView = ({
   const [editingField, setEditingField] = useState<string | null>(null);
   const [fieldValue, setFieldValue] = useState("");
   const [logisticsOpen, setLogisticsOpen] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const logisticsInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -2543,21 +2546,38 @@ const GroupsView = ({
             borderBottom: `1px solid ${color.border}`,
           }}
         >
-          <button
-            onClick={() => setSelectedSquad(null)}
-            style={{
-              background: "none",
-              border: "none",
-              color: color.accent,
-              fontFamily: font.mono,
-              fontSize: 12,
-              cursor: "pointer",
-              padding: 0,
-              marginBottom: 12,
-            }}
-          >
-            ← Back
-          </button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <button
+              onClick={() => setSelectedSquad(null)}
+              style={{
+                background: "none",
+                border: "none",
+                color: color.accent,
+                fontFamily: font.mono,
+                fontSize: 12,
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              ← Back
+            </button>
+            {selectedSquad.dbId && (
+              <button
+                onClick={() => setShowLeaveConfirm(true)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: color.dim,
+                  fontFamily: font.mono,
+                  fontSize: 11,
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                Leave
+              </button>
+            )}
+          </div>
           <h2
             style={{
               fontFamily: font.serif,
@@ -2602,6 +2622,88 @@ const GroupsView = ({
             ))}
           </div>
         </div>
+
+        {/* Leave squad confirmation */}
+        {showLeaveConfirm && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0, left: 0, right: 0, bottom: 0,
+              background: "rgba(0,0,0,0.7)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}
+            onClick={() => setShowLeaveConfirm(false)}
+          >
+            <div
+              style={{
+                background: color.deep,
+                border: `1px solid ${color.border}`,
+                borderRadius: 16,
+                padding: "24px 20px",
+                maxWidth: 300,
+                width: "90%",
+                textAlign: "center",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p style={{ fontFamily: font.serif, fontSize: 18, color: color.text, marginBottom: 6 }}>
+                Leave {selectedSquad.name}?
+              </p>
+              <p style={{ fontFamily: font.mono, fontSize: 11, color: color.dim, marginBottom: 20 }}>
+                You won't see messages from this squad anymore.
+              </p>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  onClick={() => setShowLeaveConfirm(false)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    background: "none",
+                    border: `1px solid ${color.border}`,
+                    borderRadius: 10,
+                    color: color.text,
+                    fontFamily: font.mono,
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (selectedSquad.dbId && onLeaveSquad) {
+                      try {
+                        await onLeaveSquad(selectedSquad.dbId);
+                        onSquadUpdate((prev) => prev.filter((s) => s.id !== selectedSquad.id));
+                        setSelectedSquad(null);
+                      } catch (err) {
+                        console.error("Failed to leave squad:", err);
+                      }
+                    }
+                    setShowLeaveConfirm(false);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    background: "#ff4444",
+                    border: "none",
+                    borderRadius: 10,
+                    color: "#fff",
+                    fontFamily: font.mono,
+                    fontSize: 12,
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  Leave
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Logistics card — pinned between header and messages for active squads */}
         {selectedSquad.dbId && (() => {
@@ -6579,6 +6681,9 @@ export default function Home() {
             }}
             onUpdateLogistics={async (squadDbId, field, value) => {
               await db.updateSquadLogistics(squadDbId, { [field]: value });
+            }}
+            onLeaveSquad={async (squadDbId) => {
+              await db.leaveSquad(squadDbId);
             }}
             userId={userId}
           />
