@@ -4673,9 +4673,9 @@ export default function Home() {
         const dbSquad = await db.createSquad(squadName, memberIds, undefined, check.dbId);
         await db.sendMessage(dbSquad.id, "let's make this happen! 🔥");
         squadDbId = dbSquad.id;
-      } catch (err) {
+      } catch (err: any) {
         console.error("Failed to create squad:", err);
-        showToast("Failed to create squad — try again");
+        showToast(`Failed to create squad: ${err?.message || err}`);
         return;
       }
     }
