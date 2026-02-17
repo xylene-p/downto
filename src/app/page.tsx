@@ -161,6 +161,18 @@ const DEMO_CHECKS: InterestCheck[] = [
     expiryPercent: 92, // expiring soon! (red)
     responses: [],
   },
+  {
+    id: 203,
+    text: "rooftop hangs friday? 🌆",
+    author: "You",
+    timeAgo: "2m",
+    expiresIn: "24h",
+    expiryPercent: 1,
+    responses: [
+      { name: "Sara", avatar: "S", status: "down" },
+    ],
+    isYours: true,
+  },
 ];
 
 // Tonight's public events (from public IG posts around the city)
@@ -2146,6 +2158,7 @@ const CalendarView = ({ events }: { events: Event[] }) => {
 
 interface Squad {
   id: number;
+  dbId?: string;
   name: string;
   event?: string;
   members: { name: string; avatar: string }[];
@@ -2198,10 +2211,14 @@ const GroupsView = ({
   squads,
   onSquadUpdate,
   autoSelectSquadId,
+  onSendMessage,
+  userId,
 }: {
   squads: Squad[];
   onSquadUpdate: (squads: Squad[]) => void;
   autoSelectSquadId?: number | null;
+  onSendMessage?: (squadDbId: string, text: string) => Promise<void>;
+  userId?: string | null;
 }) => {
   const [selectedSquad, setSelectedSquad] = useState<Squad | null>(null);
   const [newMsg, setNewMsg] = useState("");
@@ -2213,20 +2230,64 @@ const GroupsView = ({
     }
   }, [autoSelectSquadId]);
 
+  // Subscribe to realtime messages for the selected squad
+  useEffect(() => {
+    if (!selectedSquad?.dbId) return;
+    const channel = db.subscribeToMessages(selectedSquad.dbId, (newMessage) => {
+      // Skip messages from current user (already added optimistically)
+      if (userId && newMessage.sender_id === userId) return;
+      const senderName = newMessage.sender?.display_name ?? "Unknown";
+      const msg = {
+        sender: senderName,
+        text: newMessage.text,
+        time: "now",
+        isYou: false,
+      };
+      setSelectedSquad((prev) => {
+        if (!prev || prev.dbId !== newMessage.squad_id) return prev;
+        return {
+          ...prev,
+          messages: [...prev.messages, msg],
+          lastMsg: `${senderName}: ${newMessage.text}`,
+          time: "now",
+        };
+      });
+      // Also update the squad list
+      onSquadUpdate(
+        squads.map((s) =>
+          s.dbId === newMessage.squad_id
+            ? { ...s, messages: [...s.messages, msg], lastMsg: `${senderName}: ${newMessage.text}`, time: "now" }
+            : s
+        )
+      );
+    });
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [selectedSquad?.dbId, userId]);
+
   const handleSend = () => {
     if (!newMsg.trim() || !selectedSquad) return;
+    const text = newMsg.trim();
     const updatedSquad = {
       ...selectedSquad,
       messages: [
         ...selectedSquad.messages,
-        { sender: "You", text: newMsg.trim(), time: "now", isYou: true },
+        { sender: "You", text, time: "now", isYou: true },
       ],
-      lastMsg: `You: ${newMsg.trim()}`,
+      lastMsg: `You: ${text}`,
       time: "now",
     };
     setSelectedSquad(updatedSquad);
     onSquadUpdate(squads.map((s) => (s.id === updatedSquad.id ? updatedSquad : s)));
     setNewMsg("");
+
+    // Persist to DB
+    if (selectedSquad.dbId && onSendMessage) {
+      onSendMessage(selectedSquad.dbId, text).catch((err) =>
+        console.error("Failed to send message:", err)
+      );
+    }
   };
 
   if (selectedSquad) {
@@ -2565,6 +2626,20 @@ const DEMO_SUGGESTIONS: Friend[] = [
   { id: 11, name: "Raya", username: "raya_k", avatar: "R", status: "incoming" },
   { id: 12, name: "Marcus", username: "marcus.wav", avatar: "M", status: "pending" },
   { id: 13, name: "Zoe", username: "zoe.creates", avatar: "Z", status: "none" },
+];
+
+const DEMO_NOTIFICATIONS: { id: string; type: string; title: string; body: string | null; related_user_id: string | null; related_squad_id: string | null; related_check_id: string | null; is_read: boolean; created_at: string }[] = [
+  { id: "n1", type: "friend_request", title: "Raya wants to be friends", body: "@raya_k sent you a request", related_user_id: null, related_squad_id: null, related_check_id: null, is_read: false, created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
+  { id: "n2", type: "check_response", title: "Sara is down!", body: "Responded to your check \"rooftop hangs friday?\"", related_user_id: null, related_squad_id: null, related_check_id: null, is_read: false, created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() },
+  { id: "n3", type: "friend_accepted", title: "Devon accepted your request", body: "You and @devon.mp3 are now friends", related_user_id: null, related_squad_id: null, related_check_id: null, is_read: true, created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() },
+  { id: "n4", type: "squad_message", title: "New message in MoMA Squad", body: "Luke: \"who's bringing the camera?\"", related_user_id: null, related_squad_id: null, related_check_id: null, is_read: false, created_at: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString() },
+];
+
+const DEMO_SEARCH_USERS: Friend[] = [
+  { id: 20, name: "Alex Kim", username: "alex.k", avatar: "A", status: "none" },
+  { id: 21, name: "Mia Chen", username: "mia.creates", avatar: "M", status: "none" },
+  { id: 22, name: "Jordan Lee", username: "jordan.lee", avatar: "J", status: "none" },
+  { id: 23, name: "Kai Nakamura", username: "kai.nak", avatar: "K", status: "none" },
 ];
 
 // ─── Friends Modal ───────────────────────────────────────────────────────────
@@ -4239,15 +4314,43 @@ export default function Home() {
       // Load squads (separate try/catch so other data still loads if this fails)
       try {
         const squadsList = await db.getSquads();
-        const transformedSquads: Squad[] = squadsList.map((s) => ({
-          id: parseInt(s.id.slice(0, 8), 16) || Date.now(),
-          name: s.name,
-          event: s.event ? `${s.event.title} — ${s.event.date_display}` : undefined,
-          members: [],
-          messages: [],
-          lastMsg: "",
-          time: "",
-        }));
+        const fmtTime = (iso: string) => {
+          const d = new Date(iso);
+          const now = new Date();
+          const diffMs = now.getTime() - d.getTime();
+          const diffMins = Math.floor(diffMs / (1000 * 60));
+          const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+          if (diffDays > 0) return `${diffDays}d`;
+          if (diffHours > 0) return `${diffHours}h`;
+          if (diffMins > 0) return `${diffMins}m`;
+          return "now";
+        };
+        const transformedSquads: Squad[] = squadsList.map((s) => {
+          const members = (s.members ?? []).map((m) => ({
+            name: m.user_id === userId ? "You" : (m.user?.display_name ?? "Unknown"),
+            avatar: m.user_id === userId ? (profile?.avatar_letter ?? "Y") : (m.user?.avatar_letter ?? "?"),
+          }));
+          const messages = (s.messages ?? [])
+            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+            .map((msg) => ({
+              sender: msg.sender_id === userId ? "You" : (msg.sender?.display_name ?? "Unknown"),
+              text: msg.text,
+              time: fmtTime(msg.created_at),
+              isYou: msg.sender_id === userId,
+            }));
+          const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+          return {
+            id: parseInt(s.id.slice(0, 8), 16) || Date.now(),
+            dbId: s.id,
+            name: s.name,
+            event: s.event ? `${s.event.title} — ${s.event.date_display}` : undefined,
+            members,
+            messages,
+            lastMsg: lastMessage ? `${lastMessage.sender}: ${lastMessage.text}` : "",
+            time: lastMessage ? lastMessage.time : fmtTime(s.created_at),
+          };
+        });
         setSquads(transformedSquads);
       } catch (squadErr) {
         console.warn("Failed to load squads:", squadErr);
@@ -4485,11 +4588,13 @@ export default function Home() {
     const squadName = check.text.slice(0, 30) + (check.text.length > 30 ? "..." : "");
 
     // Persist to DB in prod mode
+    let squadDbId: string | undefined;
     if (!isDemoMode && check.dbId) {
       try {
         const memberIds = downPeople.map((p) => p.odbc).filter((id): id is string => !!id);
         const dbSquad = await db.createSquad(squadName, memberIds, undefined, check.dbId);
         await db.sendMessage(dbSquad.id, "let's make this happen! 🔥");
+        squadDbId = dbSquad.id;
       } catch (err) {
         console.error("Failed to create squad:", err);
       }
@@ -4497,6 +4602,7 @@ export default function Home() {
 
     const newSquad: Squad = {
       id: Date.now(),
+      dbId: squadDbId,
       name: squadName,
       event: `${check.author}'s idea · ${check.expiresIn} left`,
       members: [
@@ -4590,6 +4696,8 @@ export default function Home() {
           setFriends(DEMO_FRIENDS);
           setTonightEvents(DEMO_TONIGHT);
           setSuggestions(DEMO_SUGGESTIONS);
+          setNotifications(DEMO_NOTIFICATIONS);
+          setUnreadCount(DEMO_NOTIFICATIONS.filter(n => !n.is_read).length);
         }}
       />
     );
@@ -4639,11 +4747,12 @@ export default function Home() {
           <button
             onClick={() => {
               setNotificationsOpen(true);
-              if (unreadCount > 0 && !isDemoMode && userId) {
-                db.markAllNotificationsRead().then(() => {
-                  setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-                  setUnreadCount(0);
-                });
+              if (unreadCount > 0) {
+                if (!isDemoMode && userId) {
+                  db.markAllNotificationsRead();
+                }
+                setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+                setUnreadCount(0);
               }
             }}
             style={{
@@ -5441,7 +5550,17 @@ export default function Home() {
           </div>
         )}
         {tab === "calendar" && <CalendarView events={events} />}
-        {tab === "groups" && <GroupsView squads={squads} onSquadUpdate={setSquads} autoSelectSquadId={autoSelectSquadId} />}
+        {tab === "groups" && (
+          <GroupsView
+            squads={squads}
+            onSquadUpdate={setSquads}
+            autoSelectSquadId={autoSelectSquadId}
+            onSendMessage={async (squadDbId, text) => {
+              await db.sendMessage(squadDbId, text);
+            }}
+            userId={userId}
+          />
+        )}
         {tab === "profile" && (
           <ProfileView
             igConnected={igConnected}
@@ -5947,8 +6066,10 @@ export default function Home() {
                     key={n.id}
                     onClick={() => {
                       // Mark single notification as read
-                      if (!n.is_read && !isDemoMode && userId) {
-                        db.markNotificationRead(n.id);
+                      if (!n.is_read) {
+                        if (!isDemoMode && userId) {
+                          db.markNotificationRead(n.id);
+                        }
                         setNotifications((prev) =>
                           prev.map((notif) => notif.id === n.id ? { ...notif, is_read: true } : notif)
                         );
@@ -6156,6 +6277,11 @@ export default function Home() {
                   : "none" as const,
               availability: p.availability,
             }));
+        } : isDemoMode ? async (query) => {
+          return DEMO_SEARCH_USERS.filter(u =>
+            u.name.toLowerCase().includes(query.toLowerCase()) ||
+            u.username.toLowerCase().includes(query.toLowerCase())
+          );
         } : undefined}
       />
     </div>

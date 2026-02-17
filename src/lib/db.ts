@@ -468,7 +468,9 @@ export async function getSquads(): Promise<Squad[]> {
     .from('squads')
     .select(`
       *,
-      event:events(*)
+      event:events(*),
+      members:squad_members(*, user:profiles(*)),
+      messages(*, sender:profiles(*))
     `)
     .in('id', squadIds)
     .order('created_at', { ascending: false });
@@ -552,7 +554,19 @@ export function subscribeToMessages(
         table: 'messages',
         filter: `squad_id=eq.${squadId}`,
       },
-      (payload) => callback(payload.new as Message)
+      async (payload) => {
+        const msg = payload.new as Message;
+        // Realtime payloads don't include joined data, so fetch sender profile
+        if (msg.sender_id && !msg.sender) {
+          const { data: sender } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', msg.sender_id)
+            .single();
+          if (sender) msg.sender = sender;
+        }
+        callback(msg);
+      }
     )
     .subscribe();
 }
