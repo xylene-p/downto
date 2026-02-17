@@ -2203,7 +2203,7 @@ const GroupsView = ({
   userId,
 }: {
   squads: Squad[];
-  onSquadUpdate: (squads: Squad[]) => void;
+  onSquadUpdate: (squadsOrUpdater: Squad[] | ((prev: Squad[]) => Squad[])) => void;
   autoSelectSquadId?: number | null;
   onSendMessage?: (squadDbId: string, text: string) => Promise<void>;
   userId?: string | null;
@@ -2241,8 +2241,8 @@ const GroupsView = ({
         };
       });
       // Also update the squad list
-      onSquadUpdate(
-        squads.map((s) =>
+      onSquadUpdate((prev) =>
+        prev.map((s) =>
           s.dbId === newMessage.squad_id
             ? { ...s, messages: [...s.messages, msg], lastMsg: `${senderName}: ${newMessage.text}`, time: "now" }
             : s
@@ -2267,7 +2267,7 @@ const GroupsView = ({
       time: "now",
     };
     setSelectedSquad(updatedSquad);
-    onSquadUpdate(squads.map((s) => (s.id === updatedSquad.id ? updatedSquad : s)));
+    onSquadUpdate((prev) => prev.map((s) => (s.id === updatedSquad.id ? updatedSquad : s)));
     setNewMsg("");
 
     // Persist to DB
@@ -4671,6 +4671,8 @@ export default function Home() {
         squadDbId = dbSquad.id;
       } catch (err) {
         console.error("Failed to create squad:", err);
+        showToast("Failed to create squad — try again");
+        return;
       }
     }
 

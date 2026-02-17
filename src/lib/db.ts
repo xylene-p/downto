@@ -554,7 +554,8 @@ export async function getSquads(): Promise<Squad[]> {
       messages(*, sender:profiles(*))
     `)
     .in('id', squadIds)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: true, referencedTable: 'messages' });
 
   if (error) throw error;
   return data ?? [];
