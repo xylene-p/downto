@@ -2641,6 +2641,7 @@ const FriendsModal = ({
   onAcceptRequest,
   onRemoveFriend,
   onSearchUsers,
+  initialTab,
 }: {
   open: boolean;
   onClose: () => void;
@@ -2650,9 +2651,13 @@ const FriendsModal = ({
   onAcceptRequest: (id: number) => void;
   onRemoveFriend?: (id: number) => void;
   onSearchUsers?: (query: string) => Promise<Friend[]>;
+  initialTab?: "friends" | "add";
 }) => {
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<"friends" | "add">("friends");
+  const [tab, setTab] = useState<"friends" | "add">(initialTab ?? "friends");
+  useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
   const [searchResults, setSearchResults] = useState<Friend[]>([]);
   const [searching, setSearching] = useState(false);
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -4113,6 +4118,7 @@ export default function Home() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [suggestions, setSuggestions] = useState<Friend[]>([]); // Loaded from DB or demo data
   const [friendsOpen, setFriendsOpen] = useState(false);
+  const [friendsInitialTab, setFriendsInitialTab] = useState<"friends" | "add">("friends");
   const [myCheckResponses, setMyCheckResponses] = useState<Record<number, "down" | "maybe">>({});
   const [squadNotification, setSquadNotification] = useState<{
     squadName: string;
@@ -4170,6 +4176,46 @@ export default function Home() {
     setEditingEvent(null);
     showToast("Event updated!");
   };
+
+  const loadChecks = useCallback(async () => {
+    if (isDemoMode || !userId) return;
+    try {
+      const activeChecks = await db.getActiveChecks();
+      const transformedChecks: InterestCheck[] = activeChecks.map((c) => {
+        const now = new Date();
+        const created = new Date(c.created_at);
+        const expires = new Date(c.expires_at);
+        const msElapsed = now.getTime() - created.getTime();
+        const totalDuration = expires.getTime() - created.getTime();
+        const expiryPercent = Math.min(100, (msElapsed / totalDuration) * 100);
+        const msRemaining = expires.getTime() - now.getTime();
+        const hoursRemaining = Math.floor(msRemaining / (1000 * 60 * 60));
+        const minsRemaining = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
+        const minsElapsed = Math.floor(msElapsed / (1000 * 60));
+        const hoursElapsed = Math.floor(msElapsed / (1000 * 60 * 60));
+
+        return {
+          id: parseInt(c.id.slice(0, 8), 16) || Date.now(),
+          dbId: c.id,
+          text: c.text,
+          author: c.author.display_name,
+          timeAgo: hoursElapsed > 0 ? `${hoursElapsed}h` : minsElapsed > 0 ? `${minsElapsed}m` : "now",
+          expiresIn: hoursRemaining > 0 ? `${hoursRemaining}h` : minsRemaining > 0 ? `${minsRemaining}m` : "expired",
+          expiryPercent,
+          responses: c.responses.map((r) => ({
+            name: r.user?.display_name ?? "Unknown",
+            avatar: r.user?.avatar_letter ?? "?",
+            status: r.response,
+            odbc: r.user_id,
+          })),
+          isYours: c.author_id === userId,
+        };
+      });
+      setChecks(transformedChecks);
+    } catch (err) {
+      console.warn("Failed to load checks:", err);
+    }
+  }, [isDemoMode, userId]);
 
   // Load real data when logged in (non-demo mode)
   const loadRealData = useCallback(async () => {
@@ -4273,38 +4319,7 @@ export default function Home() {
       setSuggestions([...incomingFriends, ...suggestedFriends]);
 
       // Load interest checks
-      const activeChecks = await db.getActiveChecks();
-      const transformedChecks: InterestCheck[] = activeChecks.map((c) => {
-        const now = new Date();
-        const created = new Date(c.created_at);
-        const expires = new Date(c.expires_at);
-        const msElapsed = now.getTime() - created.getTime();
-        const totalDuration = expires.getTime() - created.getTime();
-        const expiryPercent = Math.min(100, (msElapsed / totalDuration) * 100);
-        const msRemaining = expires.getTime() - now.getTime();
-        const hoursRemaining = Math.floor(msRemaining / (1000 * 60 * 60));
-        const minsRemaining = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
-        const minsElapsed = Math.floor(msElapsed / (1000 * 60));
-        const hoursElapsed = Math.floor(msElapsed / (1000 * 60 * 60));
-
-        return {
-          id: parseInt(c.id.slice(0, 8), 16) || Date.now(),
-          dbId: c.id,
-          text: c.text,
-          author: c.author.display_name,
-          timeAgo: hoursElapsed > 0 ? `${hoursElapsed}h` : minsElapsed > 0 ? `${minsElapsed}m` : "now",
-          expiresIn: hoursRemaining > 0 ? `${hoursRemaining}h` : minsRemaining > 0 ? `${minsRemaining}m` : "expired",
-          expiryPercent,
-          responses: c.responses.map((r) => ({
-            name: r.user?.display_name ?? "Unknown",
-            avatar: r.user?.avatar_letter ?? "?",
-            status: r.response,
-            odbc: r.user_id,
-          })),
-          isYours: c.author_id === userId,
-        };
-      });
-      setChecks(transformedChecks);
+      await loadChecks();
 
       // Load squads (separate try/catch so other data still loads if this fails)
       try {
@@ -4461,6 +4476,59 @@ export default function Home() {
     return () => { channel.unsubscribe(); };
   }, [isLoggedIn, isDemoMode, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Subscribe to realtime friendship changes
+  useEffect(() => {
+    if (!isLoggedIn || isDemoMode || !userId) return;
+
+    const sub = db.subscribeToFriendships(userId, async (event, friendship) => {
+      const otherUserId = friendship.requester_id === userId
+        ? friendship.addressee_id
+        : friendship.requester_id;
+
+      if (event === "DELETE") {
+        // Other user unfriended us — remove from friends list and suggestions
+        setFriends((prev) => prev.filter((f) => f.odbc !== otherUserId));
+        setSuggestions((prev) => prev.filter((s) => s.odbc !== otherUserId));
+      } else if (event === "UPDATE" && friendship.status === "accepted") {
+        // Our request was accepted, or a mutual request auto-accepted
+        setSuggestions((prev) => {
+          const person = prev.find((s) => s.odbc === otherUserId);
+          if (person) {
+            setFriends((prevFriends) => {
+              if (prevFriends.some((f) => f.odbc === otherUserId)) return prevFriends;
+              return [...prevFriends, { ...person, status: "friend" as const, availability: "open" as const }];
+            });
+            return prev.filter((s) => s.odbc !== otherUserId);
+          }
+          return prev;
+        });
+      } else if (event === "INSERT" && friendship.status === "pending" && friendship.addressee_id === userId) {
+        // New incoming friend request — fetch their profile
+        try {
+          const profile = await db.getProfileById(otherUserId);
+          if (profile) {
+            setSuggestions((prev) => {
+              if (prev.some((s) => s.odbc === otherUserId)) return prev;
+              return [{
+                id: parseInt(profile.id.slice(0, 8), 16) || Date.now(),
+                odbc: profile.id,
+                friendshipId: friendship.id,
+                name: profile.display_name,
+                username: profile.username,
+                avatar: profile.avatar_letter,
+                status: "incoming" as const,
+              }, ...prev];
+            });
+          }
+        } catch (err) {
+          console.warn("Failed to fetch friend profile:", err);
+        }
+      }
+    });
+
+    return () => { sub.unsubscribe(); };
+  }, [isLoggedIn, isDemoMode, userId]);
+
   // Register service worker and check push subscription status
   useEffect(() => {
     if (!isLoggedIn || isDemoMode) return;
@@ -4477,6 +4545,17 @@ export default function Home() {
       setPushEnabled(!!existing);
     })();
   }, [isLoggedIn, isDemoMode]);
+
+  // Subscribe to realtime interest check changes
+  useEffect(() => {
+    if (!isLoggedIn || isDemoMode || !userId) return;
+
+    const sub = db.subscribeToChecks(() => {
+      loadChecks();
+    });
+
+    return () => { sub.unsubscribe(); };
+  }, [isLoggedIn, isDemoMode, userId, loadChecks]);
 
   // Listen for service worker notification click messages
   useEffect(() => {
@@ -6083,6 +6162,7 @@ export default function Home() {
                       // Navigate based on type
                       if (n.type === "friend_request" || n.type === "friend_accepted") {
                         setNotificationsOpen(false);
+                        setFriendsInitialTab(n.type === "friend_request" ? "add" : "friends");
                         setFriendsOpen(true);
                       } else if (n.type === "squad_message") {
                         setNotificationsOpen(false);
@@ -6191,7 +6271,8 @@ export default function Home() {
       />
       <FriendsModal
         open={friendsOpen}
-        onClose={() => setFriendsOpen(false)}
+        onClose={() => { setFriendsOpen(false); setFriendsInitialTab("friends"); }}
+        initialTab={friendsInitialTab}
         friends={friends}
         suggestions={suggestions}
         onAddFriend={async (id) => {

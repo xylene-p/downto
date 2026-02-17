@@ -338,6 +338,43 @@ export async function removeFriend(friendshipId: string): Promise<void> {
   if (error) throw error;
 }
 
+export function subscribeToFriendships(
+  userId: string,
+  callback: (event: 'INSERT' | 'UPDATE' | 'DELETE', friendship: Friendship) => void
+) {
+  // Subscribe to changes where we're the addressee (incoming requests, deletions)
+  const ch1 = supabase
+    .channel(`friendships:addressee:${userId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'friendships',
+        filter: `addressee_id=eq.${userId}`,
+      },
+      (payload) => callback(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', (payload.new ?? payload.old) as Friendship)
+    )
+    .subscribe();
+
+  // Subscribe to changes where we're the requester (our request got accepted/deleted)
+  const ch2 = supabase
+    .channel(`friendships:requester:${userId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'friendships',
+        filter: `requester_id=eq.${userId}`,
+      },
+      (payload) => callback(payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE', (payload.new ?? payload.old) as Friendship)
+    )
+    .subscribe();
+
+  return { unsubscribe: () => { ch1.unsubscribe(); ch2.unsubscribe(); } };
+}
+
 export async function getSuggestedUsers(): Promise<Profile[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
@@ -462,6 +499,30 @@ export async function respondToCheck(
 
   if (error) throw error;
   return data;
+}
+
+export function subscribeToChecks(
+  callback: () => void
+) {
+  const ch1 = supabase
+    .channel('interest_checks:all')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'interest_checks' },
+      () => callback()
+    )
+    .subscribe();
+
+  const ch2 = supabase
+    .channel('check_responses:all')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'check_responses' },
+      () => callback()
+    )
+    .subscribe();
+
+  return { unsubscribe: () => { ch1.unsubscribe(); ch2.unsubscribe(); } };
 }
 
 // ============================================================================
