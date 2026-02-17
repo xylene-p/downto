@@ -4534,68 +4534,65 @@ export default function Home() {
 
   // Check auth state on mount and listen for changes
   useEffect(() => {
-    let initialSessionHandled = false;
-
-    const fetchProfileById = async (userId: string, retries = 1) => {
-      let userProfile: Profile | null = null;
-      for (let attempt = 0; attempt < retries; attempt++) {
-        try {
-          // Use getProfileById instead of getCurrentProfile to avoid extra getUser() call
-          userProfile = await db.getProfileById(userId);
-          if (userProfile) break;
-        } catch (err) {
-          // Profile not ready yet, will retry
-        }
-        if (attempt < retries - 1) {
-          await new Promise(r => setTimeout(r, 500));
-        }
+    let loadingCleared = false;
+    const clearLoading = () => {
+      if (!loadingCleared) {
+        loadingCleared = true;
+        setIsLoading(false);
       }
-      return userProfile;
     };
 
-    const handleSession = async (session: typeof undefined extends never ? never : any, isNewSignIn: boolean) => {
+    // Hard safety net: always clear loading after 3 seconds no matter what
+    const safetyTimer = setTimeout(clearLoading, 3000);
+
+    const handleSession = async (session: typeof undefined extends never ? never : any) => {
       try {
         if (session?.user) {
           setIsLoggedIn(true);
           setUserId(session.user.id);
 
-          const retries = isNewSignIn ? 5 : 1;
-          const userProfile = await fetchProfileById(session.user.id, retries);
-
-          if (userProfile) {
-            setProfile(userProfile);
-            if (userProfile.ig_handle) setIgConnected(true);
-          } else {
-            console.error("Failed to fetch profile");
+          // Fetch profile with timeout — don't let it block loading
+          try {
+            const { data } = await Promise.race([
+              supabase.from('profiles').select('*').eq('id', session.user.id).single(),
+              new Promise<{ data: null; error: null }>((r) =>
+                setTimeout(() => r({ data: null, error: null }), 3000)
+              ),
+            ]);
+            if (data) {
+              setProfile(data as Profile);
+              if ((data as Profile).ig_handle) setIgConnected(true);
+            }
+          } catch {
+            // Profile fetch failed — app will work without it
           }
         }
       } catch (err) {
-        console.error("handleSession error:", err);
+        console.error("Auth session error:", err);
       } finally {
-        setIsLoading(false);
+        clearLoading();
+        clearTimeout(safetyTimer);
       }
     };
 
-    // onAuthStateChange fires INITIAL_SESSION on setup, then possibly SIGNED_IN
-    // Handle whichever comes first as the initial session check
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === "INITIAL_SESSION" || (event === "SIGNED_IN" && !initialSessionHandled)) {
-          initialSessionHandled = true;
-          await handleSession(session, false);
-        } else if (event === "SIGNED_IN" && initialSessionHandled) {
-          // Genuine new sign-in (e.g. magic link click) after initial load
-          await handleSession(session, true);
+      (event, session) => {
+        if (event === "INITIAL_SESSION" || event === "SIGNED_IN") {
+          handleSession(session);
         } else if (event === "SIGNED_OUT") {
           setIsLoggedIn(false);
           setUserId(null);
           setProfile(null);
-          setIsLoading(false);
+          clearLoading();
+          clearTimeout(safetyTimer);
         }
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(safetyTimer);
+    };
   }, []);
 
   const [isDemoMode, setIsDemoMode] = useState(false);
@@ -6407,13 +6404,42 @@ export default function Home() {
                         </span>
                       </div>
                       <button
-                        onClick={() => {
+                        onClick={async () => {
+                          const newSaved = !e.saved;
+                          // Update tonight UI immediately
                           setTonightEvents((prev) =>
                             prev.map((ev) =>
-                              ev.id === e.id ? { ...ev, saved: !ev.saved } : ev
+                              ev.id === e.id ? { ...ev, saved: newSaved } : ev
                             )
                           );
-                          showToast(e.saved ? "Removed" : "Saved to your calendar ✓");
+                          showToast(newSaved ? "Saved to your calendar ✓" : "Removed");
+
+                          // Persist to DB
+                          if (!isDemoMode && e.dbId) {
+                            try {
+                              if (newSaved) {
+                                await db.saveEvent(e.dbId);
+                                await db.toggleDown(e.dbId, true);
+                                // Add to saved events list so it shows in the feed
+                                const savedEvent: Event = { ...e, saved: true, isDown: true };
+                                setEvents((prev) => {
+                                  if (prev.some((ev) => ev.dbId === e.dbId)) return prev;
+                                  return [savedEvent, ...prev];
+                                });
+                              } else {
+                                await db.unsaveEvent(e.dbId);
+                                // Remove from saved events list
+                                setEvents((prev) => prev.filter((ev) => ev.dbId !== e.dbId));
+                              }
+                            } catch (err: unknown) {
+                              // Ignore duplicate save (unique constraint)
+                              const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : '';
+                              if (code !== '23505') {
+                                console.error("Failed to save tonight event:", err);
+                                showToast("Failed to save — try again");
+                              }
+                            }
+                          }
                         }}
                         style={{
                           background: e.saved ? color.accent : "transparent",
