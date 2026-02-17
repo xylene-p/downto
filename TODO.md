@@ -26,7 +26,7 @@ The core loop works end-to-end in production: magic-link auth, profile setup onb
 
 5. **IG scraping fails silently on private posts.** The `/api/scrape` route gets a 403 from Instagram's oEmbed API for private posts and returns a generic error. Users don't get clear feedback about why their link didn't work or what to do instead.
 
-6. **No error boundaries.** Any uncaught render error in the ~7,500-line component crashes the entire app with a white screen. There's no recovery path.
+6. ~~**No error boundaries.**~~ **DONE** — `error.tsx` + `global-error.tsx` catch render errors with styled recovery UI.
 
 7. **UUID-to-number ID collision risk.** Local IDs are generated via `parseInt(uuid.slice(0, 8), 16)` (used ~15 times). This truncates a UUID to 32 bits — collision probability grows fast with more events/users. Two events with the same truncated ID will cause state bugs.
 
@@ -42,7 +42,7 @@ The core loop works end-to-end in production: magic-link auth, profile setup onb
 
 **Can ship with (low risk at current scale):** #4 (validation — scrape API constrains most input), #5 (private posts — error shows, just not helpful), #7 (UUID collision — negligible at <100 users), #8 (session expiry — rare), #9 (subscription leaks — minor memory), #10 (rate limiting — no traffic yet)
 
-**Should add soon:** #6 (error boundary — one bad render crashes everything)
+**Should add soon:** #5 (private IG post error messaging)
 
 ## Remaining: Event Lobby Polish
 
@@ -111,4 +111,5 @@ The core loop works end-to-end in production: magic-link auth, profile setup onb
 - Vercel deployment pipeline
 - Share publicly toggle on event creation
 - Crew → squad terminology rename throughout UI
+- Error boundaries (`error.tsx` + `global-error.tsx`) with styled recovery page
 - Leave squad (self-removal from squad chat with confirmation modal, RLS-enforced — no kick)
