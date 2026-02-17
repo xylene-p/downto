@@ -122,7 +122,7 @@ interface InterestCheck {
   timeAgo: string;
   expiresIn: string; // e.g., "23h", "4h", "45m"
   expiryPercent: number; // 0-100, how much time has passed
-  responses: { name: string; avatar: string; status: "down" | "maybe" | "nah" }[];
+  responses: { name: string; avatar: string; status: "down" | "maybe" | "nah"; odbc?: string }[];
   isYours?: boolean;
 }
 
@@ -2593,6 +2593,7 @@ const FriendsModal = ({
   const [searchResults, setSearchResults] = useState<Friend[]>([]);
   const [searching, setSearching] = useState(false);
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
 
   const incomingRequests = suggestions.filter((s) => s.status === "incoming");
   const filteredFriends = friends.filter(
@@ -4127,6 +4128,7 @@ export default function Home() {
             name: r.user?.display_name ?? "Unknown",
             avatar: r.user?.avatar_letter ?? "?",
             status: r.response,
+            odbc: r.user_id,
           })),
           isYours: c.author_id === userId,
         };
@@ -4318,32 +4320,35 @@ export default function Home() {
   };
 
   const toggleSave = (id: number) => {
+    const event = events.find((e) => e.id === id);
+    if (!event) return;
+    const newSaved = !event.saved;
     setEvents((prev) =>
-      prev.map((e) => {
-        if (e.id === id) {
-          const newSaved = !e.saved;
-          showToast(newSaved ? "Added to your calendar ✓" : "Removed from calendar");
-          return { ...e, saved: newSaved };
-        }
-        return e;
-      })
+      prev.map((e) => e.id === id ? { ...e, saved: newSaved } : e)
     );
+    showToast(newSaved ? "Added to your calendar ✓" : "Removed from calendar");
+    if (!isDemoMode && event.dbId) {
+      (newSaved ? db.saveEvent(event.dbId) : db.unsaveEvent(event.dbId))
+        .catch((err) => console.error("Failed to toggle save:", err));
+    }
   };
 
   const toggleDown = (id: number) => {
+    const event = events.find((e) => e.id === id);
+    if (!event) return;
+    const newDown = !event.isDown;
     setEvents((prev) =>
-      prev.map((e) => {
-        if (e.id === id) {
-          const newDown = !e.isDown;
-          showToast(newDown ? "You're down! 🤙" : "Maybe next time");
-          return { ...e, isDown: newDown, saved: newDown ? true : e.saved };
-        }
-        return e;
-      })
+      prev.map((e) => e.id === id ? { ...e, isDown: newDown, saved: newDown ? true : e.saved } : e)
     );
+    showToast(newDown ? "You're down! 🤙" : "Maybe next time");
+    if (!isDemoMode && event.dbId) {
+      db.toggleDown(event.dbId, newDown)
+        .catch((err) => console.error("Failed to toggle down:", err));
+    }
   };
 
   const respondToCheck = (checkId: number, status: "down" | "maybe") => {
+    const check = checks.find((c) => c.id === checkId);
     setMyCheckResponses((prev) => ({ ...prev, [checkId]: status }));
     // Add yourself to the check's responses
     setChecks((prev) =>
@@ -4367,14 +4372,31 @@ export default function Home() {
       })
     );
     showToast(status === "down" ? "You're down! 🤙" : "Marked as maybe");
+    if (!isDemoMode && check?.dbId) {
+      db.respondToCheck(check.dbId, status)
+        .catch((err) => console.error("Failed to respond to check:", err));
+    }
   };
 
-  const startSquadFromCheck = (check: InterestCheck) => {
+  const startSquadFromCheck = async (check: InterestCheck) => {
     const downPeople = check.responses.filter((r) => r.status === "down" && r.name !== "You");
     const memberNames = downPeople.map((p) => p.name);
+    const squadName = check.text.slice(0, 30) + (check.text.length > 30 ? "..." : "");
+
+    // Persist to DB in prod mode
+    if (!isDemoMode && check.dbId) {
+      try {
+        const memberIds = downPeople.map((p) => p.odbc).filter((id): id is string => !!id);
+        const dbSquad = await db.createSquad(squadName, memberIds, undefined, check.dbId);
+        await db.sendMessage(dbSquad.id, "let's make this happen! 🔥");
+      } catch (err) {
+        console.error("Failed to create squad:", err);
+      }
+    }
+
     const newSquad: Squad = {
       id: Date.now(),
-      name: check.text.slice(0, 30) + (check.text.length > 30 ? "..." : ""),
+      name: squadName,
       event: `${check.author}'s idea · ${check.expiresIn} left`,
       members: [
         { name: "You", avatar: "Y" },
@@ -4750,6 +4772,9 @@ export default function Home() {
                                   );
                                   setEditingCheckId(null);
                                   showToast("Check updated!");
+                                  if (!isDemoMode && check.dbId) {
+                                    db.updateInterestCheck(check.dbId, editingCheckText.trim()).catch((err) => console.error("Failed to update check:", err));
+                                  }
                                 } else if (e.key === "Escape") {
                                   setEditingCheckId(null);
                                 }
@@ -4776,6 +4801,9 @@ export default function Home() {
                                   );
                                   setEditingCheckId(null);
                                   showToast("Check updated!");
+                                  if (!isDemoMode && check.dbId) {
+                                    db.updateInterestCheck(check.dbId, editingCheckText.trim()).catch((err) => console.error("Failed to update check:", err));
+                                  }
                                 }
                               }}
                               style={{
@@ -4939,6 +4967,9 @@ export default function Home() {
                                           : c
                                       )
                                     );
+                                    if (!isDemoMode && check.dbId) {
+                                      db.removeCheckResponse(check.dbId).catch((err) => console.error("Failed to remove response:", err));
+                                    }
                                   } else {
                                     respondToCheck(check.id, "down");
                                   }
@@ -4973,6 +5004,9 @@ export default function Home() {
                                           : c
                                       )
                                     );
+                                    if (!isDemoMode && check.dbId) {
+                                      db.removeCheckResponse(check.dbId).catch((err) => console.error("Failed to remove response:", err));
+                                    }
                                   } else {
                                     respondToCheck(check.id, "maybe");
                                   }
