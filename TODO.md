@@ -107,10 +107,13 @@ The core loop works end-to-end in production: magic-link auth, profile setup onb
 - Profile editing (display name, avatar letter, IG handle, availability status)
 - Demo mode with full mock data
 - PWA manifest and icons
-- 17 database migrations with comprehensive RLS policies
+- 19 database migrations with comprehensive RLS policies
 - Vercel deployment pipeline
 - Share publicly toggle on event creation
 - Crew → squad terminology rename throughout UI
 - Error boundaries (`error.tsx` + `global-error.tsx`) with styled recovery page
 - Clear error messages for private/restricted IG posts with manual entry fallback
 - Leave squad (self-removal from squad chat with confirmation modal, RLS-enforced — no kick)
+- Auto-remove from crew pool on squad join (DB trigger prevents duplicate squad invitations from stale pool state)
+- Compact squad chat layout (grouped messages, inline header with avatars)
+- Avatar letter fix — "You" uses actual profile letter, not hardcoded "Y"
