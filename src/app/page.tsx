@@ -56,6 +56,121 @@ const parseDateToISO = (display: string): string | null => {
   return null;
 };
 
+const DAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+const MONTH_NAMES: Record<string, number> = {
+  jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3,
+  may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7,
+  sep: 8, september: 8, oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11,
+};
+
+/** Todoist-style: scan free text for date phrases, return { label, iso } or null */
+const parseNaturalDate = (text: string): { label: string; iso: string } | null => {
+  const lower = text.toLowerCase();
+  const today = new Date();
+  const todayDay = today.getDay();
+
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const lbl = (d: Date) => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+
+  // "tonight" / "today"
+  if (/\btonight\b/.test(lower) || /\btoday\b/.test(lower)) {
+    return { label: "Today", iso: fmt(today) };
+  }
+  // "tomorrow" / "tmrw" / "tmr"
+  if (/\b(tomorrow|tmrw|tmr)\b/.test(lower)) {
+    const d = new Date(today); d.setDate(d.getDate() + 1);
+    return { label: lbl(d), iso: fmt(d) };
+  }
+  // "this weekend"
+  if (/\bthis weekend\b/.test(lower)) {
+    const d = new Date(today);
+    const daysToSat = (6 - todayDay + 7) % 7 || 7;
+    d.setDate(d.getDate() + (todayDay === 6 ? 0 : daysToSat));
+    return { label: lbl(d), iso: fmt(d) };
+  }
+  // "next weekend"
+  if (/\bnext weekend\b/.test(lower)) {
+    const d = new Date(today);
+    const daysToSat = (6 - todayDay + 7) % 7 || 7;
+    d.setDate(d.getDate() + daysToSat + (todayDay <= 0 ? 6 : 0));
+    if (d.getTime() - today.getTime() < 7 * 86400000) d.setDate(d.getDate() + 7);
+    return { label: lbl(d), iso: fmt(d) };
+  }
+  // "in N days"
+  const inDaysMatch = lower.match(/\bin (\d+) days?\b/);
+  if (inDaysMatch) {
+    const d = new Date(today); d.setDate(d.getDate() + parseInt(inDaysMatch[1]));
+    return { label: lbl(d), iso: fmt(d) };
+  }
+  // "in a week" / "next week"
+  if (/\b(in a week|next week)\b/.test(lower)) {
+    const d = new Date(today); d.setDate(d.getDate() + 7);
+    return { label: lbl(d), iso: fmt(d) };
+  }
+  // "next [day]" — skip this week
+  const nextDayMatch = lower.match(/\bnext (mon|tue|wed|thu|fri|sat|sun|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
+  if (nextDayMatch) {
+    const key = nextDayMatch[1].slice(0, 3);
+    const targetDay = DAY_NAMES.findIndex(d => d.startsWith(key));
+    if (targetDay >= 0) {
+      const d = new Date(today);
+      let diff = (targetDay - todayDay + 7) % 7;
+      if (diff === 0) diff = 7;
+      d.setDate(d.getDate() + diff + 7);
+      return { label: lbl(d), iso: fmt(d) };
+    }
+  }
+  // "this [day]"
+  const thisDayMatch = lower.match(/\bthis (mon|tue|wed|thu|fri|sat|sun|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
+  if (thisDayMatch) {
+    const key = thisDayMatch[1].slice(0, 3);
+    const targetDay = DAY_NAMES.findIndex(d => d.startsWith(key));
+    if (targetDay >= 0) {
+      const d = new Date(today);
+      let diff = (targetDay - todayDay + 7) % 7;
+      if (diff === 0) diff = 7;
+      d.setDate(d.getDate() + diff);
+      return { label: lbl(d), iso: fmt(d) };
+    }
+  }
+  // Bare day name — "friday", "sat", etc. (next occurrence)
+  const bareDayMatch = lower.match(/\b(mon|tue|wed|thu|fri|sat|sun|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
+  if (bareDayMatch) {
+    const key = bareDayMatch[1].slice(0, 3);
+    const targetDay = DAY_NAMES.findIndex(d => d.startsWith(key));
+    if (targetDay >= 0) {
+      const d = new Date(today);
+      let diff = (targetDay - todayDay + 7) % 7;
+      if (diff === 0) diff = 7;
+      d.setDate(d.getDate() + diff);
+      return { label: lbl(d), iso: fmt(d) };
+    }
+  }
+  // "feb 20" / "february 20th" / "mar 5"
+  const monthDayMatch = lower.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:st|nd|rd|th)?\b/);
+  if (monthDayMatch) {
+    const month = MONTH_NAMES[monthDayMatch[1].slice(0, 3)];
+    const day = parseInt(monthDayMatch[2]);
+    if (month !== undefined && day >= 1 && day <= 31) {
+      const d = new Date(today.getFullYear(), month, day);
+      if (d.getTime() < today.getTime() - 14 * 86400000) d.setFullYear(d.getFullYear() + 1);
+      return { label: lbl(d), iso: fmt(d) };
+    }
+  }
+  // "1/20" / "2/14" / "12/25"
+  const slashMatch = lower.match(/\b(\d{1,2})\/(\d{1,2})\b/);
+  if (slashMatch) {
+    const month = parseInt(slashMatch[1]) - 1;
+    const day = parseInt(slashMatch[2]);
+    if (month >= 0 && month <= 11 && day >= 1 && day <= 31) {
+      const d = new Date(today.getFullYear(), month, day);
+      if (d.getTime() < today.getTime() - 14 * 86400000) d.setFullYear(d.getFullYear() + 1);
+      return { label: lbl(d), iso: fmt(d) };
+    }
+  }
+  return null;
+};
+
 // ─── Data ────────────────────────────────────────────────────────────────────
 
 interface Person {
@@ -171,6 +286,8 @@ interface InterestCheck {
   expiryPercent: number; // 0-100, how much time has passed
   responses: { name: string; avatar: string; status: "down" | "maybe" | "nah"; odbc?: string }[];
   isYours?: boolean;
+  eventDate?: string; // ISO date from natural language parsing
+  eventDateLabel?: string; // display label like "Sat, Feb 22"
   squadLocalId?: number; // local ID of the squad created from this check
   squadDbId?: string; // DB UUID of the squad
   inSquad?: boolean; // whether current user is already a member
@@ -417,12 +534,14 @@ const PasteModal = ({
   open: boolean;
   onClose: () => void;
   onSubmit: (e: ScrapedEvent, sharePublicly: boolean) => void;
-  onInterestCheck: (idea: string, expiresInHours: number | null) => void;
+  onInterestCheck: (idea: string, expiresInHours: number | null, eventDate: string | null) => void;
 }) => {
   const [mode, setMode] = useState<"paste" | "idea" | "manual">("paste");
   const [url, setUrl] = useState("");
   const [idea, setIdea] = useState("");
   const [checkTimer, setCheckTimer] = useState<number | null>(24);
+  const detectedDate = idea ? parseNaturalDate(idea) : null;
+  const [dateDismissed, setDateDismissed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [scraped, setScraped] = useState<ScrapedEvent | null>(null);
   const [sharePublicly, setSharePublicly] = useState(false);
@@ -1086,7 +1205,7 @@ const PasteModal = ({
               <textarea
                 ref={ideaRef}
                 value={idea}
-                onChange={(e) => setIdea(e.target.value.slice(0, 280))}
+                onChange={(e) => { setIdea(e.target.value.slice(0, 280)); setDateDismissed(false); }}
                 maxLength={280}
                 placeholder="e.g., rooftop picnic saturday? movie night? dinner at 7?"
                 style={{
@@ -1105,6 +1224,39 @@ const PasteModal = ({
                 }}
               />
             </div>
+            {/* Auto-detected date chip */}
+            {detectedDate && !dateDismissed && (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 12,
+                padding: "8px 12px",
+                background: "rgba(232,255,90,0.08)",
+                borderRadius: 10,
+                border: `1px solid rgba(232,255,90,0.2)`,
+              }}>
+                <span style={{ fontSize: 13 }}>📅</span>
+                <span style={{ fontFamily: font.mono, fontSize: 12, color: color.accent, fontWeight: 600, flex: 1 }}>
+                  {detectedDate.label}
+                </span>
+                <button
+                  onClick={() => setDateDismissed(true)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: color.dim,
+                    fontFamily: font.mono,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    padding: "0 4px",
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            )}
             {/* Timer picker */}
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontFamily: font.mono, fontSize: 10, color: color.dim, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.15em" }}>
@@ -1143,7 +1295,8 @@ const PasteModal = ({
             <button
               onClick={() => {
                 if (idea.trim()) {
-                  onInterestCheck(sanitize(idea, 280), checkTimer);
+                  const eventDate = (!dateDismissed && detectedDate) ? detectedDate.iso : null;
+                  onInterestCheck(sanitize(idea, 280), checkTimer, eventDate);
                   onClose();
                 }
               }}
@@ -5050,6 +5203,8 @@ export default function Home() {
           })),
           isYours: c.author_id === userId,
           squadDbId: c.squads?.[0]?.id,
+          eventDate: c.event_date ?? undefined,
+          eventDateLabel: c.event_date ? new Date(c.event_date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined,
         };
       });
       setChecks(transformedChecks);
@@ -6156,19 +6311,35 @@ export default function Home() {
                           </div>
                         ) : (
                           <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 12 }}>
-                            <p
-                              style={{
-                                fontFamily: font.serif,
-                                fontSize: 18,
-                                color: color.text,
-                                margin: 0,
-                                fontWeight: 400,
-                                lineHeight: 1.4,
-                                flex: 1,
-                              }}
-                            >
-                              {check.text}
-                            </p>
+                            <div style={{ flex: 1 }}>
+                              <p
+                                style={{
+                                  fontFamily: font.serif,
+                                  fontSize: 18,
+                                  color: color.text,
+                                  margin: 0,
+                                  fontWeight: 400,
+                                  lineHeight: 1.4,
+                                }}
+                              >
+                                {check.text}
+                              </p>
+                              {check.eventDateLabel && (
+                                <span style={{
+                                  display: "inline-block",
+                                  marginTop: 6,
+                                  padding: "3px 8px",
+                                  background: "rgba(232,255,90,0.1)",
+                                  borderRadius: 6,
+                                  fontFamily: font.mono,
+                                  fontSize: 10,
+                                  color: color.accent,
+                                  fontWeight: 600,
+                                }}>
+                                  📅 {check.eventDateLabel}
+                                </span>
+                              )}
+                            </div>
                             {check.isYours && check.squadLocalId && (
                               <div
                                 style={{
@@ -7124,12 +7295,13 @@ export default function Home() {
             showToast("Event saved! 🎯");
           }
         }}
-        onInterestCheck={async (idea, expiresInHours) => {
+        onInterestCheck={async (idea, expiresInHours, eventDate) => {
           const expiresLabel = expiresInHours == null ? "open" : expiresInHours >= 24 ? "24h" : `${expiresInHours}h`;
+          const dateLabel = eventDate ? new Date(eventDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined;
           // Save to database if logged in (not demo mode)
           if (!isDemoMode && userId) {
             try {
-              const dbCheck = await db.createInterestCheck(idea, expiresInHours);
+              const dbCheck = await db.createInterestCheck(idea, expiresInHours, eventDate);
               const newCheck: InterestCheck = {
                 id: parseInt(dbCheck.id.slice(0, 8), 16) || Date.now(),
                 dbId: dbCheck.id,
@@ -7140,6 +7312,8 @@ export default function Home() {
                 expiryPercent: 0,
                 responses: [],
                 isYours: true,
+                eventDate: eventDate ?? undefined,
+                eventDateLabel: dateLabel,
               };
               setChecks((prev) => [newCheck, ...prev]);
               showToast("Sent to friends! 📣");
@@ -7158,6 +7332,8 @@ export default function Home() {
               expiryPercent: 0,
               responses: [],
               isYours: true,
+              eventDate: eventDate ?? undefined,
+              eventDateLabel: dateLabel,
             };
             setChecks((prev) => [newCheck, ...prev]);
             showToast("Sent to friends! 📣");

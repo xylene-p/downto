@@ -60,6 +60,7 @@ export interface InterestCheck {
   author_id: string;
   text: string;
   expires_at: string | null;
+  event_date: string | null; // ISO date from natural language parsing
   created_at: string;
   // Joined data
   author?: Profile;

@@ -6,7 +6,7 @@ A user can sign up, add events (via Instagram link or manual entry), see them on
 
 ## Current State
 
-The core loop works end-to-end in production: OTP code auth (8-digit, replaced magic link for PWA compatibility), profile setup onboarding, event creation (IG scraping + Letterboxd + manual), saving events, "I'm down" toggling with friend visibility, interest checks with configurable expiry (1h/4h/12h/24h/open), squad chat formation from both checks and events, real-time messaging via Supabase Realtime, friend requests/acceptance, push notifications, and a polished demo mode. The UI is mobile-first (max-width 420px), has a service worker for push, and deploys to Vercel. There are 19 migrations building out a complete schema with RLS policies. The entire frontend lives in a single ~7,500-line `page.tsx`.
+The core loop works end-to-end in production: OTP code auth (8-digit, replaced magic link for PWA compatibility), profile setup onboarding, event creation (IG scraping + Letterboxd + manual), saving events, "I'm down" toggling with friend visibility, interest checks with configurable expiry (1h/4h/12h/24h/open), squad chat formation from both checks and events, real-time messaging via Supabase Realtime, friend requests/acceptance, push notifications, and a polished demo mode. The UI is mobile-first (max-width 420px), has a service worker for push, and deploys to Vercel. There are 20 migrations building out a complete schema with RLS policies. The entire frontend lives in a single ~7,500-line `page.tsx`.
 
 **Event dedup is implemented** — two users pasting the same IG link land on the same event. A social signal badge in PasteModal shows "X people down · Y friends" before save.
 
@@ -44,9 +44,10 @@ The core loop works end-to-end in production: OTP code auth (8-digit, replaced m
 
 **All "should add soon" items resolved.** #4, #5, #9 now done too. Only #7, #8, #10 remain — all low-risk at current scale.
 
-## Remaining: Event Lobby Polish
+## Remaining
 
 ### Not yet implemented
+- **IG link on events** — show original Instagram link on saved events so users can tap back to the source post
 - Dead squad chat nudge (no messages 24h before event → "still going?")
 - Friend-saves-event-while-in-pool notification (notify + offer to pull into friend squad)
 
@@ -122,3 +123,4 @@ The core loop works end-to-end in production: OTP code auth (8-digit, replaced m
 - Subscription stale closure fixes — refs for showToast, loadRealData, onSquadUpdate
 - Deleted dead hooks.ts
 - Removed fake "Connect Instagram" flow — IG handle is just a profile field for identity verification
+- Natural language date parsing on interest checks — Todoist-style detection (tonight, tomorrow, friday, feb 20, etc.) with auto-detected date chip and dismissible UI

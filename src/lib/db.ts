@@ -433,7 +433,7 @@ export async function getActiveChecks(): Promise<(InterestCheck & { author: Prof
   return data ?? [];
 }
 
-export async function createInterestCheck(text: string, expiresInHours: number | null = 24): Promise<InterestCheck> {
+export async function createInterestCheck(text: string, expiresInHours: number | null = 24, eventDate: string | null = null): Promise<InterestCheck> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -450,6 +450,7 @@ export async function createInterestCheck(text: string, expiresInHours: number |
       author_id: user.id,
       text,
       expires_at: expiresAt,
+      event_date: eventDate,
     })
     .select()
     .single();
