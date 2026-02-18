@@ -6,74 +6,9 @@ A user can sign up, add events (via Instagram link or manual entry), see them on
 
 ## Current State
 
-The core loop works end-to-end in production: OTP code auth (8-digit, replaced magic link for PWA compatibility), profile setup onboarding, event creation (IG scraping + Letterboxd + manual), saving events, "I'm down" toggling with friend visibility, interest checks with configurable expiry (1h/4h/12h/24h/open), squad chat formation from both checks and events, real-time messaging via Supabase Realtime, friend requests/acceptance, push notifications, and a polished demo mode. The UI is mobile-first (max-width 420px), has a service worker for push, and deploys to Vercel. There are 20 migrations building out a complete schema with RLS policies. The entire frontend lives in a single ~7,500-line `page.tsx`.
+The core loop works end-to-end in production: OTP code auth (8-digit, replaced magic link for PWA compatibility), profile setup onboarding, event creation (IG scraping + Letterboxd + manual), saving events, "I'm down" toggling with friend visibility, interest checks with configurable expiry (1h/4h/12h/24h/open) and squad size (2-5), squad chat formation from both checks and events with auto-join on "down" response, real-time messaging via Supabase Realtime, friend requests/acceptance, push notifications, and a polished demo mode. The UI is mobile-first (max-width 420px), has a service worker for push, and deploys to Vercel. There are 21 migrations building out a complete schema with RLS policies.
 
-**Event dedup is implemented** — two users pasting the same IG link land on the same event. A social signal badge in PasteModal shows "X people down · Y friends" before save.
-
-**Event lobby + squad formation is implemented** — the old SocialDrawer is now an EventLobby with friends/others grouping, "Start a squad" (pick friends, max 5), and a visible "Looking for a squad" pool where strangers can see each other and form squads using the same selection UI. Squad chats get seeded with context messages and a collapsible logistics card (meeting spot, arrival time, transport notes) pinned between the header and messages.
-
-**Tonight feed works correctly** — public events show with proper saved/down state cross-referenced from user's saved events. Events without venue or date are filtered out.
-
-## MVP Blockers
-
-1. ~~**Profile setup flow after first signup is missing.**~~ **DONE** — `ProfileSetupScreen` exists, gated on `profile.onboarded`.
-
-2. ~~**First-login profile fetch uses a 500ms setTimeout race condition.**~~ **DONE** — inlined Supabase query with 3s timeout + safety timer.
-
-3. ~~**Tonight feed "save" and "I'm down" don't persist.**~~ **DONE** — Tonight events now cross-reference saved events, persist via `db.saveEvent()` / `db.toggleDown()`.
-
-4. ~~**No input validation on event creation.**~~ **DONE** — HTML stripping, length limits, and sanitization on both client and server.
-
-5. ~~**IG scraping fails silently on private posts.**~~ **DONE** — clear error messages explaining why + "Enter manually instead" fallback button.
-
-6. ~~**No error boundaries.**~~ **DONE** — `error.tsx` + `global-error.tsx` catch render errors with styled recovery UI.
-
-7. ~~**UUID-to-number ID collision risk.**~~ **DONE** — All interfaces (Event, InterestCheck, Squad, Friend) now use full UUID strings as `id`. Removed `dbId`/`odbc` indirection. No more `parseInt(uuid.slice(0, 8), 16)` truncation.
-
-8. **No logout confirmation or session expiry handling.** If the Supabase session expires mid-use, API calls fail silently. Users have to manually reload.
-
-9. ~~**Realtime subscriptions may leak on re-renders.**~~ **DONE** — stale closures fixed via refs for `showToast`, `loadRealData`, `onSquadUpdate`. eslint-disable comments removed.
-
-10. **No rate limiting on API routes.** The `/api/scrape`, `/api/push/subscribe`, and `/api/push/send` endpoints have no rate limiting.
-
-### Blocker triage for push to prod
-
-**All critical blockers resolved.** #1, #2, #3 are done. App is shippable at current scale.
-
-**Can ship with (low risk at current scale):** #7 (UUID collision — negligible at <100 users), #8 (session expiry — rare), #10 (rate limiting — no traffic yet)
-
-**All "should add soon" items resolved.** #4, #5, #9 now done too. Only #7, #8, #10 remain — all low-risk at current scale.
-
-## Remaining
-
-### Not yet implemented
-- ~~**IG link on events** — show original Instagram link on saved events so users can tap back to the source post~~ **DONE** — igHandle badge links to original IG post with ↗ indicator
-- Dead squad chat nudge (no messages 24h before event → "still going?")
-- Friend-saves-event-while-in-pool notification (notify + offer to pull into friend squad)
-
-## Nice to Have (Post-MVP)
-
-- **Break up `page.tsx`** — ~7,500 lines in one component. Extract feed, calendar, groups, profile, modals into separate files.
-- **Calendar sync** (Google Calendar / Apple .ics export)
-- **Offline support** — service worker only handles push notifications, no caching strategy
-- **Optimistic UI updates** — toggleSave/toggleDown now optimistically update with rollback; other mutations still wait for DB response
-- **Infinite scroll / pagination** — all events, checks, and squads are loaded at once
-- **Desktop/tablet layout** — currently a centered 420px column
-- **Analytics / error tracking** — no Sentry, no Vercel Analytics
-- **Image uploads for events** — events rely on Unsplash URLs or IG thumbnails
-- **Search / filtering in feed** — no way to filter by date, vibe, or neighborhood
-- **Block/report user flow** — friendship has a "blocked" status in the schema but no UI
-- **Delete account** — no UI or API for account deletion
-
-## Known Bugs
-
-- ~~**Duplicate numeric IDs possible**~~ **FIXED** — all entities now use full UUID strings as their `id` field.
-- ~~**IG scraping broken for private posts**~~ **FIXED** — clear error messages + manual entry fallback.
-- ~~**`events.date` stored as null for manually created events**~~ **FIXED** — `parseDateToISO()` parses display strings to ISO dates.
-- ~~**Hooks file (`hooks.ts`) is dead code**~~ **FIXED** — deleted.
-- ~~**Missing database indexes**~~ **NOT A BUG** — all frequently-queried columns already have indexes from initial migration.
-- ~~**eslint-disable on subscription effects**~~ **FIXED** — stale closures fixed via refs, eslint-disable comments removed.
-- ~~**Check author can't see squad started by others**~~ **FIXED** — `loadChecks` now preserves `squadLocalId` from previous state; author's check card uses `squadDbId` as fallback.
+**All MVP blockers are resolved.** Remaining bugs, enhancements, and tech debt are tracked in [GitHub Issues](https://github.com/xylene-p/downto/issues).
 
 ## Completed
 
@@ -109,7 +44,7 @@ The core loop works end-to-end in production: OTP code auth (8-digit, replaced m
 - Profile editing (display name, avatar letter, IG handle, availability status)
 - Demo mode with full mock data
 - PWA manifest and icons
-- 19+ database migrations with comprehensive RLS policies
+- 21 database migrations with comprehensive RLS policies
 - Vercel deployment pipeline
 - Share publicly toggle on event creation
 - Crew → squad terminology rename throughout UI
