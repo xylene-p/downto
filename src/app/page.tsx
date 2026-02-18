@@ -191,6 +191,7 @@ interface Event {
   vibe: string[];
   image: string;
   igHandle: string;
+  igUrl?: string;
   saved: boolean;
   isDown: boolean;
   peopleDown: Person[];
@@ -1590,22 +1591,49 @@ const EventCard = ({
             <span style={{ fontSize: 12 }}>&#9998;</span>
           </button>
         )}
-        <div style={{ position: "absolute", top: 12, right: 12 }}>
-          <span
-            style={{
-              background: "rgba(0,0,0,0.6)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-              color: "#aaa",
-              padding: "6px 10px",
-              borderRadius: 20,
-              fontFamily: font.mono,
-              fontSize: 10,
-            }}
-          >
-            {event.igHandle}
-          </span>
-        </div>
+        {event.igHandle && (
+          <div style={{ position: "absolute", top: 12, right: 12 }}>
+            {event.igUrl ? (
+              <a
+                href={event.igUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: "rgba(0,0,0,0.6)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                  color: "#aaa",
+                  padding: "6px 10px",
+                  borderRadius: 20,
+                  fontFamily: font.mono,
+                  fontSize: 10,
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                {event.igHandle} ↗
+              </a>
+            ) : (
+              <span
+                style={{
+                  background: "rgba(0,0,0,0.6)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                  color: "#aaa",
+                  padding: "6px 10px",
+                  borderRadius: 20,
+                  fontFamily: font.mono,
+                  fontSize: 10,
+                }}
+              >
+                {event.igHandle}
+              </span>
+            )}
+          </div>
+        )}
         <div
           style={{
             position: "absolute",
@@ -2002,6 +2030,7 @@ const EventLobby = ({
   squadPoolMembers,
   inSquadPool,
   isDemoMode,
+  onViewProfile,
 }: {
   event: Event | null;
   open: boolean;
@@ -2011,6 +2040,7 @@ const EventLobby = ({
   squadPoolMembers: Person[];
   inSquadPool: boolean;
   isDemoMode: boolean;
+  onViewProfile?: (userId: string) => void;
 }) => {
   const [selectingMembers, setSelectingMembers] = useState(false);
   const [selectingPool, setSelectingPool] = useState(false);
@@ -2048,14 +2078,17 @@ const EventLobby = ({
   const PersonRow = ({ p, isFriend, selectable }: { p: Person; isFriend: boolean; selectable: boolean }) => (
     <div
       key={p.name}
-      onClick={() => selectable && p.userId && toggleSelect(p.userId)}
+      onClick={() => {
+        if (selectable && p.userId) toggleSelect(p.userId);
+        else if (!isSelecting && p.userId && onViewProfile) onViewProfile(p.userId);
+      }}
       style={{
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         padding: "10px 0",
         borderBottom: `1px solid ${isFriend ? "#222" : color.surface}`,
-        cursor: selectable ? "pointer" : "default",
+        cursor: selectable || (!isSelecting && p.userId) ? "pointer" : "default",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -2574,7 +2607,7 @@ interface Squad {
   event?: string;
   eventDate?: string;
   eventIsoDate?: string;
-  members: { name: string; avatar: string }[];
+  members: { name: string; avatar: string; userId?: string }[];
   messages: { sender: string; text: string; time: string; isYou?: boolean }[];
   lastMsg: string;
   time: string;
@@ -2631,6 +2664,7 @@ const GroupsView = ({
   onUpdateLogistics,
   onLeaveSquad,
   userId,
+  onViewProfile,
 }: {
   squads: Squad[];
   onSquadUpdate: (squadsOrUpdater: Squad[] | ((prev: Squad[]) => Squad[])) => void;
@@ -2639,6 +2673,7 @@ const GroupsView = ({
   onUpdateLogistics?: (squadDbId: string, field: string, value: string) => Promise<void>;
   onLeaveSquad?: (squadDbId: string) => Promise<void>;
   userId?: string | null;
+  onViewProfile?: (userId: string) => void;
 }) => {
   const onSquadUpdateRef = useRef(onSquadUpdate);
   onSquadUpdateRef.current = onSquadUpdate;
@@ -2795,6 +2830,7 @@ const GroupsView = ({
               {selectedSquad.members.map((m) => (
                 <div
                   key={m.name}
+                  onClick={() => m.name !== "You" && m.userId && onViewProfile?.(m.userId)}
                   style={{
                     width: 24,
                     height: 24,
@@ -2807,6 +2843,7 @@ const GroupsView = ({
                     fontFamily: font.mono,
                     fontSize: 10,
                     fontWeight: 700,
+                    cursor: m.name !== "You" && m.userId ? "pointer" : "default",
                   }}
                 >
                   {m.avatar}
@@ -3308,6 +3345,7 @@ interface Friend {
   avatar: string;
   status: "friend" | "pending" | "incoming" | "none";
   availability?: "open" | "awkward" | "not-available";
+  igHandle?: string;
 }
 
 const DEMO_FRIENDS: Friend[] = [
@@ -3350,6 +3388,7 @@ const FriendsModal = ({
   onRemoveFriend,
   onSearchUsers,
   initialTab,
+  onViewProfile,
 }: {
   open: boolean;
   onClose: () => void;
@@ -3360,6 +3399,7 @@ const FriendsModal = ({
   onRemoveFriend?: (id: number) => void;
   onSearchUsers?: (query: string) => Promise<Friend[]>;
   initialTab?: "friends" | "add";
+  onViewProfile?: (userId: string) => void;
 }) => {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"friends" | "add">(initialTab ?? "friends");
@@ -3560,7 +3600,7 @@ const FriendsModal = ({
               filteredFriends.map((f) => (
                 <div
                   key={f.id}
-                  onClick={() => setSelectedFriend(f)}
+                  onClick={() => f.odbc && onViewProfile ? onViewProfile(f.odbc) : setSelectedFriend(f)}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -4052,6 +4092,235 @@ const FriendsModal = ({
           )}
         </div>
       )}
+    </div>
+  );
+};
+
+// ─── User Profile Overlay ────────────────────────────────────────────────────
+
+const UserProfileOverlay = ({
+  targetUserId,
+  currentUserId,
+  onClose,
+  onFriendAction,
+}: {
+  targetUserId: string;
+  currentUserId: string | null;
+  onClose: () => void;
+  onFriendAction: () => void;
+}) => {
+  const [profileData, setProfileData] = useState<Profile | null>(null);
+  const [friendship, setFriendship] = useState<{ id: string; status: string; isRequester: boolean } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [acting, setActing] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const [p, f] = await Promise.all([
+          db.getProfileById(targetUserId),
+          currentUserId ? db.getFriendshipWith(targetUserId) : Promise.resolve(null),
+        ]);
+        if (!cancelled) {
+          setProfileData(p);
+          setFriendship(f);
+        }
+      } catch (err) {
+        console.error("Failed to load profile:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [targetUserId, currentUserId]);
+
+  const isSelf = currentUserId === targetUserId;
+  const friendStatus = friendship?.status ?? "none";
+  const isRequester = friendship?.isRequester ?? false;
+
+  const handleAction = async () => {
+    if (!currentUserId || isSelf) return;
+    setActing(true);
+    try {
+      if (friendStatus === "accepted" && friendship) {
+        await db.removeFriend(friendship.id);
+        setFriendship(null);
+      } else if (friendStatus === "none") {
+        await db.sendFriendRequest(targetUserId);
+        setFriendship({ id: "", status: "pending", isRequester: true });
+      } else if (friendStatus === "pending" && !isRequester && friendship) {
+        await db.acceptFriendRequest(friendship.id);
+        setFriendship({ ...friendship, status: "accepted" });
+      }
+      onFriendAction();
+    } catch (err) {
+      console.error("Friend action failed:", err);
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const actionLabel =
+    friendStatus === "accepted" ? "Remove Friend"
+    : friendStatus === "pending" && isRequester ? "Request Pending"
+    : friendStatus === "pending" && !isRequester ? "Accept Request"
+    : "Add Friend";
+
+  const actionDisabled = acting || (friendStatus === "pending" && isRequester);
+  const actionColor =
+    friendStatus === "accepted" ? "#ff6b6b"
+    : friendStatus === "pending" && isRequester ? color.dim
+    : color.accent;
+  const actionBg =
+    friendStatus === "accepted" ? "transparent"
+    : friendStatus === "pending" && isRequester ? "transparent"
+    : color.accent;
+  const actionTextColor =
+    friendStatus === "accepted" ? "#ff6b6b"
+    : friendStatus === "pending" && isRequester ? color.dim
+    : "#000";
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <div
+        onClick={onClose}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.8)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+        }}
+      />
+      <div
+        style={{
+          position: "relative",
+          background: color.surface,
+          borderRadius: 24,
+          width: "90%",
+          maxWidth: 340,
+          padding: "40px 24px 32px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          animation: "slideUp 0.2s ease-out",
+        }}
+      >
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            top: 14,
+            right: 14,
+            background: "none",
+            border: "none",
+            color: color.dim,
+            fontSize: 18,
+            cursor: "pointer",
+            padding: 4,
+            lineHeight: 1,
+          }}
+        >
+          ✕
+        </button>
+
+        {loading ? (
+          <div style={{ padding: "40px 0", color: color.faint, fontFamily: font.mono, fontSize: 12 }}>
+            <span style={{ animation: "pulse 1.5s ease-in-out infinite" }}>Loading...</span>
+          </div>
+        ) : !profileData ? (
+          <div style={{ padding: "40px 0", color: color.faint, fontFamily: font.mono, fontSize: 12 }}>
+            User not found
+          </div>
+        ) : (
+          <>
+            {/* Avatar */}
+            <div
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: "50%",
+                background: isSelf ? color.accent : friendStatus === "accepted" ? color.accent : color.borderLight,
+                color: isSelf || friendStatus === "accepted" ? "#000" : color.dim,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontFamily: font.mono,
+                fontSize: 28,
+                fontWeight: 700,
+                marginBottom: 16,
+              }}
+            >
+              {profileData.avatar_letter}
+            </div>
+
+            {/* Name */}
+            <div style={{ fontFamily: font.serif, fontSize: 22, color: color.text, marginBottom: 4 }}>
+              {profileData.display_name}
+            </div>
+
+            {/* Username */}
+            <div style={{ fontFamily: font.mono, fontSize: 13, color: color.dim, marginBottom: 4 }}>
+              @{profileData.username}
+            </div>
+
+            {/* IG Handle */}
+            {profileData.ig_handle && (
+              <div style={{ fontFamily: font.mono, fontSize: 11, color: color.faint, marginBottom: 8 }}>
+                ig: @{profileData.ig_handle}
+              </div>
+            )}
+
+            {/* Availability */}
+            <div style={{ fontFamily: font.mono, fontSize: 12, color: color.faint, marginBottom: 32 }}>
+              {profileData.availability === "open" && "✨ open to friends!"}
+              {profileData.availability === "awkward" && "👀 awkward timing"}
+              {profileData.availability === "not-available" && "🌙 not available"}
+            </div>
+
+            {/* Action button */}
+            {!isSelf && currentUserId && (
+              <button
+                onClick={handleAction}
+                disabled={actionDisabled}
+                style={{
+                  width: "100%",
+                  background: actionBg,
+                  color: actionTextColor,
+                  border: friendStatus === "accepted"
+                    ? "1px solid rgba(255,107,107,0.3)"
+                    : friendStatus === "pending" && isRequester
+                      ? `1px solid ${color.borderMid}`
+                      : "none",
+                  borderRadius: 12,
+                  padding: "14px 24px",
+                  fontFamily: font.mono,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: actionDisabled ? "default" : "pointer",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  opacity: actionDisabled ? 0.6 : 1,
+                }}
+              >
+                {acting ? "..." : actionLabel}
+              </button>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };
@@ -5118,6 +5387,7 @@ export default function Home() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushSupported, setPushSupported] = useState(false);
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
 
   const showToast = (msg: string) => {
@@ -5243,6 +5513,7 @@ export default function Home() {
         vibe: se.event!.vibes,
         image: se.event!.image_url ?? "",
         igHandle: se.event!.ig_handle ?? "",
+        igUrl: se.event!.ig_url ?? undefined,
         saved: true,
         isDown: se.is_down,
         peopleDown: peopleDownMap[se.event!.id] ?? [],
@@ -5267,6 +5538,7 @@ export default function Home() {
           vibe: e.vibes,
           image: e.image_url ?? "",
           igHandle: e.ig_handle ?? "",
+          igUrl: e.ig_url ?? undefined,
           saved: savedEventIdSet.has(e.id),
           isDown: savedDownMap.get(e.id) ?? false,
           isPublic: true,
@@ -5286,6 +5558,7 @@ export default function Home() {
         avatar: p.avatar_letter,
         status: "friend" as const,
         availability: p.availability,
+        igHandle: p.ig_handle ?? undefined,
       }));
       setFriends(transformedFriends);
 
@@ -5299,6 +5572,7 @@ export default function Home() {
         username: f.requester!.username,
         avatar: f.requester!.avatar_letter,
         status: "incoming" as const,
+        igHandle: f.requester!.ig_handle ?? undefined,
       }));
 
       // Load suggested users (people not yet friends)
@@ -5312,6 +5586,7 @@ export default function Home() {
           username: p.username,
           avatar: p.avatar_letter,
           status: "none" as const,
+          igHandle: p.ig_handle ?? undefined,
         }));
       } catch (suggestErr) {
         console.warn("Failed to load suggestions:", suggestErr);
@@ -5342,6 +5617,7 @@ export default function Home() {
           const members = (s.members ?? []).map((m) => ({
             name: m.user_id === userId ? "You" : (m.user?.display_name ?? "Unknown"),
             avatar: m.user_id === userId ? (profile!.avatar_letter) : (m.user?.avatar_letter ?? "?"),
+            userId: m.user_id,
           }));
           const messages = (s.messages ?? [])
             .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
@@ -5477,7 +5753,7 @@ export default function Home() {
       if (newNotif.type === "friend_request" && newNotif.related_user_id) {
         if (newNotif.body) showToastRef.current(newNotif.body);
         try {
-          const [profile, friendshipId] = await Promise.all([
+          const [profile, friendship] = await Promise.all([
             db.getProfileById(newNotif.related_user_id),
             db.getFriendshipWith(newNotif.related_user_id),
           ]);
@@ -5485,11 +5761,12 @@ export default function Home() {
             const incoming: Friend = {
               id: parseInt(profile.id.slice(0, 8), 16) || Date.now(),
               odbc: profile.id,
-              friendshipId: friendshipId ?? undefined,
+              friendshipId: friendship?.id ?? undefined,
               name: profile.display_name,
               username: profile.username,
               avatar: profile.avatar_letter,
               status: "incoming",
+              igHandle: profile.ig_handle ?? undefined,
             };
             setSuggestions((prev) => {
               if (prev.some((s) => s.odbc === profile.id)) return prev;
@@ -6969,6 +7246,7 @@ export default function Home() {
               await db.leaveSquad(squadDbId);
             }}
             userId={userId}
+            onViewProfile={(uid) => setViewingUserId(uid)}
           />
         )}
         {tab === "profile" && (
@@ -7252,6 +7530,7 @@ export default function Home() {
                 vibe: dbEvent.vibes || vibes,
                 image: dbEvent.image_url || imageUrl,
                 igHandle: dbEvent.ig_handle || igHandle,
+                igUrl: dbEvent.ig_url ?? undefined,
                 saved: true,
                 isDown: true,
                 isPublic: dbEvent.is_public ?? sharePublicly,
@@ -7277,6 +7556,7 @@ export default function Home() {
               vibe: vibes,
               image: imageUrl,
               igHandle,
+              igUrl: e.igUrl,
               saved: true,
               isDown: true,
               isPublic: sharePublicly,
@@ -7375,6 +7655,7 @@ export default function Home() {
         squadPoolMembers={squadPoolMembers}
         inSquadPool={inSquadPool}
         isDemoMode={isDemoMode}
+        onViewProfile={(uid) => setViewingUserId(uid)}
       />
       {/* Notifications Panel */}
       {notificationsOpen && (
@@ -7721,6 +8002,7 @@ export default function Home() {
                   ? "pending" as const
                   : "none" as const,
               availability: p.availability,
+              igHandle: p.ig_handle ?? undefined,
             }));
         } : isDemoMode ? async (query) => {
           return DEMO_SEARCH_USERS.filter(u =>
@@ -7728,7 +8010,19 @@ export default function Home() {
             u.username.toLowerCase().includes(query.toLowerCase())
           );
         } : undefined}
+        onViewProfile={(uid) => setViewingUserId(uid)}
       />
+      {viewingUserId && (
+        <UserProfileOverlay
+          targetUserId={viewingUserId}
+          currentUserId={userId}
+          onClose={() => setViewingUserId(null)}
+          onFriendAction={() => {
+            // Reload friends/suggestions after any friend action
+            if (!isDemoMode && userId) loadRealData();
+          }}
+        />
+      )}
     </div>
   );
 }
