@@ -1,0 +1,289 @@
+"use client";
+
+import * as db from "@/lib/db";
+import { font, color } from "@/lib/styles";
+import { formatTimeAgo } from "@/lib/utils";
+import type { Tab } from "@/lib/ui-types";
+
+interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  related_user_id: string | null;
+  related_squad_id: string | null;
+  related_check_id: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+const NotificationsPanel = ({
+  open,
+  onClose,
+  notifications,
+  setNotifications,
+  isDemoMode,
+  userId,
+  setUnreadCount,
+  friends,
+  onNavigate,
+}: {
+  open: boolean;
+  onClose: () => void;
+  notifications: Notification[];
+  setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>;
+  isDemoMode: boolean;
+  userId: string | null;
+  setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
+  friends: { id: string }[];
+  onNavigate: (action: { type: "friends"; tab: "friends" | "add" } | { type: "groups" } | { type: "feed" }) => void;
+}) => {
+  if (!open) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 100,
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center",
+      }}
+    >
+      <div
+        onClick={onClose}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.7)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+        }}
+      />
+      <div
+        style={{
+          position: "relative",
+          background: color.surface,
+          borderRadius: "24px 24px 0 0",
+          width: "100%",
+          maxWidth: 420,
+          maxHeight: "80vh",
+          padding: "24px 0 0",
+          animation: "slideUp 0.3s ease-out",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <div
+          style={{
+            width: 40,
+            height: 4,
+            background: color.faint,
+            borderRadius: 2,
+            margin: "0 auto 16px",
+          }}
+        />
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "0 20px 16px",
+            borderBottom: `1px solid ${color.border}`,
+          }}
+        >
+          <h2
+            style={{
+              fontFamily: font.serif,
+              fontSize: 22,
+              color: color.text,
+              fontWeight: 400,
+            }}
+          >
+            Notifications
+          </h2>
+          {notifications.some((n) => !n.is_read) && (
+            <button
+              onClick={() => {
+                if (!isDemoMode && userId) {
+                  db.markAllNotificationsRead();
+                }
+                setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+                setUnreadCount(0);
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                color: color.accent,
+                fontFamily: font.mono,
+                fontSize: 11,
+                cursor: "pointer",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
+              Mark all read
+            </button>
+          )}
+        </div>
+        <div
+          style={{
+            overflowY: "auto",
+            flex: 1,
+            padding: "0 0 32px",
+          }}
+        >
+          {notifications.length === 0 ? (
+            <div
+              style={{
+                padding: "40px 20px",
+                textAlign: "center",
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: font.serif,
+                  fontSize: 18,
+                  color: color.muted,
+                  marginBottom: 8,
+                }}
+              >
+                No notifications yet
+              </div>
+              <p
+                style={{
+                  fontFamily: font.mono,
+                  fontSize: 11,
+                  color: color.faint,
+                }}
+              >
+                You&apos;ll see friend requests, check responses, and squad invites here
+              </p>
+            </div>
+          ) : (
+            notifications.map((n) => (
+              <button
+                key={n.id}
+                onClick={() => {
+                  // Mark single notification as read
+                  if (!n.is_read) {
+                    if (!isDemoMode && userId) {
+                      db.markNotificationRead(n.id);
+                    }
+                    setNotifications((prev) =>
+                      prev.map((notif) => notif.id === n.id ? { ...notif, is_read: true } : notif)
+                    );
+                    setUnreadCount((prev) => Math.max(0, prev - 1));
+                  }
+                  // Navigate based on type
+                  if (n.type === "friend_request" || n.type === "friend_accepted") {
+                    onClose();
+                    const alreadyFriends = n.type === "friend_request" && n.related_user_id &&
+                      friends.some((f) => f.id === n.related_user_id);
+                    onNavigate({
+                      type: "friends",
+                      tab: n.type === "friend_request" && !alreadyFriends ? "add" : "friends",
+                    });
+                  } else if (n.type === "squad_message" || n.type === "squad_invite") {
+                    onClose();
+                    onNavigate({ type: "groups" });
+                  } else if (n.type === "check_response") {
+                    onClose();
+                    onNavigate({ type: "feed" });
+                  }
+                }}
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  padding: "14px 20px",
+                  background: n.is_read ? "transparent" : "rgba(232, 255, 90, 0.04)",
+                  border: "none",
+                  borderBottom: `1px solid ${color.border}`,
+                  cursor: "pointer",
+                  width: "100%",
+                  textAlign: "left",
+                }}
+              >
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    background: n.type === "friend_request" ? "#E8FF5A22"
+                      : n.type === "friend_accepted" ? "#34C75922"
+                      : n.type === "check_response" ? "#FF9F0A22"
+                      : n.type === "squad_invite" ? "#AF52DE22"
+                      : "#5856D622",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 16,
+                    flexShrink: 0,
+                  }}
+                >
+                  {n.type === "friend_request" ? "👋"
+                    : n.type === "friend_accepted" ? "🤝"
+                    : n.type === "check_response" ? "🔥"
+                    : n.type === "squad_invite" ? "🚀"
+                    : "💬"}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontFamily: font.mono,
+                      fontSize: 12,
+                      color: n.is_read ? color.muted : color.text,
+                      fontWeight: n.is_read ? 400 : 700,
+                      marginBottom: 2,
+                    }}
+                  >
+                    {n.title}
+                  </div>
+                  {n.body && (
+                    <div
+                      style={{
+                        fontFamily: font.mono,
+                        fontSize: 11,
+                        color: color.dim,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {n.body}
+                    </div>
+                  )}
+                  <div
+                    style={{
+                      fontFamily: font.mono,
+                      fontSize: 10,
+                      color: color.faint,
+                      marginTop: 4,
+                    }}
+                  >
+                    {formatTimeAgo(new Date(n.created_at))}
+                  </div>
+                </div>
+                {!n.is_read && (
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: color.accent,
+                      flexShrink: 0,
+                      alignSelf: "center",
+                    }}
+                  />
+                )}
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default NotificationsPanel;

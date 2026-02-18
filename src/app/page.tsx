@@ -28,6 +28,11 @@ import FriendsModal from "@/components/friends/FriendsModal";
 import CalendarView from "@/components/calendar/CalendarView";
 import GroupsView from "@/components/squads/GroupsView";
 import ProfileView from "@/components/profile/ProfileView";
+import Header from "@/components/Header";
+import BottomNav from "@/components/BottomNav";
+import Toast from "@/components/Toast";
+import SquadNotificationBanner from "@/components/SquadNotificationBanner";
+import NotificationsPanel from "@/components/NotificationsPanel";
 
 
 
@@ -1002,19 +1007,6 @@ export default function Home() {
     }
   };
 
-  const tabIcons: Record<Tab, string> = {
-    feed: "⚡",
-    calendar: "📅",
-    groups: "👥",
-    profile: "⚙",
-  };
-  const tabLabels: Record<Tab, string> = {
-    feed: "Feed",
-    calendar: "Cal",
-    groups: "Squads",
-    profile: "You",
-  };
-
   // Show loading while checking auth
   if (isLoading) {
     return (
@@ -1087,103 +1079,20 @@ export default function Home() {
       <GlobalStyles />
       <Grain />
 
-      {/* Header */}
-      <div
-        style={{
-          padding: "20px 20px 16px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          background: `linear-gradient(${color.bg} 80%, transparent)`,
+      <Header
+        unreadCount={unreadCount}
+        onOpenNotifications={() => {
+          setNotificationsOpen(true);
+          if (unreadCount > 0) {
+            if (!isDemoMode && userId) {
+              db.markAllNotificationsRead();
+            }
+            setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+            setUnreadCount(0);
+          }
         }}
-      >
-        <h1
-          style={{
-            fontFamily: font.serif,
-            fontSize: 28,
-            color: color.text,
-            fontWeight: 400,
-            letterSpacing: "-0.02em",
-          }}
-        >
-          down to
-        </h1>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {/* Bell icon */}
-          <button
-            onClick={() => {
-              setNotificationsOpen(true);
-              if (unreadCount > 0) {
-                if (!isDemoMode && userId) {
-                  db.markAllNotificationsRead();
-                }
-                setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-                setUnreadCount(0);
-              }
-            }}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              position: "relative",
-              padding: 8,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-            </svg>
-            {unreadCount > 0 && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: 4,
-                  right: 4,
-                  width: unreadCount > 9 ? 18 : 16,
-                  height: 16,
-                  borderRadius: 8,
-                  background: "#ff3b30",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 9,
-                  fontWeight: 700,
-                  fontFamily: font.mono,
-                  color: "#fff",
-                }}
-              >
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </div>
-            )}
-          </button>
-          {/* Add event button */}
-          <button
-            onClick={() => setAddModalOpen(true)}
-            style={{
-              background: color.accent,
-              color: "#000",
-              border: "none",
-              width: 40,
-              height: 40,
-              borderRadius: "50%",
-              fontSize: 22,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: 700,
-            }}
-          >
-            +
-          </button>
-        </div>
-      </div>
+        onOpenAdd={() => setAddModalOpen(true)}
+      />
 
       {/* Content */}
       <div style={{ paddingBottom: 90 }}>
@@ -2218,201 +2127,32 @@ export default function Home() {
         )}
       </div>
 
-      {/* Bottom nav */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "100%",
-          maxWidth: 420,
-          background: `linear-gradient(transparent, ${color.bg} 30%)`,
-          padding: "20px 16px 16px",
-          zIndex: 50,
+      <BottomNav
+        tab={tab}
+        onTabChange={(t) => {
+          setTab(t);
+          if (t === "groups") setHasUnreadSquadMessage(false);
         }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-around",
-            background: color.card,
-            borderRadius: 18,
-            padding: "10px 0",
-            border: `1px solid ${color.border}`,
-          }}
-        >
-          {TABS.map((t) => (
-            <button
-              key={t}
-              onClick={() => {
-                setTab(t);
-                if (t === "groups") setHasUnreadSquadMessage(false);
-              }}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: "8px 16px",
-                borderRadius: 12,
-                position: "relative",
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: font.mono,
-                  fontSize: 10,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.12em",
-                  color: tab === t ? color.accent : color.faint,
-                  fontWeight: tab === t ? 700 : 400,
-                }}
-              >
-                {tabIcons[t]} {tabLabels[t]}
-              </span>
-              {t === "groups" && (hasUnreadSquadMessage || notifications.some((n) => n.type === "squad_invite" && !n.is_read)) && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 4,
-                    right: 8,
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: "#ff3b30",
-                  }}
-                />
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+        hasGroupsUnread={hasUnreadSquadMessage || notifications.some((n) => n.type === "squad_invite" && !n.is_read)}
+      />
 
-      {/* Toast */}
       {toastMsg && (
-        <div
-          onClick={toastAction ? () => {
-            toastAction();
-            setToastMsg(null);
-            setToastAction(null);
-          } : undefined}
-          style={{
-            position: "fixed",
-            bottom: 100,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: color.accent,
-            color: "#000",
-            padding: "10px 20px",
-            borderRadius: 12,
-            fontFamily: font.mono,
-            fontSize: 12,
-            fontWeight: 700,
-            zIndex: 200,
-            animation: "toastIn 0.3s ease",
-            whiteSpace: "nowrap",
-            cursor: toastAction ? "pointer" : "default",
-          }}
-        >
-          {toastMsg}{toastAction ? " tap >" : ""}
-        </div>
+        <Toast
+          message={toastMsg}
+          action={toastAction}
+          onDismiss={() => { setToastMsg(null); setToastAction(null); }}
+        />
       )}
 
-      {/* Squad formation notification */}
       {squadNotification && (
-        <div
-          onClick={() => {
-            setAutoSelectSquadId(squadNotification.squadId);
+        <SquadNotificationBanner
+          notification={squadNotification}
+          onOpen={(squadId) => {
+            setAutoSelectSquadId(squadId);
             setTab("groups");
             setSquadNotification(null);
           }}
-          style={{
-            position: "fixed",
-            top: 60,
-            left: 20,
-            right: 20,
-            background: "linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%)",
-            border: `2px solid ${color.accent}`,
-            borderRadius: 16,
-            padding: 16,
-            zIndex: 250,
-            animation: "toastIn 0.3s ease",
-            boxShadow: `0 8px 32px rgba(232, 255, 90, 0.2)`,
-            cursor: "pointer",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: font.mono,
-              fontSize: 10,
-              color: color.accent,
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              marginBottom: 8,
-            }}
-          >
-            🎉 Squad Formed!
-          </div>
-          <div
-            style={{
-              fontFamily: font.serif,
-              fontSize: 18,
-              color: color.text,
-              marginBottom: 12,
-            }}
-          >
-            {squadNotification.squadName}
-          </div>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 6,
-            }}
-          >
-            <div
-              style={{
-                fontFamily: font.mono,
-                fontSize: 11,
-                color: color.dim,
-              }}
-            >
-              💡 idea by <span style={{ color: color.text }}>{squadNotification.ideaBy}</span>
-            </div>
-            <div
-              style={{
-                fontFamily: font.mono,
-                fontSize: 11,
-                color: color.dim,
-              }}
-            >
-              🚀 started by <span style={{ color: color.accent }}>{squadNotification.startedBy}</span>
-            </div>
-            {squadNotification.members.length > 0 && (
-              <div
-                style={{
-                  fontFamily: font.mono,
-                  fontSize: 11,
-                  color: color.dim,
-                  marginTop: 4,
-                }}
-              >
-                👥 {squadNotification.members.join(", ")} + you
-              </div>
-            )}
-          </div>
-          <div
-            style={{
-              fontFamily: font.mono,
-              fontSize: 10,
-              color: color.accent,
-              marginTop: 10,
-              opacity: 0.7,
-            }}
-          >
-            Tap to open chat →
-          </div>
-        </div>
+        />
       )}
 
       <AddModal
@@ -2611,251 +2351,27 @@ export default function Home() {
         isDemoMode={isDemoMode}
         onViewProfile={(uid) => setViewingUserId(uid)}
       />
-      {/* Notifications Panel */}
-      {notificationsOpen && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 100,
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            onClick={() => setNotificationsOpen(false)}
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: "rgba(0,0,0,0.7)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-            }}
-          />
-          <div
-            style={{
-              position: "relative",
-              background: color.surface,
-              borderRadius: "24px 24px 0 0",
-              width: "100%",
-              maxWidth: 420,
-              maxHeight: "80vh",
-              padding: "24px 0 0",
-              animation: "slideUp 0.3s ease-out",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <div
-              style={{
-                width: 40,
-                height: 4,
-                background: color.faint,
-                borderRadius: 2,
-                margin: "0 auto 16px",
-              }}
-            />
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "0 20px 16px",
-                borderBottom: `1px solid ${color.border}`,
-              }}
-            >
-              <h2
-                style={{
-                  fontFamily: font.serif,
-                  fontSize: 22,
-                  color: color.text,
-                  fontWeight: 400,
-                }}
-              >
-                Notifications
-              </h2>
-              {notifications.some((n) => !n.is_read) && (
-                <button
-                  onClick={() => {
-                    if (!isDemoMode && userId) {
-                      db.markAllNotificationsRead();
-                    }
-                    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-                    setUnreadCount(0);
-                  }}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: color.accent,
-                    fontFamily: font.mono,
-                    fontSize: 11,
-                    cursor: "pointer",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                  }}
-                >
-                  Mark all read
-                </button>
-              )}
-            </div>
-            <div
-              style={{
-                overflowY: "auto",
-                flex: 1,
-                padding: "0 0 32px",
-              }}
-            >
-              {notifications.length === 0 ? (
-                <div
-                  style={{
-                    padding: "40px 20px",
-                    textAlign: "center",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontFamily: font.serif,
-                      fontSize: 18,
-                      color: color.muted,
-                      marginBottom: 8,
-                    }}
-                  >
-                    No notifications yet
-                  </div>
-                  <p
-                    style={{
-                      fontFamily: font.mono,
-                      fontSize: 11,
-                      color: color.faint,
-                    }}
-                  >
-                    You&apos;ll see friend requests, check responses, and squad invites here
-                  </p>
-                </div>
-              ) : (
-                notifications.map((n) => (
-                  <button
-                    key={n.id}
-                    onClick={() => {
-                      // Mark single notification as read
-                      if (!n.is_read) {
-                        if (!isDemoMode && userId) {
-                          db.markNotificationRead(n.id);
-                        }
-                        setNotifications((prev) =>
-                          prev.map((notif) => notif.id === n.id ? { ...notif, is_read: true } : notif)
-                        );
-                        setUnreadCount((prev) => Math.max(0, prev - 1));
-                      }
-                      // Navigate based on type
-                      if (n.type === "friend_request" || n.type === "friend_accepted") {
-                        setNotificationsOpen(false);
-                        // If friend_request but already friends, show friends tab instead of empty add tab
-                        const alreadyFriends = n.type === "friend_request" && n.related_user_id &&
-                          friends.some((f) => f.id === n.related_user_id);
-                        setFriendsInitialTab(n.type === "friend_request" && !alreadyFriends ? "add" : "friends");
-                        setFriendsOpen(true);
-                      } else if (n.type === "squad_message" || n.type === "squad_invite") {
-                        setNotificationsOpen(false);
-                        setTab("groups");
-                      } else if (n.type === "check_response") {
-                        setNotificationsOpen(false);
-                        setTab("feed");
-                        setFeedMode("foryou");
-                      }
-                    }}
-                    style={{
-                      display: "flex",
-                      gap: 12,
-                      padding: "14px 20px",
-                      background: n.is_read ? "transparent" : "rgba(232, 255, 90, 0.04)",
-                      border: "none",
-                      borderBottom: `1px solid ${color.border}`,
-                      cursor: "pointer",
-                      width: "100%",
-                      textAlign: "left",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: "50%",
-                        background: n.type === "friend_request" ? "#E8FF5A22"
-                          : n.type === "friend_accepted" ? "#34C75922"
-                          : n.type === "check_response" ? "#FF9F0A22"
-                          : n.type === "squad_invite" ? "#AF52DE22"
-                          : "#5856D622",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 16,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {n.type === "friend_request" ? "👋"
-                        : n.type === "friend_accepted" ? "🤝"
-                        : n.type === "check_response" ? "🔥"
-                        : n.type === "squad_invite" ? "🚀"
-                        : "💬"}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontFamily: font.mono,
-                          fontSize: 12,
-                          color: n.is_read ? color.muted : color.text,
-                          fontWeight: n.is_read ? 400 : 700,
-                          marginBottom: 2,
-                        }}
-                      >
-                        {n.title}
-                      </div>
-                      {n.body && (
-                        <div
-                          style={{
-                            fontFamily: font.mono,
-                            fontSize: 11,
-                            color: color.dim,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {n.body}
-                        </div>
-                      )}
-                      <div
-                        style={{
-                          fontFamily: font.mono,
-                          fontSize: 10,
-                          color: color.faint,
-                          marginTop: 4,
-                        }}
-                      >
-                        {formatTimeAgo(new Date(n.created_at))}
-                      </div>
-                    </div>
-                    {!n.is_read && (
-                      <div
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: "50%",
-                          background: color.accent,
-                          flexShrink: 0,
-                          alignSelf: "center",
-                        }}
-                      />
-                    )}
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <NotificationsPanel
+        open={notificationsOpen}
+        onClose={() => setNotificationsOpen(false)}
+        notifications={notifications}
+        setNotifications={setNotifications}
+        isDemoMode={isDemoMode}
+        userId={userId}
+        setUnreadCount={setUnreadCount}
+        friends={friends}
+        onNavigate={(action) => {
+          if (action.type === "friends") {
+            setFriendsInitialTab(action.tab);
+            setFriendsOpen(true);
+          } else if (action.type === "groups") {
+            setTab("groups");
+          } else if (action.type === "feed") {
+            setTab("feed");
+            setFeedMode("foryou");
+          }
+        }}
+      />
 
       <EditEventModal
         event={editingEvent}
