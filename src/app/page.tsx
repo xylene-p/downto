@@ -5492,7 +5492,7 @@ export default function Home() {
           expiresIn,
           expiryPercent,
           responses: c.responses.map((r) => ({
-            name: r.user?.display_name ?? "Unknown",
+            name: r.user_id === userId ? "You" : (r.user?.display_name ?? "Unknown"),
             avatar: r.user?.avatar_letter ?? "?",
             status: r.response,
             odbc: r.user_id,
