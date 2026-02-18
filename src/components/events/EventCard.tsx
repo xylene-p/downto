@@ -59,16 +59,20 @@ const EventCard = ({
       }}
     >
       <div style={{ position: "relative", height: 180, overflow: "hidden" }}>
-        <img
-          src={event.image}
-          alt=""
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            filter: "brightness(0.6) contrast(1.1)",
-          }}
-        />
+        {event.image ? (
+          <img
+            src={event.image}
+            alt=""
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              filter: "brightness(0.6) contrast(1.1)",
+            }}
+          />
+        ) : (
+          <div style={{ width: "100%", height: "100%", background: "#1a1a1a" }} />
+        )}
         {onLongPress && (
           <button
             onClick={(e) => {
