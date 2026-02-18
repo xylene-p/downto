@@ -13,6 +13,14 @@ import {
 
 // ─── Validation helpers ──────────────────────────────────────────────────────
 
+/** Format a Date as YYYY-MM-DD in the local timezone (avoids UTC date-shift) */
+const toLocalISODate = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
 /** Strip HTML tags and trim whitespace */
 const sanitize = (s: string, maxLen = 200): string =>
   s.replace(/<[^>]*>/g, "").trim().slice(0, maxLen);
@@ -31,12 +39,12 @@ const parseDateToISO = (display: string): string | null => {
   const today = new Date();
 
   if (lower === "tonight" || lower === "today") {
-    return today.toISOString().slice(0, 10);
+    return toLocalISODate(today);
   }
   if (lower === "tomorrow") {
     const d = new Date(today);
     d.setDate(d.getDate() + 1);
-    return d.toISOString().slice(0, 10);
+    return toLocalISODate(d);
   }
 
   // Try "Feb 15", "February 15", "Sat, Feb 15", "2/15", etc.
@@ -51,7 +59,7 @@ const parseDateToISO = (display: string): string | null => {
     if (parsed < twoMonthsAgo) {
       parsed.setFullYear(year + 1);
     }
-    return parsed.toISOString().slice(0, 10);
+    return toLocalISODate(parsed);
   }
   return null;
 };
@@ -69,7 +77,7 @@ const parseNaturalDate = (text: string): { label: string; iso: string } | null =
   const today = new Date();
   const todayDay = today.getDay();
 
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const fmt = toLocalISODate;
   const lbl = (d: Date) => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 
   // "tonight" / "today"
