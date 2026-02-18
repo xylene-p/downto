@@ -127,3 +127,4 @@ The core loop works end-to-end in production: OTP code auth (8-digit, replaced m
 - Natural language date parsing on interest checks — Todoist-style detection (tonight, tomorrow, friday, feb 20, etc.) with auto-detected date chip and dismissible UI
 - IG link on events — igHandle badge on event cards links to original Instagram post (↗ opens in new tab)
 - Reusable UserProfileOverlay — tappable avatars/names in squad chats, event lobbies, and friends list open a centered profile card with name, avatar, @username, IG handle, availability, and contextual friend actions (add/remove/accept/pending)
+- Auto-join squad from interest check — DB trigger adds "down" responders to existing squad if room; configurable max squad size (2-5) with pill picker in check creation UI; check cards show squad capacity (X/Y) and "Squad full" when at cap
