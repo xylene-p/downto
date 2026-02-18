@@ -15,66 +15,12 @@ import { toLocalISODate, sanitize, sanitizeVibes, parseDateToISO, parseNaturalDa
 import type { Person, Event, InterestCheck, ScrapedEvent, Squad, Friend, AvailabilityStatus, Tab } from "@/lib/ui-types";
 import { TABS, AVAILABILITY_OPTIONS, EXPIRY_OPTIONS } from "@/lib/ui-types";
 import { DEMO_EVENTS, DEMO_CHECKS, DEMO_TONIGHT, DEMO_SQUADS, DEMO_FRIENDS, DEMO_SUGGESTIONS, DEMO_NOTIFICATIONS, DEMO_SEARCH_USERS } from "@/lib/demo-data";
+import GlobalStyles from "@/components/GlobalStyles";
+import Grain from "@/components/Grain";
 
 
 
 
-
-// ─── Global Styles ──────────────────────────────────────────────────────────
-
-const GlobalStyles = () => (
-  <style>{`
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000; -webkit-font-smoothing: antialiased; }
-    
-    @keyframes slideUp {
-      from { transform: translateY(100%); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes toastIn {
-      from { opacity: 0; transform: translateY(20px) translateX(-50%); }
-      to { opacity: 1; transform: translateY(0) translateX(-50%); }
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-    @keyframes accentGlow {
-      0% { border-color: #E8FF5A; box-shadow: 0 0 12px rgba(232,255,90,0.4); }
-      100% { border-color: rgba(255,255,255,0.06); box-shadow: none; }
-    }
-    
-    ::-webkit-scrollbar { width: 0; }
-    
-    input::placeholder { color: #444; }
-    input:focus { border-color: ${color.accent} !important; }
-    
-    button { transition: all 0.15s ease; }
-    button:active { transform: scale(0.97); }
-  `}</style>
-);
-
-// ─── Grain Overlay ──────────────────────────────────────────────────────────
-
-const Grain = () => (
-  <div
-    style={{
-      position: "fixed",
-      inset: 0,
-      opacity: 0.03,
-      pointerEvents: "none",
-      zIndex: 9999,
-      backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-    }}
-  />
-);
 
 // ─── Paste IG Link Modal ────────────────────────────────────────────────────
 
