@@ -1,0 +1,234 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { font, color } from "@/lib/styles";
+import { parseNaturalDate, sanitize } from "@/lib/utils";
+import GlobalStyles from "./GlobalStyles";
+import Grain from "./Grain";
+
+const FirstCheckScreen = ({
+  onComplete,
+  onSkip,
+}: {
+  onComplete: (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number) => void;
+  onSkip: () => void;
+}) => {
+  const [idea, setIdea] = useState("");
+  const [checkTimer, setCheckTimer] = useState<number | null>(24);
+  const [checkSquadSize, setCheckSquadSize] = useState(5);
+  const detectedDate = idea ? parseNaturalDate(idea) : null;
+  const [dateDismissed, setDateDismissed] = useState(false);
+  const ideaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    setTimeout(() => ideaRef.current?.focus(), 300);
+  }, []);
+
+  return (
+    <div
+      style={{
+        maxWidth: 420,
+        margin: "0 auto",
+        minHeight: "100vh",
+        background: color.bg,
+        padding: "60px 24px",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <GlobalStyles />
+      <Grain />
+
+      <h1
+        style={{
+          fontFamily: font.serif,
+          fontSize: 48,
+          color: color.text,
+          fontWeight: 400,
+          marginBottom: 8,
+          lineHeight: 1.1,
+        }}
+      >
+        what are you down for?
+      </h1>
+      <p
+        style={{
+          fontFamily: font.mono,
+          fontSize: 12,
+          color: color.dim,
+          marginBottom: 40,
+        }}
+      >
+        throw out an idea — we'll find who's in
+      </p>
+
+      {/* Idea textarea */}
+      <textarea
+        ref={ideaRef}
+        value={idea}
+        onChange={(e) => { setIdea(e.target.value.slice(0, 280)); setDateDismissed(false); }}
+        maxLength={280}
+        placeholder="e.g., rooftop picnic saturday? movie night? dinner at 7?"
+        style={{
+          width: "100%",
+          background: color.card,
+          border: `1px solid ${color.borderMid}`,
+          borderRadius: 12,
+          padding: "14px 16px",
+          color: color.text,
+          fontFamily: font.mono,
+          fontSize: 13,
+          outline: "none",
+          resize: "none",
+          height: 100,
+          lineHeight: 1.5,
+          marginBottom: 16,
+          boxSizing: "border-box",
+        }}
+      />
+
+      {/* Auto-detected date chip */}
+      {detectedDate && !dateDismissed && (
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 12,
+          padding: "8px 12px",
+          background: "rgba(232,255,90,0.08)",
+          borderRadius: 10,
+          border: "1px solid rgba(232,255,90,0.2)",
+        }}>
+          <span style={{ fontFamily: font.mono, fontSize: 12, color: color.accent, fontWeight: 600, flex: 1 }}>
+            {detectedDate.label}
+          </span>
+          <button
+            onClick={() => setDateDismissed(true)}
+            style={{
+              background: "none",
+              border: "none",
+              color: color.dim,
+              fontFamily: font.mono,
+              fontSize: 14,
+              cursor: "pointer",
+              padding: "0 4px",
+              lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Timer picker */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontFamily: font.mono, fontSize: 10, color: color.dim, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.15em" }}>
+          Expires in
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {[
+            { label: "1h", hours: 1 as number | null },
+            { label: "4h", hours: 4 as number | null },
+            { label: "12h", hours: 12 as number | null },
+            { label: "24h", hours: 24 as number | null },
+            { label: "\u221e", hours: null as number | null },
+          ].map((opt) => (
+            <button
+              key={opt.label}
+              onClick={() => setCheckTimer(opt.hours)}
+              style={{
+                flex: 1,
+                padding: "10px 0",
+                background: checkTimer === opt.hours ? color.accent : "transparent",
+                color: checkTimer === opt.hours ? "#000" : color.muted,
+                border: `1px solid ${checkTimer === opt.hours ? color.accent : color.borderMid}`,
+                borderRadius: 10,
+                fontFamily: font.mono,
+                fontSize: 12,
+                fontWeight: checkTimer === opt.hours ? 700 : 400,
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Squad size picker */}
+      <div style={{ marginBottom: 40 }}>
+        <div style={{ fontFamily: font.mono, fontSize: 10, color: color.dim, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.15em" }}>
+          Squad size
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {[2, 3, 4, 5].map((size) => (
+            <button
+              key={size}
+              onClick={() => setCheckSquadSize(size)}
+              style={{
+                flex: 1,
+                padding: "10px 0",
+                background: checkSquadSize === size ? color.accent : "transparent",
+                color: checkSquadSize === size ? "#000" : color.muted,
+                border: `1px solid ${checkSquadSize === size ? color.accent : color.borderMid}`,
+                borderRadius: 10,
+                fontFamily: font.mono,
+                fontSize: 12,
+                fontWeight: checkSquadSize === size ? 700 : 400,
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {size}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Send it button */}
+      <button
+        onClick={() => {
+          if (idea.trim()) {
+            const eventDate = (!dateDismissed && detectedDate) ? detectedDate.iso : null;
+            onComplete(sanitize(idea, 280), checkTimer, eventDate, checkSquadSize);
+          }
+        }}
+        disabled={!idea.trim()}
+        style={{
+          width: "100%",
+          padding: "16px",
+          background: idea.trim() ? color.accent : color.borderMid,
+          border: "none",
+          borderRadius: 12,
+          color: idea.trim() ? color.bg : color.dim,
+          fontFamily: font.mono,
+          fontSize: 14,
+          fontWeight: 700,
+          cursor: idea.trim() ? "pointer" : "default",
+          marginBottom: 16,
+        }}
+      >
+        send it
+      </button>
+
+      {/* Skip link */}
+      <button
+        onClick={onSkip}
+        style={{
+          background: "transparent",
+          border: "none",
+          color: color.dim,
+          fontFamily: font.mono,
+          fontSize: 12,
+          cursor: "pointer",
+          alignSelf: "center",
+        }}
+      >
+        skip for now
+      </button>
+    </div>
+  );
+};
+
+export default FirstCheckScreen;

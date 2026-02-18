@@ -602,7 +602,7 @@ const GroupsView = ({
           }}
         >
           No squads yet.<br />
-          Mark yourself as &quot;down&quot; on an event to start one!
+          Say you're down on a friend's check and a squad forms automatically.
         </div>
       ) : (
         squads.map((g) => (

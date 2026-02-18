@@ -149,7 +149,7 @@ const CalendarView = ({ events }: { events: Event[] }) => {
         >
           No events saved yet.
           <br />
-          Hit the feed to find something.
+          Hit + to save your first event.
         </div>
       ) : (
         saved.map((e) => (

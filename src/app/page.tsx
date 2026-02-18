@@ -11,6 +11,7 @@ import GlobalStyles from "@/components/GlobalStyles";
 import Grain from "@/components/Grain";
 import AuthScreen from "@/components/AuthScreen";
 import ProfileSetupScreen from "@/components/ProfileSetupScreen";
+import FirstCheckScreen from "@/components/FirstCheckScreen";
 import EditEventModal from "@/components/events/EditEventModal";
 import EventLobby from "@/components/events/EventLobby";
 import AddModal from "@/components/events/PasteModal";
@@ -71,6 +72,12 @@ export default function Home() {
   const { toastMsg, setToastMsg, toastAction, setToastAction, showToast, showToastWithAction, showToastRef } = useToast();
   const { pushEnabled, pushSupported, handleTogglePush } = usePushNotifications(isLoggedIn, isDemoMode, showToast);
   const [addModalDefaultMode, setAddModalDefaultMode] = useState<"paste" | "idea" | "manual" | null>(null);
+  const [showFirstCheck, setShowFirstCheck] = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("showFirstCheck") === "true";
+    }
+    return false;
+  });
 
   const handleEditEvent = async (updated: { title: string; venue: string; date: string; time: string; vibe: string[] }) => {
     if (!editingEvent) return;
@@ -1001,6 +1008,28 @@ export default function Home() {
         profile={profile}
         onComplete={(updated) => {
           setProfile(updated);
+          setShowFirstCheck(true);
+          sessionStorage.setItem("showFirstCheck", "true");
+        }}
+      />
+    );
+  }
+
+  if (showFirstCheck) {
+    return (
+      <FirstCheckScreen
+        onComplete={async (idea, expiresInHours, eventDate, maxSquadSize) => {
+          await handleCreateCheck(idea, expiresInHours, eventDate, maxSquadSize);
+          setShowFirstCheck(false);
+          sessionStorage.removeItem("showFirstCheck");
+          setFriendsInitialTab("add");
+          setFriendsOpen(true);
+        }}
+        onSkip={() => {
+          setShowFirstCheck(false);
+          sessionStorage.removeItem("showFirstCheck");
+          setFriendsInitialTab("add");
+          setFriendsOpen(true);
         }}
       />
     );
