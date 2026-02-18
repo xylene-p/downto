@@ -4,12 +4,6 @@ import { useState, useEffect, useRef, useCallback, CSSProperties } from "react";
 import { supabase } from "@/lib/supabase";
 import * as db from "@/lib/db";
 import type { Profile } from "@/lib/types";
-import {
-  isPushSupported,
-  registerServiceWorker,
-  subscribeToPush,
-  unsubscribeFromPush,
-} from "@/lib/pushNotifications";
 import { font, color } from "@/lib/styles";
 import { toLocalISODate, sanitize, sanitizeVibes, parseDateToISO, parseNaturalDate, formatTimeAgo } from "@/lib/utils";
 import type { Person, Event, InterestCheck, ScrapedEvent, Squad, Friend, AvailabilityStatus, Tab } from "@/lib/ui-types";
@@ -33,6 +27,9 @@ import BottomNav from "@/components/BottomNav";
 import Toast from "@/components/Toast";
 import SquadNotificationBanner from "@/components/SquadNotificationBanner";
 import NotificationsPanel from "@/components/NotificationsPanel";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/useToast";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 
 
@@ -41,74 +38,7 @@ import NotificationsPanel from "@/components/NotificationsPanel";
 // ─── Main App ───────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-
-  // Check auth state on mount and listen for changes
-  useEffect(() => {
-    let loadingCleared = false;
-    const clearLoading = () => {
-      if (!loadingCleared) {
-        loadingCleared = true;
-        setIsLoading(false);
-      }
-    };
-
-    // Hard safety net: always clear loading after 3 seconds no matter what
-    const safetyTimer = setTimeout(clearLoading, 3000);
-
-    const handleSession = async (session: typeof undefined extends never ? never : any) => {
-      try {
-        if (session?.user) {
-          setIsLoggedIn(true);
-          setUserId(session.user.id);
-
-          // Fetch profile with timeout — don't let it block loading
-          try {
-            const { data } = await Promise.race([
-              supabase.from('profiles').select('*').eq('id', session.user.id).single(),
-              new Promise<{ data: null; error: null }>((r) =>
-                setTimeout(() => r({ data: null, error: null }), 3000)
-              ),
-            ]);
-            if (data) {
-              setProfile(data as Profile);
-            }
-          } catch {
-            // Profile fetch failed — app will work without it
-          }
-        }
-      } catch (err) {
-        console.error("Auth session error:", err);
-      } finally {
-        clearLoading();
-        clearTimeout(safetyTimer);
-      }
-    };
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === "INITIAL_SESSION" || event === "SIGNED_IN") {
-          handleSession(session);
-        } else if (event === "SIGNED_OUT") {
-          setIsLoggedIn(false);
-          setUserId(null);
-          setProfile(null);
-          clearLoading();
-          clearTimeout(safetyTimer);
-        }
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(safetyTimer);
-    };
-  }, []);
-
-  const [isDemoMode, setIsDemoMode] = useState(false);
+  const { isLoggedIn, setIsLoggedIn, isLoading, userId, setUserId, profile, setProfile, isDemoMode, setIsDemoMode } = useAuth();
   const [tab, setTab] = useState<Tab>("feed");
   const [feedMode, setFeedMode] = useState<"foryou" | "tonight">("foryou");
   const [events, setEvents] = useState<Event[]>([]);
@@ -119,7 +49,6 @@ export default function Home() {
   const [socialEvent, setSocialEvent] = useState<Event | null>(null);
   const [squadPoolMembers, setSquadPoolMembers] = useState<Person[]>([]);
   const [inSquadPool, setInSquadPool] = useState(false);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [suggestions, setSuggestions] = useState<Friend[]>([]); // Loaded from DB or demo data
   const [friendsOpen, setFriendsOpen] = useState(false);
@@ -141,25 +70,11 @@ export default function Home() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [hasUnreadSquadMessage, setHasUnreadSquadMessage] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [pushEnabled, setPushEnabled] = useState(false);
-  const [pushSupported, setPushSupported] = useState(false);
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
-  const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
 
-  const [toastAction, setToastAction] = useState<(() => void) | null>(null);
+  const { toastMsg, setToastMsg, toastAction, setToastAction, showToast, showToastWithAction, showToastRef } = useToast();
+  const { pushEnabled, pushSupported, handleTogglePush } = usePushNotifications(isLoggedIn, isDemoMode, showToast);
   const [addModalDefaultMode, setAddModalDefaultMode] = useState<"paste" | "idea" | "manual" | null>(null);
-  const showToast = (msg: string) => {
-    setToastAction(null);
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 2000);
-  };
-  const showToastWithAction = (msg: string, action: () => void) => {
-    setToastAction(() => action);
-    setToastMsg(msg);
-    setTimeout(() => { setToastMsg(null); setToastAction(null); }, 4000);
-  };
-  const showToastRef = useRef(showToast);
-  showToastRef.current = showToast;
 
   const handleEditEvent = async (updated: { title: string; venue: string; date: string; time: string; vibe: string[] }) => {
     if (!editingEvent) return;
@@ -675,23 +590,6 @@ export default function Home() {
     return () => { sub.unsubscribe(); };
   }, [isLoggedIn, isDemoMode, userId]);
 
-  // Register service worker and check push subscription status
-  useEffect(() => {
-    if (!isLoggedIn || isDemoMode) return;
-    if (!isPushSupported()) return;
-    setPushSupported(true);
-
-    (async () => {
-      const reg = await registerServiceWorker();
-      if (!reg) return;
-      swRegistrationRef.current = reg;
-
-      // Check if already subscribed
-      const existing = await reg.pushManager.getSubscription();
-      setPushEnabled(!!existing);
-    })();
-  }, [isLoggedIn, isDemoMode]);
-
   // Subscribe to realtime interest check changes
   useEffect(() => {
     if (!isLoggedIn || isDemoMode || !userId) return;
@@ -723,25 +621,6 @@ export default function Home() {
     navigator.serviceWorker.addEventListener('message', handler);
     return () => navigator.serviceWorker.removeEventListener('message', handler);
   }, []);
-
-  const handleTogglePush = async () => {
-    const reg = swRegistrationRef.current;
-    if (!reg) return;
-
-    if (pushEnabled) {
-      await unsubscribeFromPush(reg);
-      setPushEnabled(false);
-      showToast("Push notifications disabled");
-    } else {
-      const sub = await subscribeToPush(reg);
-      if (sub) {
-        setPushEnabled(true);
-        showToast("Push notifications enabled!");
-      } else {
-        showToast("Could not enable push — check browser permissions");
-      }
-    }
-  };
 
   const toggleSave = (id: string) => {
     const event = events.find((e) => e.id === id);
