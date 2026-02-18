@@ -24,6 +24,7 @@ export interface FeedViewProps {
   tonightEvents: Event[];
   setTonightEvents: React.Dispatch<React.SetStateAction<Event[]>>;
   newlyAddedId: string | null;
+  newlyAddedCheckId: string | null;
   friends: Friend[];
   suggestions: Friend[];
   setSuggestions: React.Dispatch<React.SetStateAction<Friend[]>>;
@@ -60,6 +61,7 @@ export default function FeedView({
   tonightEvents,
   setTonightEvents,
   newlyAddedId,
+  newlyAddedCheckId,
   friends,
   suggestions,
   setSuggestions,
@@ -156,8 +158,9 @@ export default function FeedView({
                           borderRadius: 14,
                           overflow: "hidden",
                           marginBottom: 8,
-                          border: `1px solid ${check.isYours ? "rgba(232,255,90,0.2)" : color.border}`,
+                          border: `1px solid ${check.id === newlyAddedCheckId ? "rgba(90,200,255,0.5)" : check.isYours ? "rgba(232,255,90,0.2)" : color.border}`,
                           cursor: check.squadId ? "pointer" : undefined,
+                          ...(check.id === newlyAddedCheckId ? { animation: "checkGlow 2s ease-in-out infinite" } : {}),
                         }}
                       >
                         {/* Expiry progress bar — hidden for open (no expiry) checks */}

@@ -60,6 +60,7 @@ export default function Home() {
   } | null>(null);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [newlyAddedId, setNewlyAddedId] = useState<string | null>(null);
+  const [newlyAddedCheckId, setNewlyAddedCheckId] = useState<string | null>(null);
   const [editingCheckId, setEditingCheckId] = useState<string | null>(null);
   const [editingCheckText, setEditingCheckText] = useState("");
   const [autoSelectSquadId, setAutoSelectSquadId] = useState<string | null>(null);
@@ -909,6 +910,9 @@ export default function Home() {
           eventDateLabel: dateLabel,
         };
         setChecks((prev) => [newCheck, ...prev]);
+        setTab("feed");
+        setFeedMode("foryou");
+        setNewlyAddedCheckId(newCheck.id);
         showToast("Sent to friends! \u{1F4E3}");
       } catch (err) {
         logError("createCheck", err);
@@ -929,6 +933,9 @@ export default function Home() {
         eventDateLabel: dateLabel,
       };
       setChecks((prev) => [newCheck, ...prev]);
+      setTab("feed");
+      setFeedMode("foryou");
+      setNewlyAddedCheckId(newCheck.id);
       showToast("Sent to friends! \u{1F4E3}");
 
       setTimeout(() => {
@@ -1084,6 +1091,7 @@ export default function Home() {
             tonightEvents={tonightEvents}
             setTonightEvents={setTonightEvents}
             newlyAddedId={newlyAddedId}
+            newlyAddedCheckId={newlyAddedCheckId}
             friends={friends}
             suggestions={suggestions}
             setSuggestions={setSuggestions}
@@ -1162,6 +1170,7 @@ export default function Home() {
         onTabChange={(t) => {
           setTab(t);
           if (t === "groups") setHasUnreadSquadMessage(false);
+          if (t !== "feed") setNewlyAddedCheckId(null);
         }}
         hasGroupsUnread={hasUnreadSquadMessage || notifications.some((n) => n.type === "squad_invite" && !n.is_read)}
       />

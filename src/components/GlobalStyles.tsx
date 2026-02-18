@@ -30,6 +30,10 @@ const GlobalStyles = () => (
       0% { border-color: #E8FF5A; box-shadow: 0 0 12px rgba(232,255,90,0.4); }
       100% { border-color: rgba(255,255,255,0.06); box-shadow: none; }
     }
+    @keyframes checkGlow {
+      0%, 100% { border-color: rgba(90,200,255,0.5); box-shadow: 0 0 12px rgba(90,200,255,0.3); }
+      50% { border-color: rgba(90,200,255,0.8); box-shadow: 0 0 20px rgba(90,200,255,0.5); }
+    }
 
     ::-webkit-scrollbar { width: 0; }
 
