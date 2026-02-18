@@ -413,15 +413,11 @@ const PasteModal = ({
   onClose,
   onSubmit,
   onInterestCheck,
-  igConnected,
-  onConnectIG,
 }: {
   open: boolean;
   onClose: () => void;
   onSubmit: (e: ScrapedEvent, sharePublicly: boolean) => void;
   onInterestCheck: (idea: string, expiresInHours: number | null) => void;
-  igConnected: boolean;
-  onConnectIG: () => void;
 }) => {
   const [mode, setMode] = useState<"paste" | "idea" | "manual">("paste");
   const [url, setUrl] = useState("");
@@ -668,27 +664,6 @@ const PasteModal = ({
               }}
             >
               Paste a Letterboxd or Instagram link to pull event details.
-              {!igConnected && (
-                <>
-                  {" "}
-                  <button
-                    onClick={onConnectIG}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      padding: 0,
-                      fontFamily: font.mono,
-                      fontSize: 11,
-                      color: color.accent,
-                      cursor: "pointer",
-                      textDecoration: "underline",
-                    }}
-                  >
-                    Connect Instagram
-                  </button>{" "}
-                  for IG links.
-                </>
-              )}
             </div>
           </div>
         )}
@@ -3946,8 +3921,6 @@ const EXPIRY_OPTIONS = [
 ];
 
 const ProfileView = ({
-  igConnected,
-  onConnectIG,
   friends,
   onOpenFriends,
   onLogout,
@@ -3957,8 +3930,6 @@ const ProfileView = ({
   onTogglePush,
   onAvailabilityChange,
 }: {
-  igConnected: boolean;
-  onConnectIG: () => void;
   friends: Friend[];
   onOpenFriends: () => void;
   onLogout: () => void;
@@ -4344,27 +4315,23 @@ const ProfileView = ({
       >
         Settings
       </div>
-      <div
-        onClick={!igConnected ? onConnectIG : undefined}
-        style={{
-          padding: "14px 0",
-          borderBottom: `1px solid ${color.border}`,
-          fontFamily: font.mono,
-          fontSize: 12,
-          color: color.muted,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          cursor: !igConnected ? "pointer" : "default",
-        }}
-      >
-        <span>Instagram</span>
-        {igConnected ? (
-          <span style={{ color: color.accent, fontSize: 11 }}>✓ Connected</span>
-        ) : (
-          <span style={{ color: color.accent }}>Connect →</span>
-        )}
-      </div>
+      {profile?.ig_handle && (
+        <div
+          style={{
+            padding: "14px 0",
+            borderBottom: `1px solid ${color.border}`,
+            fontFamily: font.mono,
+            fontSize: 12,
+            color: color.muted,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <span>Instagram</span>
+          <span style={{ color: color.dim, fontSize: 11 }}>@{profile.ig_handle}</span>
+        </div>
+      )}
       {pushSupported && (
         <div
           onClick={onTogglePush}
@@ -4901,7 +4868,6 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [igConnected, setIgConnected] = useState(false);
 
   // Check auth state on mount and listen for changes
   useEffect(() => {
@@ -4932,7 +4898,6 @@ export default function Home() {
             ]);
             if (data) {
               setProfile(data as Profile);
-              if ((data as Profile).ig_handle) setIgConnected(true);
             }
           } catch {
             // Profile fetch failed — app will work without it
@@ -5828,7 +5793,6 @@ export default function Home() {
         onLogin={() => setIsLoggedIn(true)}
         onDemoMode={() => {
           setIsLoggedIn(true);
-          setIgConnected(true);
           setIsDemoMode(true);
           // Populate with demo data
           setEvents(DEMO_EVENTS);
@@ -5850,7 +5814,6 @@ export default function Home() {
         profile={profile}
         onComplete={(updated) => {
           setProfile(updated);
-          if (updated.ig_handle) setIgConnected(true);
         }}
       />
     );
@@ -6839,11 +6802,6 @@ export default function Home() {
         )}
         {tab === "profile" && (
           <ProfileView
-            igConnected={igConnected}
-            onConnectIG={() => {
-              setIgConnected(true);
-              showToast("Instagram connected! 📸");
-            }}
             friends={friends}
             onOpenFriends={() => setFriendsOpen(true)}
             onLogout={async () => {
@@ -7062,11 +7020,6 @@ export default function Home() {
       <PasteModal
         open={pasteOpen}
         onClose={() => setPasteOpen(false)}
-        igConnected={igConnected}
-        onConnectIG={() => {
-          setIgConnected(true);
-          showToast("Instagram connected! 📸");
-        }}
         onSubmit={async (e, sharePublicly) => {
           const rawTitle = e.type === "movie" ? (e.movieTitle || e.title) : e.title;
           const title = sanitize(rawTitle, 100);

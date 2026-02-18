@@ -6,7 +6,7 @@ A user can sign up, add events (via Instagram link or manual entry), see them on
 
 ## Current State
 
-The core loop works end-to-end in production: magic-link auth, profile setup onboarding, event creation (IG scraping + Letterboxd + manual), saving events, "I'm down" toggling with friend visibility, interest checks with configurable expiry (1h/4h/12h/24h/open), squad chat formation from both checks and events, real-time messaging via Supabase Realtime, friend requests/acceptance, push notifications, and a polished demo mode. The UI is mobile-first (max-width 420px), has a service worker for push, and deploys to Vercel. There are 17 migrations building out a complete schema with RLS policies. The entire frontend lives in a single ~7,500-line `page.tsx`.
+The core loop works end-to-end in production: OTP code auth (8-digit, replaced magic link for PWA compatibility), profile setup onboarding, event creation (IG scraping + Letterboxd + manual), saving events, "I'm down" toggling with friend visibility, interest checks with configurable expiry (1h/4h/12h/24h/open), squad chat formation from both checks and events, real-time messaging via Supabase Realtime, friend requests/acceptance, push notifications, and a polished demo mode. The UI is mobile-first (max-width 420px), has a service worker for push, and deploys to Vercel. There are 19 migrations building out a complete schema with RLS policies. The entire frontend lives in a single ~7,500-line `page.tsx`.
 
 **Event dedup is implemented** — two users pasting the same IG link land on the same event. A social signal badge in PasteModal shows "X people down · Y friends" before save.
 
@@ -40,9 +40,9 @@ The core loop works end-to-end in production: magic-link auth, profile setup onb
 
 **All critical blockers resolved.** #1, #2, #3 are done. App is shippable at current scale.
 
-**Can ship with (low risk at current scale):** #4 (validation — scrape API constrains most input), #5 (private posts — error shows, just not helpful), #7 (UUID collision — negligible at <100 users), #8 (session expiry — rare), #9 (subscription leaks — minor memory), #10 (rate limiting — no traffic yet)
+**Can ship with (low risk at current scale):** #7 (UUID collision — negligible at <100 users), #8 (session expiry — rare), #10 (rate limiting — no traffic yet)
 
-**All "should add soon" items resolved.** Remaining blockers are low-risk at current scale.
+**All "should add soon" items resolved.** #4, #5, #9 now done too. Only #7, #8, #10 remain — all low-risk at current scale.
 
 ## Remaining: Event Lobby Polish
 
@@ -107,7 +107,7 @@ The core loop works end-to-end in production: magic-link auth, profile setup onb
 - Profile editing (display name, avatar letter, IG handle, availability status)
 - Demo mode with full mock data
 - PWA manifest and icons
-- 19 database migrations with comprehensive RLS policies
+- 19+ database migrations with comprehensive RLS policies
 - Vercel deployment pipeline
 - Share publicly toggle on event creation
 - Crew → squad terminology rename throughout UI
@@ -121,3 +121,4 @@ The core loop works end-to-end in production: magic-link auth, profile setup onb
 - events.date ISO parsing — manual/scraped events now populate the ISO date column
 - Subscription stale closure fixes — refs for showToast, loadRealData, onSquadUpdate
 - Deleted dead hooks.ts
+- Removed fake "Connect Instagram" flow — IG handle is just a profile field for identity verification
