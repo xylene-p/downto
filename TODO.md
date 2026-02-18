@@ -73,6 +73,7 @@ The core loop works end-to-end in production: OTP code auth (8-digit, replaced m
 - ~~**Hooks file (`hooks.ts`) is dead code**~~ **FIXED** — deleted.
 - ~~**Missing database indexes**~~ **NOT A BUG** — all frequently-queried columns already have indexes from initial migration.
 - ~~**eslint-disable on subscription effects**~~ **FIXED** — stale closures fixed via refs, eslint-disable comments removed.
+- ~~**Check author can't see squad started by others**~~ **FIXED** — `loadChecks` now preserves `squadLocalId` from previous state; author's check card uses `squadDbId` as fallback.
 
 ## Completed
 

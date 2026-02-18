@@ -5477,7 +5477,23 @@ export default function Home() {
           eventDateLabel: c.event_date ? new Date(c.event_date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined,
         };
       });
-      setChecks(transformedChecks);
+      // Preserve squadLocalId/inSquad from previous state (set by loadRealData cross-referencing)
+      // so that a standalone loadChecks call (e.g. from subscribeToChecks) doesn't wipe them
+      setChecks((prev) => {
+        const prevMap = new Map(prev.map((c) => [c.dbId, c]));
+        return transformedChecks.map((c) => {
+          const existing = c.dbId ? prevMap.get(c.dbId) : undefined;
+          if (existing) {
+            return {
+              ...c,
+              squadLocalId: c.squadLocalId ?? existing.squadLocalId,
+              squadDbId: c.squadDbId ?? existing.squadDbId,
+              inSquad: c.inSquad ?? existing.inSquad,
+            };
+          }
+          return c;
+        });
+      });
     } catch (err) {
       console.warn("Failed to load checks:", err);
     }
@@ -6617,7 +6633,7 @@ export default function Home() {
                                 </span>
                               )}
                             </div>
-                            {check.isYours && check.squadLocalId && (
+                            {check.isYours && (check.squadLocalId || check.squadDbId) && (
                               <div
                                 style={{
                                   display: "flex",
@@ -6631,7 +6647,9 @@ export default function Home() {
                                 }}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setAutoSelectSquadId(check.squadLocalId!);
+                                  if (check.squadLocalId) {
+                                    setAutoSelectSquadId(check.squadLocalId);
+                                  }
                                   setTab("groups");
                                 }}
                               >
@@ -6642,7 +6660,7 @@ export default function Home() {
                                 <span style={{ fontFamily: font.mono, fontSize: 10, color: "#AF52DE", marginLeft: "auto" }}>→</span>
                               </div>
                             )}
-                            {check.isYours && !check.squadLocalId && (
+                            {check.isYours && !check.squadLocalId && !check.squadDbId && (
                               <div style={{ display: "flex", gap: 4, flexShrink: 0, marginTop: 2 }}>
                                 <button
                                   onClick={(e) => {
