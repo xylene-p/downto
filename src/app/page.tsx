@@ -90,6 +90,24 @@ export default function Home() {
     }
   }, []);
 
+  // Activate demo mode via ?demo=true query param (used by /demo redirect)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("demo") === "true") {
+      window.history.replaceState({}, "", "/");
+      setIsLoggedIn(true);
+      setIsDemoMode(true);
+      setEvents(DEMO_EVENTS);
+      setChecks(DEMO_CHECKS);
+      setSquads(DEMO_SQUADS);
+      setFriends(DEMO_FRIENDS);
+      setTonightEvents(DEMO_TONIGHT);
+      setSuggestions(DEMO_SUGGESTIONS);
+      setNotifications(DEMO_NOTIFICATIONS);
+      setUnreadCount(DEMO_NOTIFICATIONS.filter(n => !n.is_read).length);
+    }
+  }, []);
+
   // Process ?add= param after auth + onboarding complete
   useEffect(() => {
     if (!isLoggedIn || !userId || !profile?.onboarded || showFirstCheck) return;
@@ -1022,19 +1040,6 @@ export default function Home() {
     return (
       <AuthScreen
         onLogin={() => setIsLoggedIn(true)}
-        onDemoMode={() => {
-          setIsLoggedIn(true);
-          setIsDemoMode(true);
-          // Populate with demo data
-          setEvents(DEMO_EVENTS);
-          setChecks(DEMO_CHECKS);
-          setSquads(DEMO_SQUADS);
-          setFriends(DEMO_FRIENDS);
-          setTonightEvents(DEMO_TONIGHT);
-          setSuggestions(DEMO_SUGGESTIONS);
-          setNotifications(DEMO_NOTIFICATIONS);
-          setUnreadCount(DEMO_NOTIFICATIONS.filter(n => !n.is_read).length);
-        }}
       />
     );
   }

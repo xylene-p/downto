@@ -6,7 +6,7 @@ import { font, color } from "@/lib/styles";
 import GlobalStyles from "./GlobalStyles";
 import Grain from "./Grain";
 
-const AuthScreen = ({ onLogin, onDemoMode }: { onLogin: () => void; onDemoMode: () => void }) => {
+const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
   const [pendingAddUser, setPendingAddUser] = useState<string | null>(null);
 
   useEffect(() => {
@@ -268,26 +268,6 @@ const AuthScreen = ({ onLogin, onDemoMode }: { onLogin: () => void; onDemoMode: 
         </>
       )}
 
-      {/* Demo mode skip */}
-      <button
-        onClick={onDemoMode}
-        style={{
-          position: "absolute",
-          bottom: 40,
-          left: "50%",
-          transform: "translateX(-50%)",
-          background: "transparent",
-          border: `1px solid ${color.borderMid}`,
-          borderRadius: 20,
-          padding: "10px 20px",
-          color: color.dim,
-          fontFamily: font.mono,
-          fontSize: 11,
-          cursor: "pointer",
-        }}
-      >
-        Skip → Demo Mode
-      </button>
     </div>
   );
 };
