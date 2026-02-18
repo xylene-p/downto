@@ -5657,11 +5657,13 @@ export default function Home() {
           return "now";
         };
         const transformedSquads: Squad[] = squadsList.map((s) => {
-          const members = (s.members ?? []).map((m) => ({
-            name: m.user_id === userId ? "You" : (m.user?.display_name ?? "Unknown"),
-            avatar: m.user_id === userId ? (profile?.avatar_letter ?? "?") : (m.user?.avatar_letter ?? "?"),
-            userId: m.user_id,
-          }));
+          const members = (s.members ?? []).map((m) => {
+            const displayName = m.user_id === userId ? "You" : (m.user?.display_name ?? "Unknown");
+            const avatarLetter = m.user_id === userId
+              ? (profile?.avatar_letter ?? profile?.display_name?.charAt(0)?.toUpperCase() ?? "?")
+              : (m.user?.avatar_letter ?? m.user?.display_name?.charAt(0)?.toUpperCase() ?? "?");
+            return { name: displayName, avatar: avatarLetter, userId: m.user_id };
+          });
           const messages = (s.messages ?? [])
             .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
             .map((msg) => ({

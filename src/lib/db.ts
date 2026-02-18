@@ -423,7 +423,7 @@ export async function getActiveChecks(): Promise<(InterestCheck & { author: Prof
     .select(`
       *,
       author:profiles!author_id(*),
-      responses:check_responses(*, user:profiles(*)),
+      responses:check_responses(*, user:profiles!user_id(*)),
       squads(id, members:squad_members(id))
     `)
     .or(`expires_at.gt.${new Date().toISOString()},expires_at.is.null`)
@@ -569,8 +569,8 @@ export async function getSquads(): Promise<Squad[]> {
     .select(`
       *,
       event:events(*),
-      members:squad_members(*, user:profiles(*)),
-      messages(*, sender:profiles(*))
+      members:squad_members(*, user:profiles!user_id(*)),
+      messages(*, sender:profiles!sender_id(*))
     `)
     .in('id', squadIds)
     .order('created_at', { ascending: false })
