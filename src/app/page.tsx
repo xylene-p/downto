@@ -533,7 +533,7 @@ interface ScrapedEvent {
   letterboxdUrl?: string;
 }
 
-const PasteModal = ({
+const AddModal = ({
   open,
   onClose,
   onSubmit,
@@ -696,25 +696,6 @@ const PasteModal = ({
         {/* Mode toggle */}
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
           <button
-            onClick={() => setMode("paste")}
-            style={{
-              flex: 1,
-              background: mode === "paste" ? color.accent : "transparent",
-              color: mode === "paste" ? "#000" : color.dim,
-              border: mode === "paste" ? "none" : `1px solid ${color.borderMid}`,
-              borderRadius: 10,
-              padding: "10px",
-              fontFamily: font.mono,
-              fontSize: 11,
-              fontWeight: mode === "paste" ? 700 : 400,
-              cursor: "pointer",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-            }}
-          >
-            Paste Link
-          </button>
-          <button
             onClick={() => setMode("idea")}
             style={{
               flex: 1,
@@ -732,6 +713,25 @@ const PasteModal = ({
             }}
           >
             Interest Check
+          </button>
+          <button
+            onClick={() => setMode("paste")}
+            style={{
+              flex: 1,
+              background: mode === "paste" ? color.accent : "transparent",
+              color: mode === "paste" ? "#000" : color.dim,
+              border: mode === "paste" ? "none" : `1px solid ${color.borderMid}`,
+              borderRadius: 10,
+              padding: "10px",
+              fontFamily: font.mono,
+              fontSize: 11,
+              fontWeight: mode === "paste" ? 700 : 400,
+              cursor: "pointer",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+            }}
+          >
+            Paste Link
           </button>
         </div>
 
@@ -5454,7 +5454,7 @@ export default function Home() {
   const [tonightEvents, setTonightEvents] = useState<Event[]>([]); // Loaded from DB or demo data
   const [checks, setChecks] = useState<InterestCheck[]>([]);
   const [squads, setSquads] = useState<Squad[]>([]);
-  const [pasteOpen, setPasteOpen] = useState(false);
+  const [addModalOpen, setAddModalOpen] = useState(false);
   const [socialEvent, setSocialEvent] = useState<Event | null>(null);
   const [squadPoolMembers, setSquadPoolMembers] = useState<Person[]>([]);
   const [inSquadPool, setInSquadPool] = useState(false);
@@ -5486,7 +5486,7 @@ export default function Home() {
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
 
   const [toastAction, setToastAction] = useState<(() => void) | null>(null);
-  const [pasteDefaultMode, setPasteDefaultMode] = useState<"paste" | "idea" | "manual" | null>(null);
+  const [addModalDefaultMode, setAddModalDefaultMode] = useState<"paste" | "idea" | "manual" | null>(null);
   const showToast = (msg: string) => {
     setToastAction(null);
     setToastMsg(msg);
@@ -6521,7 +6521,7 @@ export default function Home() {
           </button>
           {/* Add event button */}
           <button
-            onClick={() => setPasteOpen(true)}
+            onClick={() => setAddModalOpen(true)}
             style={{
               background: color.accent,
               color: "#000",
@@ -7270,7 +7270,7 @@ export default function Home() {
 
                     <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                       <button
-                        onClick={() => setPasteOpen(true)}
+                        onClick={() => setAddModalOpen(true)}
                         style={{
                           background: color.accent,
                           color: "#000",
@@ -7772,10 +7772,10 @@ export default function Home() {
         </div>
       )}
 
-      <PasteModal
-        open={pasteOpen}
-        onClose={() => { setPasteOpen(false); setPasteDefaultMode(null); }}
-        defaultMode={pasteDefaultMode}
+      <AddModal
+        open={addModalOpen}
+        onClose={() => { setAddModalOpen(false); setAddModalDefaultMode(null); }}
+        defaultMode={addModalDefaultMode}
         onSubmit={async (e, sharePublicly) => {
           const rawTitle = e.type === "movie" ? (e.movieTitle || e.title) : e.title;
           const title = sanitize(rawTitle, 100);
@@ -7875,14 +7875,14 @@ export default function Home() {
 
           setTab("feed");
           setFeedMode("foryou");
-          const openPasteInIdeaMode = () => {
-            setPasteDefaultMode("idea");
-            setPasteOpen(true);
+          const openAddModalInIdeaMode = () => {
+            setAddModalDefaultMode("idea");
+            setAddModalOpen(true);
           };
           if (e.type === "movie") {
-            showToastWithAction("Movie night saved! Rally friends?", openPasteInIdeaMode);
+            showToastWithAction("Movie night saved! Rally friends?", openAddModalInIdeaMode);
           } else {
-            showToastWithAction("Event saved! Rally friends?", openPasteInIdeaMode);
+            showToastWithAction("Event saved! Rally friends?", openAddModalInIdeaMode);
           }
         }}
         onInterestCheck={async (idea, expiresInHours, eventDate, maxSquadSize) => {
