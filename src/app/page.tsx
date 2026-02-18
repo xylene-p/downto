@@ -20,7 +20,6 @@ import FriendsModal from "@/components/friends/FriendsModal";
 import CalendarView from "@/components/calendar/CalendarView";
 import GroupsView from "@/components/squads/GroupsView";
 import ProfileView from "@/components/profile/ProfileView";
-import FirstCheckScreen from "@/components/FirstCheckScreen";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import Toast from "@/components/Toast";
@@ -29,6 +28,7 @@ import NotificationsPanel from "@/components/NotificationsPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { logError, logWarn } from "@/lib/logger";
 
 
 // ─── Main App ───────────────────────────────────────────────────────────────
@@ -71,7 +71,6 @@ export default function Home() {
   const { toastMsg, setToastMsg, toastAction, setToastAction, showToast, showToastWithAction, showToastRef } = useToast();
   const { pushEnabled, pushSupported, handleTogglePush } = usePushNotifications(isLoggedIn, isDemoMode, showToast);
   const [addModalDefaultMode, setAddModalDefaultMode] = useState<"paste" | "idea" | "manual" | null>(null);
-  const [showFirstCheck, setShowFirstCheck] = useState(false);
 
   const handleEditEvent = async (updated: { title: string; venue: string; date: string; time: string; vibe: string[] }) => {
     if (!editingEvent) return;
@@ -87,7 +86,7 @@ export default function Home() {
           vibes: updated.vibe,
         });
       } catch (err) {
-        console.error("Failed to update event:", err);
+        logError("updateEvent", err, { eventId: editingEvent.id });
         showToast("Failed to update - try again");
         return;
       }
@@ -171,7 +170,7 @@ export default function Home() {
         });
       });
     } catch (err) {
-      console.warn("Failed to load checks:", err);
+      logWarn("loadChecks", "Failed to load checks", { error: err });
     }
   }, [isDemoMode, userId]);
 
@@ -305,7 +304,7 @@ export default function Home() {
           igHandle: p.ig_handle ?? undefined,
         }));
       } catch (suggestErr) {
-        console.warn("Failed to load suggestions:", suggestErr);
+        logWarn("loadSuggestions", "Failed to load suggestions", { error: suggestErr });
       }
 
       // Merge incoming requests + suggestions
@@ -380,11 +379,11 @@ export default function Home() {
           }));
         }
       } catch (squadErr) {
-        console.warn("Failed to load squads:", squadErr);
+        logWarn("loadSquads", "Failed to load squads", { error: squadErr });
       }
 
     } catch (err) {
-      console.error("Failed to load data:", err);
+      logError("loadRealData", err);
     } finally {
       isLoadingRef.current = false;
     }
@@ -414,7 +413,7 @@ export default function Home() {
           }));
         setSquadPoolMembers(poolPeople);
       } catch (err) {
-        console.warn("Failed to load squad pool:", err);
+        logWarn("loadSquadPool", "Failed to load squad pool", { eventId: socialEvent?.id });
       }
     })();
   }, [socialEvent?.id, isDemoMode, userId]);
@@ -452,7 +451,7 @@ export default function Home() {
         setNotifications(notifs);
         setUnreadCount(count);
       } catch (err) {
-        console.warn("Failed to load notifications:", err);
+        logWarn("loadNotifications", "Failed to load notifications", { error: err });
       }
     };
     loadNotifications();
@@ -490,7 +489,7 @@ export default function Home() {
             });
           }
         } catch (err) {
-          console.warn("Failed to fetch incoming friend profile:", err);
+          logWarn("fetchIncomingFriend", "Failed to fetch incoming friend profile", { relatedUserId: newNotif.related_user_id });
         }
       } else if (newNotif.type === "squad_invite") {
         if (newNotif.body) showToastRef.current(newNotif.body);
@@ -579,7 +578,7 @@ export default function Home() {
             });
           }
         } catch (err) {
-          console.warn("Failed to fetch friend profile:", err);
+          logWarn("fetchFriendProfile", "Failed to fetch friend profile", { otherUserId });
         }
       }
     });
@@ -630,7 +629,7 @@ export default function Home() {
     if (!isDemoMode && event.id) {
       (newSaved ? db.saveEvent(event.id) : db.unsaveEvent(event.id))
         .catch((err) => {
-          console.error("Failed to toggle save:", err);
+          logError("toggleSave", err, { eventId: id });
           setEvents((prev) =>
             prev.map((e) => e.id === id ? { ...e, saved: !newSaved } : e)
           );
@@ -651,7 +650,7 @@ export default function Home() {
     if (!isDemoMode && event.id) {
       db.toggleDown(event.id, newDown)
         .catch((err) => {
-          console.error("Failed to toggle down:", err);
+          logError("toggleDown", err, { eventId: id });
           setEvents((prev) =>
             prev.map((e) => e.id === id ? { ...e, isDown: !newDown, saved: prevSaved } : e)
           );
@@ -691,7 +690,7 @@ export default function Home() {
           // Reload checks after "down" to pick up auto-join squad membership from DB trigger
           if (status === "down") loadChecks();
         })
-        .catch((err) => console.error("Failed to respond to check:", err));
+        .catch((err) => logError("respondToCheck", err, { checkId: check?.id, status }));
     }
   };
 
@@ -715,7 +714,7 @@ export default function Home() {
         await db.sendMessage(dbSquad.id, "let's make this happen! 🔥");
         squadDbId = dbSquad.id;
       } catch (err: any) {
-        console.error("Failed to create squad:", err);
+        logError("createSquadFromCheck", err, { checkId: check.id });
         showToast(`Failed to create squad: ${err?.message || err}`);
         return;
       }
@@ -779,7 +778,7 @@ export default function Home() {
         await db.sendMessage(dbSquad.id, `squad's up for ${event.title}! 🔥`);
         squadDbId = dbSquad.id;
       } catch (err: any) {
-        console.error("Failed to create squad:", err);
+        logError("createSquadFromEvent", err, { eventId: event.id });
         showToast(`Failed to create squad: ${err?.message || err}`);
         return;
       }
@@ -878,7 +877,7 @@ export default function Home() {
         showToast("Already looking for a squad");
         return;
       }
-      console.error("Failed to join squad pool:", err);
+      logError("joinSquadPool", err, { eventId: event.id });
       showToast("Something went wrong");
     }
   };
@@ -905,7 +904,7 @@ export default function Home() {
         setChecks((prev) => [newCheck, ...prev]);
         showToast("Sent to friends! \u{1F4E3}");
       } catch (err) {
-        console.error("Failed to create interest check:", err);
+        logError("createCheck", err);
         showToast("Failed to send - try again");
       }
     } else {
@@ -1002,25 +1001,6 @@ export default function Home() {
         profile={profile}
         onComplete={(updated) => {
           setProfile(updated);
-          setShowFirstCheck(true);
-        }}
-      />
-    );
-  }
-
-  if (showFirstCheck) {
-    return (
-      <FirstCheckScreen
-        onComplete={async (idea, expiresInHours, eventDate, maxSquadSize) => {
-          await handleCreateCheck(idea, expiresInHours, eventDate, maxSquadSize);
-          setShowFirstCheck(false);
-          setFriendsInitialTab("add");
-          setFriendsOpen(true);
-        }}
-        onSkip={() => {
-          setShowFirstCheck(false);
-          setFriendsInitialTab("add");
-          setFriendsOpen(true);
         }}
       />
     );
@@ -1140,7 +1120,7 @@ export default function Home() {
                   const updated = await db.updateProfile({ availability: status });
                   setProfile(updated);
                 } catch (err) {
-                  console.error("Failed to update availability:", err);
+                  logError("updateAvailability", err, { status });
                 }
               }
             }}
@@ -1251,7 +1231,7 @@ export default function Home() {
               setTimeout(() => setNewlyAddedId(null), 2500);
             } catch (err) {
               const msg = err instanceof Error ? err.message : String(err);
-              console.error("Failed to save event:", msg);
+              logError("saveEvent", err, { title });
               showToast("Failed to save - try again");
               return;
             }
@@ -1352,7 +1332,7 @@ export default function Home() {
             );
             showToast("Friend request sent! 🤝");
           } catch (err) {
-            console.error("Failed to send friend request:", err);
+            logError("sendFriendRequest", err, { friendId: person.id });
             showToast("Failed to send request");
           }
         }}
@@ -1377,7 +1357,7 @@ export default function Home() {
             // Refresh events so friend's events appear in For You feed
             loadRealDataRef.current();
           } catch (err) {
-            console.error("Failed to accept friend request:", err);
+            logError("acceptFriendRequest", err, { friendId: person.id });
             showToast("Failed to accept request");
           }
         }}
@@ -1397,7 +1377,7 @@ export default function Home() {
             setFriends((prev) => prev.filter((f) => f.id !== id));
             showToast(`Removed ${person.name}`);
           } catch (err) {
-            console.error("Failed to remove friend:", err);
+            logError("removeFriend", err, { friendId: person.id });
             showToast("Failed to remove friend");
           }
         }}

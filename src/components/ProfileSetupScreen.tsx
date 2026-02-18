@@ -6,6 +6,7 @@ import type { Profile } from "@/lib/types";
 import { font, color } from "@/lib/styles";
 import GlobalStyles from "./GlobalStyles";
 import Grain from "./Grain";
+import { logError } from "@/lib/logger";
 
 const ProfileSetupScreen = ({
   profile,
@@ -37,7 +38,7 @@ const ProfileSetupScreen = ({
       if (code === '23505') {
         setUsernameError("Username taken");
       } else {
-        console.error("Failed to save profile:", err);
+        logError("saveProfile", err, { username });
       }
       setSaving(false);
     }
@@ -49,7 +50,7 @@ const ProfileSetupScreen = ({
       const updated = await db.updateProfile({ onboarded: true } as Partial<Profile>);
       onComplete(updated);
     } catch (err) {
-      console.error("Failed to skip setup:", err);
+      logError("skipSetup", err);
       setSaving(false);
     }
   };

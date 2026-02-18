@@ -6,6 +6,7 @@ import type { Profile } from "@/lib/types";
 import { font, color } from "@/lib/styles";
 import type { Event, InterestCheck, Friend } from "@/lib/ui-types";
 import EventCard from "@/components/events/EventCard";
+import { logError } from "@/lib/logger";
 
 export interface FeedViewProps {
   feedMode: "foryou" | "tonight";
@@ -248,7 +249,7 @@ export default function FeedView({
                                   setEditingCheckId(null);
                                   showToast("Check updated!");
                                   if (!isDemoMode && check.id) {
-                                    db.updateInterestCheck(check.id, editingCheckText.trim()).catch((err) => console.error("Failed to update check:", err));
+                                    db.updateInterestCheck(check.id, editingCheckText.trim()).catch((err) => logError("updateCheck", err, { checkId: check.id }));
                                   }
                                 } else if (e.key === "Escape") {
                                   setEditingCheckId(null);
@@ -277,7 +278,7 @@ export default function FeedView({
                                   setEditingCheckId(null);
                                   showToast("Check updated!");
                                   if (!isDemoMode && check.id) {
-                                    db.updateInterestCheck(check.id, editingCheckText.trim()).catch((err) => console.error("Failed to update check:", err));
+                                    db.updateInterestCheck(check.id, editingCheckText.trim()).catch((err) => logError("updateCheck", err, { checkId: check.id }));
                                   }
                                 }
                               }}
@@ -380,7 +381,7 @@ export default function FeedView({
                                       try {
                                         await db.deleteInterestCheck(check.id);
                                       } catch (err) {
-                                        console.error("Failed to delete check:", err);
+                                        logError("deleteCheck", err, { checkId: check.id });
                                       }
                                     }
                                     showToast("Check removed");
@@ -485,7 +486,7 @@ export default function FeedView({
                                       )
                                     );
                                     if (!isDemoMode && check.id) {
-                                      db.removeCheckResponse(check.id).catch((err) => console.error("Failed to remove response:", err));
+                                      db.removeCheckResponse(check.id).catch((err) => logError("removeCheckResponse", err, { checkId: check.id }));
                                     }
                                   } else {
                                     respondToCheck(check.id, "down");
@@ -522,7 +523,7 @@ export default function FeedView({
                                       )
                                     );
                                     if (!isDemoMode && check.id) {
-                                      db.removeCheckResponse(check.id).catch((err) => console.error("Failed to remove response:", err));
+                                      db.removeCheckResponse(check.id).catch((err) => logError("removeCheckResponse", err, { checkId: check.id }));
                                     }
                                   } else {
                                     respondToCheck(check.id, "maybe");
@@ -582,7 +583,7 @@ export default function FeedView({
                                         } catch (err: any) {
                                           const code = err && typeof err === 'object' && 'code' in err ? err.code : '';
                                           if (code !== '23505') {
-                                            console.error("Failed to join squad:", err);
+                                            logError("joinSquad", err, { squadId: check.squadId });
                                             showToast("Failed to join squad");
                                             return;
                                           }
@@ -758,7 +759,7 @@ export default function FeedView({
                                   );
                                   showToast("Friend request sent!");
                                 } catch (err) {
-                                  console.error("Failed to send friend request:", err);
+                                  logError("sendFriendRequest", err, { friendId: s.id });
                                   showToast("Failed to send request");
                                 }
                               }}
@@ -1026,7 +1027,7 @@ export default function FeedView({
                               // Ignore duplicate save (unique constraint)
                               const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : '';
                               if (code !== '23505') {
-                                console.error("Failed to save tonight event:", err);
+                                logError("saveTonightEvent", err, { eventId: e.id });
                                 showToast("Failed to save — try again");
                               }
                             }

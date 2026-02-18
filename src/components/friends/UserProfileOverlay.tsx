@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { font, color } from "@/lib/styles";
 import type { Profile } from "@/lib/types";
 import * as db from "@/lib/db";
+import { logError } from "@/lib/logger";
 
 const UserProfileOverlay = ({
   targetUserId,
@@ -35,7 +36,7 @@ const UserProfileOverlay = ({
           setFriendship(f);
         }
       } catch (err) {
-        console.error("Failed to load profile:", err);
+        logError("loadProfile", err, { targetUserId });
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -63,7 +64,7 @@ const UserProfileOverlay = ({
       }
       onFriendAction();
     } catch (err) {
-      console.error("Friend action failed:", err);
+      logError("friendAction", err, { targetUserId, friendStatus });
     } finally {
       setActing(false);
     }

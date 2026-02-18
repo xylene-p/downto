@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { font, color } from "@/lib/styles";
 import type { Friend } from "@/lib/ui-types";
+import { logError } from "@/lib/logger";
 
 const FriendsModal = ({
   open,
@@ -65,7 +66,7 @@ const FriendsModal = ({
         const results = await onSearchUsers(search);
         setSearchResults(results);
       } catch (err) {
-        console.error("Search failed:", err);
+        logError("searchUsers", err, { query: search });
         setSearchResults([]);
       }
       setSearching(false);

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Profile } from "@/lib/types";
+import { logError } from "@/lib/logger";
 
 export function useAuth() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -45,7 +46,7 @@ export function useAuth() {
           }
         }
       } catch (err) {
-        console.error("Auth session error:", err);
+        logError("authSession", err);
       } finally {
         clearLoading();
         clearTimeout(safetyTimer);

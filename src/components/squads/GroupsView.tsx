@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import * as db from "@/lib/db";
 import { font, color } from "@/lib/styles";
 import type { Squad } from "@/lib/ui-types";
+import { logError } from "@/lib/logger";
 
 const GroupsView = ({
   squads,
@@ -96,7 +97,7 @@ const GroupsView = ({
     // Persist to DB
     if (selectedSquad.id && onSendMessage) {
       onSendMessage(selectedSquad.id, text).catch((err) =>
-        console.error("Failed to send message:", err)
+        logError("sendMessage", err, { squadId: selectedSquad.id })
       );
     }
   };
@@ -259,7 +260,7 @@ const GroupsView = ({
                         onSquadUpdate((prev) => prev.filter((s) => s.id !== selectedSquad.id));
                         setSelectedSquad(null);
                       } catch (err) {
-                        console.error("Failed to leave squad:", err);
+                        logError("leaveSquad", err, { squadId: selectedSquad.id });
                       }
                     }
                     setShowLeaveConfirm(false);
@@ -301,7 +302,7 @@ const GroupsView = ({
               setSelectedSquad(updated);
               onSquadUpdate((prev) => prev.map((s) => s.id === updated.id ? updated : s));
             } catch (err) {
-              console.error("Failed to save logistics:", err);
+              logError("saveLogistics", err, { squadId: selectedSquad.id, field });
             }
             setEditingField(null);
           };

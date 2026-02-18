@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logError } from "@/lib/logger";
 
 /** Strip HTML tags and trim */
 const strip = (s: string) => s.replace(/<[^>]*>/g, "").trim();
@@ -244,7 +245,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Scrape error:", error);
+    logError("scrape", error);
     return NextResponse.json({
       error: "Something went wrong fetching that post. Try again, or enter the details manually."
     }, { status: 500 });
