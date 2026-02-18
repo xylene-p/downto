@@ -496,54 +496,93 @@ const AddModal = ({
               animation: "fadeIn 0.3s ease",
             }}
           >
-            <div
+            <input
+              type="text"
+              value={scraped.title}
+              onChange={(e) => setScraped({ ...scraped, title: e.target.value })}
               style={{
+                width: "100%",
+                background: "transparent",
+                border: "none",
+                borderBottom: `1px solid ${color.borderMid}`,
+                borderRadius: 0,
+                padding: "4px 0",
                 fontFamily: font.serif,
                 fontSize: 22,
                 color: color.text,
                 marginBottom: 8,
+                outline: "none",
               }}
-            >
-              {scraped.title}
-            </div>
-            <div
-              style={{
-                fontFamily: font.mono,
-                fontSize: 12,
-                color: color.muted,
-                marginBottom: 4,
-              }}
-            >
-              {scraped.venue}
-            </div>
-            <div
-              style={{
-                fontFamily: font.mono,
-                fontSize: 12,
-                color: color.muted,
-                marginBottom: 12,
-              }}
-            >
-              {scraped.date} · {scraped.time}
-            </div>
-            <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-              {scraped.vibe.map((v) => (
-                <span
-                  key={v}
+            />
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+              <input
+                type="text"
+                value={scraped.venue === "TBD" ? "" : scraped.venue}
+                onChange={(e) => setScraped({ ...scraped, venue: e.target.value })}
+                placeholder="Venue"
+                style={{
+                  background: color.surface,
+                  border: `1px solid ${color.borderMid}`,
+                  borderRadius: 10,
+                  padding: "10px 12px",
+                  color: color.text,
+                  fontFamily: font.mono,
+                  fontSize: 12,
+                  outline: "none",
+                }}
+              />
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  type="text"
+                  value={scraped.date === "TBD" ? "" : scraped.date}
+                  onChange={(e) => setScraped({ ...scraped, date: e.target.value })}
+                  placeholder="Date"
                   style={{
-                    background: "#1f1f1f",
-                    color: color.accent,
-                    padding: "4px 10px",
-                    borderRadius: 20,
+                    flex: 1,
+                    background: color.surface,
+                    border: `1px solid ${color.borderMid}`,
+                    borderRadius: 10,
+                    padding: "10px 12px",
+                    color: color.text,
                     fontFamily: font.mono,
-                    fontSize: 10,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
+                    fontSize: 12,
+                    outline: "none",
                   }}
-                >
-                  {v}
-                </span>
-              ))}
+                />
+                <input
+                  type="text"
+                  value={scraped.time === "TBD" ? "" : scraped.time}
+                  onChange={(e) => setScraped({ ...scraped, time: e.target.value })}
+                  placeholder="Time"
+                  style={{
+                    flex: 1,
+                    background: color.surface,
+                    border: `1px solid ${color.borderMid}`,
+                    borderRadius: 10,
+                    padding: "10px 12px",
+                    color: color.text,
+                    fontFamily: font.mono,
+                    fontSize: 12,
+                    outline: "none",
+                  }}
+                />
+              </div>
+              <input
+                type="text"
+                value={scraped.vibe.join(", ")}
+                onChange={(e) => setScraped({ ...scraped, vibe: e.target.value.split(",").map(v => v.trim().toLowerCase()).filter(Boolean) })}
+                placeholder="Vibes (comma separated)"
+                style={{
+                  background: color.surface,
+                  border: `1px solid ${color.borderMid}`,
+                  borderRadius: 10,
+                  padding: "10px 12px",
+                  color: color.text,
+                  fontFamily: font.mono,
+                  fontSize: 12,
+                  outline: "none",
+                }}
+              />
             </div>
             {/* Social signal — shows when existing event has people down */}
             {socialSignal && (

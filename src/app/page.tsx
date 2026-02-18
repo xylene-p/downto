@@ -20,6 +20,7 @@ import FriendsModal from "@/components/friends/FriendsModal";
 import CalendarView from "@/components/calendar/CalendarView";
 import GroupsView from "@/components/squads/GroupsView";
 import ProfileView from "@/components/profile/ProfileView";
+import FirstCheckScreen from "@/components/FirstCheckScreen";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import Toast from "@/components/Toast";
@@ -70,6 +71,7 @@ export default function Home() {
   const { toastMsg, setToastMsg, toastAction, setToastAction, showToast, showToastWithAction, showToastRef } = useToast();
   const { pushEnabled, pushSupported, handleTogglePush } = usePushNotifications(isLoggedIn, isDemoMode, showToast);
   const [addModalDefaultMode, setAddModalDefaultMode] = useState<"paste" | "idea" | "manual" | null>(null);
+  const [showFirstCheck, setShowFirstCheck] = useState(false);
 
   const handleEditEvent = async (updated: { title: string; venue: string; date: string; time: string; vibe: string[] }) => {
     if (!editingEvent) return;
@@ -881,6 +883,75 @@ export default function Home() {
     }
   };
 
+  const handleCreateCheck = async (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number) => {
+    const expiresLabel = expiresInHours == null ? "open" : expiresInHours >= 24 ? "24h" : `${expiresInHours}h`;
+    const dateLabel = eventDate ? new Date(eventDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined;
+    if (!isDemoMode && userId) {
+      try {
+        const dbCheck = await db.createInterestCheck(idea, expiresInHours, eventDate, maxSquadSize);
+        const newCheck: InterestCheck = {
+          id: dbCheck.id,
+          text: idea,
+          author: profile?.display_name || "You",
+          timeAgo: "now",
+          expiresIn: expiresLabel,
+          expiryPercent: 0,
+          responses: [],
+          isYours: true,
+          maxSquadSize,
+          eventDate: eventDate ?? undefined,
+          eventDateLabel: dateLabel,
+        };
+        setChecks((prev) => [newCheck, ...prev]);
+        showToast("Sent to friends! \u{1F4E3}");
+      } catch (err) {
+        console.error("Failed to create interest check:", err);
+        showToast("Failed to send - try again");
+      }
+    } else {
+      const newCheck: InterestCheck = {
+        id: `local-check-${Date.now()}`,
+        text: idea,
+        author: "You",
+        timeAgo: "now",
+        expiresIn: expiresLabel,
+        expiryPercent: 0,
+        responses: [],
+        isYours: true,
+        maxSquadSize,
+        eventDate: eventDate ?? undefined,
+        eventDateLabel: dateLabel,
+      };
+      setChecks((prev) => [newCheck, ...prev]);
+      showToast("Sent to friends! \u{1F4E3}");
+
+      setTimeout(() => {
+        setChecks((prev) =>
+          prev.map((c) =>
+            c.id === newCheck.id
+              ? { ...c, responses: [{ name: "Sara", avatar: "S", status: "down" as const }] }
+              : c
+          )
+        );
+      }, 3000);
+      setTimeout(() => {
+        setChecks((prev) =>
+          prev.map((c) =>
+            c.id === newCheck.id
+              ? {
+                  ...c,
+                  responses: [
+                    ...c.responses,
+                    { name: "Nickon", avatar: "N", status: "down" as const },
+                  ],
+                }
+              : c
+          )
+        );
+      }, 6000);
+    }
+  };
+
   // Show loading while checking auth
   if (isLoading) {
     return (
@@ -931,6 +1002,23 @@ export default function Home() {
         profile={profile}
         onComplete={(updated) => {
           setProfile(updated);
+          setShowFirstCheck(true);
+        }}
+      />
+    );
+  }
+
+  if (showFirstCheck) {
+    return (
+      <FirstCheckScreen
+        onComplete={async (idea, expiresInHours, eventDate, maxSquadSize) => {
+          await handleCreateCheck(idea, expiresInHours, eventDate, maxSquadSize);
+          setShowFirstCheck(false);
+          setFriendsInitialTab("add");
+          setFriendsOpen(true);
+        }}
+        onSkip={() => {
+          setShowFirstCheck(false);
           setFriendsInitialTab("add");
           setFriendsOpen(true);
         }}
@@ -1191,87 +1279,14 @@ export default function Home() {
 
           setTab("feed");
           setFeedMode("foryou");
-          const openAddModalInIdeaMode = () => {
-            setAddModalDefaultMode("idea");
-            setAddModalOpen(true);
-          };
+          const openFriends = () => setFriendsOpen(true);
           if (e.type === "movie") {
-            showToastWithAction("Movie night saved! Rally friends?", openAddModalInIdeaMode);
+            showToastWithAction("Movie night saved! Rally friends?", openFriends);
           } else {
-            showToastWithAction("Event saved! Rally friends?", openAddModalInIdeaMode);
+            showToastWithAction("Event saved! Rally friends?", openFriends);
           }
         }}
-        onInterestCheck={async (idea, expiresInHours, eventDate, maxSquadSize) => {
-          const expiresLabel = expiresInHours == null ? "open" : expiresInHours >= 24 ? "24h" : `${expiresInHours}h`;
-          const dateLabel = eventDate ? new Date(eventDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined;
-          // Save to database if logged in (not demo mode)
-          if (!isDemoMode && userId) {
-            try {
-              const dbCheck = await db.createInterestCheck(idea, expiresInHours, eventDate, maxSquadSize);
-              const newCheck: InterestCheck = {
-                id: dbCheck.id,
-                text: idea,
-                author: profile?.display_name || "You",
-                timeAgo: "now",
-                expiresIn: expiresLabel,
-                expiryPercent: 0,
-                responses: [],
-                isYours: true,
-                maxSquadSize,
-                eventDate: eventDate ?? undefined,
-                eventDateLabel: dateLabel,
-              };
-              setChecks((prev) => [newCheck, ...prev]);
-              showToast("Sent to friends! 📣");
-            } catch (err) {
-              console.error("Failed to create interest check:", err);
-              showToast("Failed to send - try again");
-            }
-          } else {
-            // Demo mode - local state + simulated responses
-            const newCheck: InterestCheck = {
-              id: `local-check-${Date.now()}`,
-              text: idea,
-              author: "You",
-              timeAgo: "now",
-              expiresIn: expiresLabel,
-              expiryPercent: 0,
-              responses: [],
-              isYours: true,
-              maxSquadSize,
-              eventDate: eventDate ?? undefined,
-              eventDateLabel: dateLabel,
-            };
-            setChecks((prev) => [newCheck, ...prev]);
-            showToast("Sent to friends! 📣");
-
-            // Simulate friends responding (demo mode only)
-            setTimeout(() => {
-              setChecks((prev) =>
-                prev.map((c) =>
-                  c.id === newCheck.id
-                    ? { ...c, responses: [{ name: "Sara", avatar: "S", status: "down" as const }] }
-                    : c
-                )
-              );
-            }, 3000);
-            setTimeout(() => {
-              setChecks((prev) =>
-                prev.map((c) =>
-                  c.id === newCheck.id
-                    ? {
-                        ...c,
-                        responses: [
-                          ...c.responses,
-                          { name: "Nickon", avatar: "N", status: "down" as const },
-                        ],
-                      }
-                    : c
-                )
-              );
-            }, 6000);
-          }
-        }}
+        onInterestCheck={handleCreateCheck}
       />
       <EventLobby
         event={socialEvent}
