@@ -15,6 +15,7 @@ const ProfileView = ({
   pushSupported,
   onTogglePush,
   onAvailabilityChange,
+  showToast,
 }: {
   friends: Friend[];
   onOpenFriends: () => void;
@@ -24,6 +25,7 @@ const ProfileView = ({
   pushSupported: boolean;
   onTogglePush: () => void;
   onAvailabilityChange?: (status: AvailabilityStatus) => void;
+  showToast?: (msg: string) => void;
 }) => {
   const [availability, setAvailability] = useState<AvailabilityStatus>(
     profile?.availability ?? "open"
@@ -105,6 +107,27 @@ const ProfileView = ({
       <p style={{ fontFamily: font.mono, fontSize: 11, color: color.dim, marginTop: 4 }}>
         @{profile?.username ?? "you"}
       </p>
+      {profile?.username && (
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(`https://downto.xyz?add=${profile.username}`);
+            showToast?.("Link copied!");
+          }}
+          style={{
+            marginTop: 10,
+            background: "transparent",
+            border: `1px solid ${color.borderMid}`,
+            borderRadius: 20,
+            padding: "6px 14px",
+            fontFamily: font.mono,
+            fontSize: 11,
+            color: color.muted,
+            cursor: "pointer",
+          }}
+        >
+          copy my link
+        </button>
+      )}
     </div>
 
     {/* Friends */}

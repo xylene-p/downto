@@ -29,7 +29,16 @@ export function usePushNotifications(
 
       // Check if already subscribed
       const existing = await reg.pushManager.getSubscription();
-      setPushEnabled(!!existing);
+      if (existing) {
+        setPushEnabled(true);
+      } else if (!localStorage.getItem("pushAutoPrompted") && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
+        // Auto-prompt once after first login
+        localStorage.setItem("pushAutoPrompted", "1");
+        const sub = await subscribeToPush(reg);
+        if (sub) {
+          setPushEnabled(true);
+        }
+      }
     })();
   }, [isLoggedIn, isDemoMode]);
 

@@ -45,6 +45,15 @@ export async function updateProfile(updates: Partial<Profile>): Promise<Profile>
   return data;
 }
 
+export async function getProfileByUsername(username: string): Promise<Profile | null> {
+  const { data } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('username', username)
+    .maybeSingle();
+  return data;
+}
+
 export async function getProfileById(id: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from('profiles')

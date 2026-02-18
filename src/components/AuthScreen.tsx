@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { font, color } from "@/lib/styles";
 import GlobalStyles from "./GlobalStyles";
 import Grain from "./Grain";
 
 const AuthScreen = ({ onLogin, onDemoMode }: { onLogin: () => void; onDemoMode: () => void }) => {
+  const [pendingAddUser, setPendingAddUser] = useState<string | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("pendingAddUsername");
+    if (stored) setPendingAddUser(stored);
+  }, []);
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState<"email" | "otp">("email");
@@ -78,11 +84,23 @@ const AuthScreen = ({ onLogin, onDemoMode }: { onLogin: () => void; onDemoMode: 
           fontFamily: font.mono,
           fontSize: 13,
           color: color.dim,
-          marginBottom: 48,
+          marginBottom: pendingAddUser ? 12 : 48,
         }}
       >
         from idea to squad in 10 seconds
       </p>
+      {pendingAddUser && (
+        <p
+          style={{
+            fontFamily: font.mono,
+            fontSize: 12,
+            color: color.accent,
+            marginBottom: 36,
+          }}
+        >
+          log in or create a profile to add @{pendingAddUser}
+        </p>
+      )}
 
       {error && (
         <p

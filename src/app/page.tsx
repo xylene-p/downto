@@ -80,6 +80,36 @@ export default function Home() {
     return false;
   });
 
+  // Capture ?add= param on mount — persist to sessionStorage so it survives OAuth redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const addUser = params.get("add");
+    if (addUser) {
+      localStorage.setItem("pendingAddUsername", addUser);
+      window.history.replaceState({}, "", "/");
+    }
+  }, []);
+
+  // Process ?add= param after auth + onboarding complete
+  useEffect(() => {
+    if (!isLoggedIn || !userId || !profile?.onboarded || showFirstCheck) return;
+    const username = localStorage.getItem("pendingAddUsername");
+    if (!username) return;
+    localStorage.removeItem("pendingAddUsername");
+
+    // Don't add yourself
+    if (username === profile.username) return;
+
+    (async () => {
+      const target = await db.getProfileByUsername(username);
+      if (target) {
+        setViewingUserId(target.id);
+      } else {
+        showToast("User not found");
+      }
+    })();
+  }, [isLoggedIn, userId, profile?.onboarded, showFirstCheck]);
+
   const handleEditEvent = async (updated: { title: string; venue: string; date: string; time: string; vibe: string[] }) => {
     if (!editingEvent) return;
 
@@ -1151,6 +1181,7 @@ export default function Home() {
             pushEnabled={pushEnabled}
             pushSupported={pushSupported}
             onTogglePush={handleTogglePush}
+            showToast={showToast}
             onAvailabilityChange={async (status) => {
               if (!isDemoMode) {
                 try {
