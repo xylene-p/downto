@@ -913,7 +913,7 @@ export default function Home() {
         setTab("feed");
         setFeedMode("foryou");
         setNewlyAddedCheckId(newCheck.id);
-        showToast("Sent to friends! \u{1F4E3}");
+        showToast(friends.length > 0 ? "Sent to friends! \u{1F4E3}" : "Check posted! Add friends to share it \u{1F4E3}");
       } catch (err) {
         logError("createCheck", err);
         showToast("Failed to send - try again");
@@ -936,7 +936,7 @@ export default function Home() {
       setTab("feed");
       setFeedMode("foryou");
       setNewlyAddedCheckId(newCheck.id);
-      showToast("Sent to friends! \u{1F4E3}");
+      showToast(friends.length > 0 ? "Sent to friends! \u{1F4E3}" : "Check posted! Add friends to share it \u{1F4E3}");
 
       setTimeout(() => {
         setChecks((prev) =>
