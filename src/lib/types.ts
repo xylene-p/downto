@@ -61,6 +61,7 @@ export interface InterestCheck {
   text: string;
   expires_at: string | null;
   event_date: string | null; // ISO date from natural language parsing
+  max_squad_size: number;
   created_at: string;
   // Joined data
   author?: Profile;
