@@ -91,6 +91,33 @@ export async function getPublicEvents(date?: Date): Promise<Event[]> {
   return data ?? [];
 }
 
+export async function getFriendsEvents(): Promise<Event[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  // Get accepted friend IDs
+  const { data: friendships } = await supabase
+    .from('friendships')
+    .select('requester_id, addressee_id')
+    .eq('status', 'accepted')
+    .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
+
+  if (!friendships || friendships.length === 0) return [];
+
+  const friendIds = friendships.map(f =>
+    f.requester_id === user.id ? f.addressee_id : f.requester_id
+  );
+
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .in('created_by', friendIds)
+    .order('date', { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function createEvent(event: Omit<Event, 'id' | 'created_at'>): Promise<Event> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');

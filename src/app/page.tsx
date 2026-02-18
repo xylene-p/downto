@@ -538,13 +538,15 @@ const PasteModal = ({
   onClose,
   onSubmit,
   onInterestCheck,
+  defaultMode,
 }: {
   open: boolean;
   onClose: () => void;
   onSubmit: (e: ScrapedEvent, sharePublicly: boolean) => void;
   onInterestCheck: (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number) => void;
+  defaultMode?: "paste" | "idea" | "manual" | null;
 }) => {
-  const [mode, setMode] = useState<"paste" | "idea" | "manual">("paste");
+  const [mode, setMode] = useState<"paste" | "idea" | "manual">("idea");
   const [url, setUrl] = useState("");
   const [idea, setIdea] = useState("");
   const [checkTimer, setCheckTimer] = useState<number | null>(24);
@@ -567,8 +569,9 @@ const PasteModal = ({
 
   useEffect(() => {
     if (open) {
+      if (defaultMode) setMode(defaultMode);
       setTimeout(() => {
-        if (mode === "paste") inputRef.current?.focus();
+        if ((defaultMode || mode) === "paste") inputRef.current?.focus();
         else ideaRef.current?.focus();
       }, 200);
     }
@@ -578,12 +581,12 @@ const PasteModal = ({
       setLoading(false);
       setScraped(null);
       setSharePublicly(false);
-      setMode("paste");
+      setMode("idea");
       setError(null);
       setManual({ title: "", venue: "", date: "", time: "", vibe: "" });
       setSocialSignal(null);
     }
-  }, [open, mode]);
+  }, [open, mode, defaultMode]);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -5131,19 +5134,30 @@ const ProfileSetupScreen = ({
   onComplete: (updated: Profile) => void;
 }) => {
   const [displayName, setDisplayName] = useState(profile.display_name || "");
+  const [username, setUsername] = useState("");
+  const [usernameError, setUsernameError] = useState<string | null>(null);
   const [igHandle, setIgHandle] = useState(profile.ig_handle || "");
   const [saving, setSaving] = useState(false);
 
+  const usernameValid = /^[a-z0-9_]{3,20}$/.test(username);
+
   const handleSave = async () => {
+    if (!username || !usernameValid) return;
     setSaving(true);
+    setUsernameError(null);
     try {
-      const updates: Partial<Profile> & { onboarded: true } = { onboarded: true };
+      const updates: Partial<Profile> & { onboarded: true } = { onboarded: true, username };
       if (displayName.trim()) updates.display_name = displayName.trim();
       if (igHandle.trim()) updates.ig_handle = igHandle.trim().replace(/^@/, "");
       const updated = await db.updateProfile(updates);
       onComplete(updated);
-    } catch (err) {
-      console.error("Failed to save profile:", err);
+    } catch (err: unknown) {
+      const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : '';
+      if (code === '23505') {
+        setUsernameError("Username taken");
+      } else {
+        console.error("Failed to save profile:", err);
+      }
       setSaving(false);
     }
   };
@@ -5228,6 +5242,52 @@ const ProfileSetupScreen = ({
         }}
       />
 
+      {/* Username */}
+      <label
+        style={{
+          fontFamily: font.mono,
+          fontSize: 11,
+          color: color.muted,
+          marginBottom: 8,
+          display: "block",
+        }}
+      >
+        username
+      </label>
+      <input
+        type="text"
+        value={username}
+        onChange={(e) => {
+          const v = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20);
+          setUsername(v);
+          setUsernameError(null);
+        }}
+        placeholder="your_username"
+        style={{
+          width: "100%",
+          padding: "14px 16px",
+          background: color.card,
+          border: `1px solid ${usernameError ? "#ff4444" : color.borderMid}`,
+          borderRadius: 12,
+          color: color.text,
+          fontFamily: font.mono,
+          fontSize: 14,
+          outline: "none",
+          marginBottom: usernameError ? 4 : (username && !usernameValid ? 4 : 24),
+          boxSizing: "border-box",
+        }}
+      />
+      {usernameError && (
+        <p style={{ fontFamily: font.mono, fontSize: 11, color: "#ff4444", margin: "0 0 16px 0" }}>
+          {usernameError}
+        </p>
+      )}
+      {username && !usernameValid && !usernameError && (
+        <p style={{ fontFamily: font.mono, fontSize: 11, color: color.dim, margin: "0 0 16px 0" }}>
+          3-20 chars, letters, numbers & underscores
+        </p>
+      )}
+
       {/* IG handle */}
       <label
         style={{
@@ -5277,18 +5337,18 @@ const ProfileSetupScreen = ({
       {/* Let's go button */}
       <button
         onClick={handleSave}
-        disabled={saving}
+        disabled={saving || !usernameValid}
         style={{
           width: "100%",
           padding: "16px",
-          background: color.accent,
+          background: usernameValid ? color.accent : color.borderMid,
           border: "none",
           borderRadius: 12,
-          color: color.bg,
+          color: usernameValid ? color.bg : color.dim,
           fontFamily: font.mono,
           fontSize: 14,
           fontWeight: 700,
-          cursor: saving ? "default" : "pointer",
+          cursor: saving || !usernameValid ? "default" : "pointer",
           opacity: saving ? 0.6 : 1,
           marginBottom: 16,
         }}
@@ -5425,9 +5485,17 @@ export default function Home() {
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
 
+  const [toastAction, setToastAction] = useState<(() => void) | null>(null);
+  const [pasteDefaultMode, setPasteDefaultMode] = useState<"paste" | "idea" | "manual" | null>(null);
   const showToast = (msg: string) => {
+    setToastAction(null);
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 2000);
+  };
+  const showToastWithAction = (msg: string, action: () => void) => {
+    setToastAction(() => action);
+    setToastMsg(msg);
+    setTimeout(() => { setToastMsg(null); setToastAction(null); }, 4000);
   };
   const showToastRef = useRef(showToast);
   showToastRef.current = showToast;
@@ -5552,8 +5620,12 @@ export default function Home() {
       const publicEvents = await db.getPublicEvents();
       const publicEventIds = publicEvents.map((e) => e.id);
 
+      // Load friends' non-public events
+      const friendsEvents = await db.getFriendsEvents();
+      const friendsEventIds = friendsEvents.map((e) => e.id);
+
       // Batch fetch people down for all events
-      const allEventIds = [...new Set([...savedEventIds, ...publicEventIds])];
+      const allEventIds = [...new Set([...savedEventIds, ...publicEventIds, ...friendsEventIds])];
       const peopleDownMap = allEventIds.length > 0
         ? await db.getPeopleDownBatch(allEventIds)
         : {};
@@ -5574,10 +5646,30 @@ export default function Home() {
         peopleDown: peopleDownMap[se.event!.id] ?? [],
         neighborhood: se.event!.neighborhood ?? undefined,
       }));
-      setEvents(transformedEvents);
 
-      // Build a set of saved event IDs to cross-reference tonight events
+      // Merge friends' non-public events (skip ones already saved by this user)
       const savedEventIdSet = new Set(savedEventIds);
+      const friendsTransformed: Event[] = friendsEvents
+        .filter((e) => !savedEventIdSet.has(e.id))
+        .map((e) => ({
+          id: e.id,
+          createdBy: e.created_by ?? undefined,
+          title: e.title,
+          venue: e.venue ?? "",
+          date: e.date_display ?? "",
+          time: e.time_display ?? "",
+          vibe: e.vibes,
+          image: e.image_url ?? "",
+          igHandle: e.ig_handle ?? "",
+          igUrl: e.ig_url ?? undefined,
+          saved: false,
+          isDown: false,
+          peopleDown: peopleDownMap[e.id] ?? [],
+          neighborhood: e.neighborhood ?? undefined,
+        }));
+      setEvents([...transformedEvents, ...friendsTransformed]);
+
+      // Build cross-reference maps for tonight events
       const savedDownMap = new Map(savedEvents.map((se) => [se.event!.id, se.is_down]));
 
       const transformedTonight: Event[] = publicEvents
@@ -5846,6 +5938,8 @@ export default function Home() {
         loadRealDataRef.current();
       } else if (newNotif.type === "friend_accepted" && newNotif.related_user_id) {
         if (newNotif.body) showToastRef.current(newNotif.body);
+        // Refresh events so friend's events appear in For You feed
+        loadRealDataRef.current();
         const relatedId = newNotif.related_user_id;
         setSuggestions((prev) => {
           const person = prev.find((s) => s.id === relatedId);
@@ -5905,6 +5999,8 @@ export default function Home() {
           }
           return prev;
         });
+        // Refresh events so friend's events appear in For You feed
+        loadRealDataRef.current();
       } else if (event === "INSERT" && friendship.status === "pending" && friendship.addressee_id === userId) {
         // New incoming friend request — fetch their profile
         try {
@@ -6326,6 +6422,8 @@ export default function Home() {
         profile={profile}
         onComplete={(updated) => {
           setProfile(updated);
+          setFriendsInitialTab("add");
+          setFriendsOpen(true);
         }}
       />
     );
@@ -7058,7 +7156,7 @@ export default function Home() {
                         marginBottom: 8,
                       }}
                     >
-                      Your feed is empty
+                      {friends.length === 0 ? "Find your people" : "Your feed is empty"}
                     </p>
                     <p
                       style={{
@@ -7069,8 +7167,107 @@ export default function Home() {
                         lineHeight: 1.6,
                       }}
                     >
-                      Save events, add friends, or check out<br />what's happening tonight
+                      {friends.length === 0
+                        ? "Add friends to see their events and rally squads"
+                        : <>Save events, add friends, or check out<br />what&apos;s happening tonight</>}
                     </p>
+
+                    {/* Inline suggested users when 0 friends */}
+                    {friends.length === 0 && suggestions.filter(s => s.status === "none").length > 0 && (
+                      <div style={{ marginBottom: 20, display: "flex", flexDirection: "column", gap: 10 }}>
+                        {suggestions.filter(s => s.status === "none").slice(0, 3).map((s) => (
+                          <div
+                            key={s.id}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 12,
+                              background: color.bg,
+                              borderRadius: 12,
+                              padding: "10px 14px",
+                              textAlign: "left",
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: "50%",
+                                background: color.borderMid,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontFamily: font.mono,
+                                fontSize: 14,
+                                fontWeight: 700,
+                                color: color.text,
+                                flexShrink: 0,
+                              }}
+                            >
+                              {s.avatar || s.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontFamily: font.mono, fontSize: 13, color: color.text, fontWeight: 600 }}>
+                                {s.name}
+                              </div>
+                              <div style={{ fontFamily: font.mono, fontSize: 11, color: color.dim }}>
+                                @{s.username}
+                              </div>
+                            </div>
+                            <button
+                              onClick={async () => {
+                                if (isDemoMode) {
+                                  setSuggestions((prev) =>
+                                    prev.map((sg) => (sg.id === s.id ? { ...sg, status: "pending" as const } : sg))
+                                  );
+                                  showToast("Friend request sent!");
+                                  return;
+                                }
+                                try {
+                                  await db.sendFriendRequest(s.id);
+                                  setSuggestions((prev) =>
+                                    prev.map((sg) => (sg.id === s.id ? { ...sg, status: "pending" as const } : sg))
+                                  );
+                                  showToast("Friend request sent!");
+                                } catch (err) {
+                                  console.error("Failed to send friend request:", err);
+                                  showToast("Failed to send request");
+                                }
+                              }}
+                              style={{
+                                background: color.accent,
+                                color: "#000",
+                                border: "none",
+                                borderRadius: 8,
+                                padding: "6px 12px",
+                                fontFamily: font.mono,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                flexShrink: 0,
+                              }}
+                            >
+                              Add
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          onClick={() => { setFriendsInitialTab("add"); setFriendsOpen(true); }}
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            color: color.accent,
+                            fontFamily: font.mono,
+                            fontSize: 11,
+                            cursor: "pointer",
+                            padding: "4px 0",
+                          }}
+                        >
+                          See all suggestions →
+                        </button>
+                      </div>
+                    )}
+
                     <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                       <button
                         onClick={() => setPasteOpen(true)}
@@ -7088,21 +7285,23 @@ export default function Home() {
                       >
                         + Add Event
                       </button>
-                      <button
-                        onClick={() => setFriendsOpen(true)}
-                        style={{
-                          background: "transparent",
-                          color: color.text,
-                          border: `1px solid ${color.borderMid}`,
-                          borderRadius: 20,
-                          padding: "10px 16px",
-                          fontFamily: font.mono,
-                          fontSize: 11,
-                          cursor: "pointer",
-                        }}
-                      >
-                        Find Friends
-                      </button>
+                      {friends.length > 0 && (
+                        <button
+                          onClick={() => setFriendsOpen(true)}
+                          style={{
+                            background: "transparent",
+                            color: color.text,
+                            border: `1px solid ${color.borderMid}`,
+                            borderRadius: 20,
+                            padding: "10px 16px",
+                            fontFamily: font.mono,
+                            fontSize: 11,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Find Friends
+                        </button>
+                      )}
                       <button
                         onClick={() => setFeedMode("tonight")}
                         style={{
@@ -7449,6 +7648,11 @@ export default function Home() {
       {/* Toast */}
       {toastMsg && (
         <div
+          onClick={toastAction ? () => {
+            toastAction();
+            setToastMsg(null);
+            setToastAction(null);
+          } : undefined}
           style={{
             position: "fixed",
             bottom: 100,
@@ -7464,9 +7668,10 @@ export default function Home() {
             zIndex: 200,
             animation: "toastIn 0.3s ease",
             whiteSpace: "nowrap",
+            cursor: toastAction ? "pointer" : "default",
           }}
         >
-          {toastMsg}
+          {toastMsg}{toastAction ? " tap >" : ""}
         </div>
       )}
 
@@ -7569,7 +7774,8 @@ export default function Home() {
 
       <PasteModal
         open={pasteOpen}
-        onClose={() => setPasteOpen(false)}
+        onClose={() => { setPasteOpen(false); setPasteDefaultMode(null); }}
+        defaultMode={pasteDefaultMode}
         onSubmit={async (e, sharePublicly) => {
           const rawTitle = e.type === "movie" ? (e.movieTitle || e.title) : e.title;
           const title = sanitize(rawTitle, 100);
@@ -7667,12 +7873,16 @@ export default function Home() {
             setTimeout(() => setNewlyAddedId(null), 2500);
           }
 
+          setTab("feed");
+          setFeedMode("foryou");
+          const openPasteInIdeaMode = () => {
+            setPasteDefaultMode("idea");
+            setPasteOpen(true);
+          };
           if (e.type === "movie") {
-            showToast("Movie night saved! 🎬");
-          } else if (sharePublicly) {
-            showToast("Saved & shared on Tonight! ✶");
+            showToastWithAction("Movie night saved! Rally friends?", openPasteInIdeaMode);
           } else {
-            showToast("Event saved! 🎯");
+            showToastWithAction("Event saved! Rally friends?", openPasteInIdeaMode);
           }
         }}
         onInterestCheck={async (idea, expiresInHours, eventDate, maxSquadSize) => {
@@ -8057,6 +8267,8 @@ export default function Home() {
             setFriends((prev) => [...prev, { ...person, status: "friend" as const, availability: "open" as const }]);
             setSuggestions((prev) => prev.filter((s) => s.id !== id));
             showToast(`${person.name} added! 🎉`);
+            // Refresh events so friend's events appear in For You feed
+            loadRealDataRef.current();
           } catch (err) {
             console.error("Failed to accept friend request:", err);
             showToast("Failed to accept request");
