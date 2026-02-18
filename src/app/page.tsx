@@ -181,8 +181,7 @@ interface Person {
 }
 
 interface Event {
-  id: number;
-  dbId?: string;
+  id: string;
   createdBy?: string;
   title: string;
   venue: string;
@@ -201,7 +200,7 @@ interface Event {
 
 const DEMO_EVENTS: Event[] = [
   {
-    id: 1,
+    id: "demo-event-1",
     title: "Dusk to Dawn: Anadelia b2b VTSS",
     venue: "Bossa Nova Civic Club",
     date: "Fri, Feb 14",
@@ -220,7 +219,7 @@ const DEMO_EVENTS: Event[] = [
     ],
   },
   {
-    id: 2,
+    id: "demo-event-2",
     title: "Mood Ring Presents: Ambient Wednesdays",
     venue: "Mood Ring",
     date: "Wed, Feb 19",
@@ -236,7 +235,7 @@ const DEMO_EVENTS: Event[] = [
     ],
   },
   {
-    id: 3,
+    id: "demo-event-3",
     title: "MUTUAL AID RAVE — all door $ donated",
     venue: "Elsewhere Zone One",
     date: "Sat, Feb 22",
@@ -257,7 +256,7 @@ const DEMO_EVENTS: Event[] = [
     ],
   },
   {
-    id: 4,
+    id: "demo-event-4",
     title: "Film Photo Walk — Bushwick to Ridgewood",
     venue: "Meet @ Jefferson L stop",
     date: "Sun, Feb 23",
@@ -277,8 +276,7 @@ const DEMO_EVENTS: Event[] = [
 
 // Interest checks - casual event ideas (expire like stories)
 interface InterestCheck {
-  id: number;
-  dbId?: string;
+  id: string;
   text: string;
   author: string;
   authorId?: string;
@@ -290,15 +288,14 @@ interface InterestCheck {
   eventDate?: string; // ISO date from natural language parsing
   eventDateLabel?: string; // display label like "Sat, Feb 22"
   maxSquadSize?: number; // max members allowed (2-5, default 5)
-  squadLocalId?: number; // local ID of the squad created from this check
-  squadDbId?: string; // DB UUID of the squad
+  squadId?: string; // ID of the squad created from this check
   squadMemberCount?: number; // current member count in the squad
   inSquad?: boolean; // whether current user is already a member
 }
 
 const DEMO_CHECKS: InterestCheck[] = [
   {
-    id: 200,
+    id: "demo-check-1",
     text: "dinner tonight? thinking thai or korean",
     author: "Sara",
     timeAgo: "5m",
@@ -310,7 +307,7 @@ const DEMO_CHECKS: InterestCheck[] = [
     ],
   },
   {
-    id: 201,
+    id: "demo-check-2",
     text: "anyone wanna do a museum day this weekend? maybe MoMA or the Whitney",
     author: "Luke",
     timeAgo: "12h",
@@ -323,7 +320,7 @@ const DEMO_CHECKS: InterestCheck[] = [
     ],
   },
   {
-    id: 202,
+    id: "demo-check-3",
     text: "coffee run?",
     author: "Janelle",
     timeAgo: "22h",
@@ -332,7 +329,7 @@ const DEMO_CHECKS: InterestCheck[] = [
     responses: [],
   },
   {
-    id: 203,
+    id: "demo-check-4",
     text: "rooftop hangs friday? 🌆",
     author: "You",
     timeAgo: "2m",
@@ -348,7 +345,7 @@ const DEMO_CHECKS: InterestCheck[] = [
 // Tonight's public events (from public IG posts around the city)
 const DEMO_TONIGHT: Event[] = [
   {
-    id: 100,
+    id: "demo-tonight-1",
     title: "Rooftop DJ Set — House & Disco",
     venue: "The Roof BK",
     neighborhood: "Williamsburg",
@@ -367,7 +364,7 @@ const DEMO_TONIGHT: Event[] = [
     ],
   },
   {
-    id: 101,
+    id: "demo-tonight-2",
     title: "Open Mic Comedy Night",
     venue: "Union Hall",
     neighborhood: "Park Slope",
@@ -385,7 +382,7 @@ const DEMO_TONIGHT: Event[] = [
     ],
   },
   {
-    id: 102,
+    id: "demo-tonight-3",
     title: "Gallery Opening — New Brooklyn Artists",
     venue: "PRACTICE",
     neighborhood: "Bushwick",
@@ -405,7 +402,7 @@ const DEMO_TONIGHT: Event[] = [
     ],
   },
   {
-    id: 103,
+    id: "demo-tonight-4",
     title: "Techno til Dawn — Basement Party",
     venue: "Undisclosed",
     neighborhood: "Ridgewood",
@@ -2397,7 +2394,7 @@ const EventLobby = ({
           )}
 
           {/* Looking for a squad toggle — always visible when not selecting */}
-          {!isSelecting && event.dbId && !isDemoMode && (
+          {!isSelecting && !isDemoMode && (
             <button
               onClick={() => onJoinSquadPool(event)}
               style={{
@@ -2632,9 +2629,8 @@ const CalendarView = ({ events }: { events: Event[] }) => {
 // ─── Groups View ────────────────────────────────────────────────────────────
 
 interface Squad {
-  id: number;
-  dbId?: string;
-  checkDbId?: string;
+  id: string;
+  checkId?: string;
   name: string;
   event?: string;
   eventDate?: string;
@@ -2650,7 +2646,7 @@ interface Squad {
 
 const DEMO_SQUADS: Squad[] = [
   {
-    id: 1,
+    id: "demo-squad-1",
     name: "Bossa squad",
     event: "Dusk to Dawn: Anadelia b2b VTSS — Feb 14",
     members: [
@@ -2670,7 +2666,7 @@ const DEMO_SQUADS: Squad[] = [
     time: "2m",
   },
   {
-    id: 2,
+    id: "demo-squad-2",
     name: "Ambient Wednesday",
     event: "Mood Ring Presents: Ambient Wednesdays — Feb 19",
     members: [
@@ -2700,7 +2696,7 @@ const GroupsView = ({
 }: {
   squads: Squad[];
   onSquadUpdate: (squadsOrUpdater: Squad[] | ((prev: Squad[]) => Squad[])) => void;
-  autoSelectSquadId?: number | null;
+  autoSelectSquadId?: string | null;
   onSendMessage?: (squadDbId: string, text: string) => Promise<void>;
   onUpdateLogistics?: (squadDbId: string, field: string, value: string) => Promise<void>;
   onLeaveSquad?: (squadDbId: string) => Promise<void>;
@@ -2726,8 +2722,8 @@ const GroupsView = ({
 
   // Subscribe to realtime messages for the selected squad
   useEffect(() => {
-    if (!selectedSquad?.dbId) return;
-    const channel = db.subscribeToMessages(selectedSquad.dbId, (newMessage) => {
+    if (!selectedSquad?.id) return;
+    const channel = db.subscribeToMessages(selectedSquad.id, (newMessage) => {
       // Skip messages from current user (already added optimistically)
       if (userId && newMessage.sender_id === userId) return;
       const senderName = newMessage.sender?.display_name ?? "Unknown";
@@ -2738,7 +2734,7 @@ const GroupsView = ({
         isYou: false,
       };
       setSelectedSquad((prev) => {
-        if (!prev || prev.dbId !== newMessage.squad_id) return prev;
+        if (!prev || prev.id !== newMessage.squad_id) return prev;
         return {
           ...prev,
           messages: [...prev.messages, msg],
@@ -2749,7 +2745,7 @@ const GroupsView = ({
       // Also update the squad list
       onSquadUpdateRef.current((prev) =>
         prev.map((s) =>
-          s.dbId === newMessage.squad_id
+          s.id === newMessage.squad_id
             ? { ...s, messages: [...s.messages, msg], lastMsg: `${senderName}: ${newMessage.text}`, time: "now" }
             : s
         )
@@ -2758,7 +2754,7 @@ const GroupsView = ({
     return () => {
       channel.unsubscribe();
     };
-  }, [selectedSquad?.dbId, userId]);
+  }, [selectedSquad?.id, userId]);
 
   const handleSend = () => {
     if (!newMsg.trim() || !selectedSquad) return;
@@ -2777,8 +2773,8 @@ const GroupsView = ({
     setNewMsg("");
 
     // Persist to DB
-    if (selectedSquad.dbId && onSendMessage) {
-      onSendMessage(selectedSquad.dbId, text).catch((err) =>
+    if (selectedSquad.id && onSendMessage) {
+      onSendMessage(selectedSquad.id, text).catch((err) =>
         console.error("Failed to send message:", err)
       );
     }
@@ -2809,7 +2805,7 @@ const GroupsView = ({
             >
               ← Back
             </button>
-            {selectedSquad.dbId && (
+            {selectedSquad.id && (
               <button
                 onClick={() => setShowLeaveConfirm(true)}
                 style={{
@@ -2936,9 +2932,9 @@ const GroupsView = ({
                 </button>
                 <button
                   onClick={async () => {
-                    if (selectedSquad.dbId && onLeaveSquad) {
+                    if (selectedSquad.id && onLeaveSquad) {
                       try {
-                        await onLeaveSquad(selectedSquad.dbId);
+                        await onLeaveSquad(selectedSquad.id);
                         onSquadUpdate((prev) => prev.filter((s) => s.id !== selectedSquad.id));
                         setSelectedSquad(null);
                       } catch (err) {
@@ -2968,7 +2964,7 @@ const GroupsView = ({
         )}
 
         {/* Logistics card — pinned between header and messages for active squads */}
-        {selectedSquad.dbId && (() => {
+        {selectedSquad.id && (() => {
           // Hide logistics for past events
           if (selectedSquad.eventIsoDate) {
             const eventDay = new Date(selectedSquad.eventIsoDate + "T23:59:59");
@@ -2976,9 +2972,9 @@ const GroupsView = ({
           }
 
           const saveField = async (field: string, value: string) => {
-            if (!selectedSquad.dbId || !onUpdateLogistics) return;
+            if (!selectedSquad.id || !onUpdateLogistics) return;
             try {
-              await onUpdateLogistics(selectedSquad.dbId, field, value);
+              await onUpdateLogistics(selectedSquad.id, field, value);
               const key = field === "meeting_spot" ? "meetingSpot" : field === "arrival_time" ? "arrivalTime" : "transportNotes";
               const updated = { ...selectedSquad, [key]: value };
               setSelectedSquad(updated);
@@ -3369,8 +3365,7 @@ const GroupsView = ({
 // ─── Friends Data ────────────────────────────────────────────────────────────
 
 interface Friend {
-  id: number;
-  odbc?: string; // Real user UUID from database
+  id: string;
   friendshipId?: string; // Friendship UUID (for accepting requests)
   name: string;
   username: string;
@@ -3381,17 +3376,17 @@ interface Friend {
 }
 
 const DEMO_FRIENDS: Friend[] = [
-  { id: 1, name: "Sara", username: "sara.nyc", avatar: "S", status: "friend", availability: "open" },
-  { id: 2, name: "Nickon", username: "nickon", avatar: "N", status: "friend", availability: "awkward" },
-  { id: 3, name: "Janelle", username: "janelle.k", avatar: "J", status: "friend", availability: "not-available" },
-  { id: 4, name: "Luke", username: "luke_bk", avatar: "L", status: "friend", availability: "open" },
+  { id: "demo-friend-1", name: "Sara", username: "sara.nyc", avatar: "S", status: "friend", availability: "open" },
+  { id: "demo-friend-2", name: "Nickon", username: "nickon", avatar: "N", status: "friend", availability: "awkward" },
+  { id: "demo-friend-3", name: "Janelle", username: "janelle.k", avatar: "J", status: "friend", availability: "not-available" },
+  { id: "demo-friend-4", name: "Luke", username: "luke_bk", avatar: "L", status: "friend", availability: "open" },
 ];
 
 const DEMO_SUGGESTIONS: Friend[] = [
-  { id: 10, name: "Devon", username: "devon.mp3", avatar: "D", status: "none" },
-  { id: 11, name: "Raya", username: "raya_k", avatar: "R", status: "incoming" },
-  { id: 12, name: "Marcus", username: "marcus.wav", avatar: "M", status: "pending" },
-  { id: 13, name: "Zoe", username: "zoe.creates", avatar: "Z", status: "none" },
+  { id: "demo-suggest-1", name: "Devon", username: "devon.mp3", avatar: "D", status: "none" },
+  { id: "demo-suggest-2", name: "Raya", username: "raya_k", avatar: "R", status: "incoming" },
+  { id: "demo-suggest-3", name: "Marcus", username: "marcus.wav", avatar: "M", status: "pending" },
+  { id: "demo-suggest-4", name: "Zoe", username: "zoe.creates", avatar: "Z", status: "none" },
 ];
 
 const DEMO_NOTIFICATIONS: { id: string; type: string; title: string; body: string | null; related_user_id: string | null; related_squad_id: string | null; related_check_id: string | null; is_read: boolean; created_at: string }[] = [
@@ -3402,10 +3397,10 @@ const DEMO_NOTIFICATIONS: { id: string; type: string; title: string; body: strin
 ];
 
 const DEMO_SEARCH_USERS: Friend[] = [
-  { id: 20, name: "Alex Kim", username: "alex.k", avatar: "A", status: "none" },
-  { id: 21, name: "Mia Chen", username: "mia.creates", avatar: "M", status: "none" },
-  { id: 22, name: "Jordan Lee", username: "jordan.lee", avatar: "J", status: "none" },
-  { id: 23, name: "Kai Nakamura", username: "kai.nak", avatar: "K", status: "none" },
+  { id: "demo-search-1", name: "Alex Kim", username: "alex.k", avatar: "A", status: "none" },
+  { id: "demo-search-2", name: "Mia Chen", username: "mia.creates", avatar: "M", status: "none" },
+  { id: "demo-search-3", name: "Jordan Lee", username: "jordan.lee", avatar: "J", status: "none" },
+  { id: "demo-search-4", name: "Kai Nakamura", username: "kai.nak", avatar: "K", status: "none" },
 ];
 
 // ─── Friends Modal ───────────────────────────────────────────────────────────
@@ -3426,9 +3421,9 @@ const FriendsModal = ({
   onClose: () => void;
   friends: Friend[];
   suggestions: Friend[];
-  onAddFriend: (id: number) => void;
-  onAcceptRequest: (id: number) => void;
-  onRemoveFriend?: (id: number) => void;
+  onAddFriend: (id: string) => void;
+  onAcceptRequest: (id: string) => void;
+  onRemoveFriend?: (id: string) => void;
   onSearchUsers?: (query: string) => Promise<Friend[]>;
   initialTab?: "friends" | "add";
   onViewProfile?: (userId: string) => void;
@@ -3632,7 +3627,7 @@ const FriendsModal = ({
               filteredFriends.map((f) => (
                 <div
                   key={f.id}
-                  onClick={() => f.odbc && onViewProfile ? onViewProfile(f.odbc) : setSelectedFriend(f)}
+                  onClick={() => onViewProfile ? onViewProfile(f.id) : setSelectedFriend(f)}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -5401,19 +5396,19 @@ export default function Home() {
   const [suggestions, setSuggestions] = useState<Friend[]>([]); // Loaded from DB or demo data
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [friendsInitialTab, setFriendsInitialTab] = useState<"friends" | "add">("friends");
-  const [myCheckResponses, setMyCheckResponses] = useState<Record<number, "down" | "maybe">>({});
+  const [myCheckResponses, setMyCheckResponses] = useState<Record<string, "down" | "maybe">>({});
   const [squadNotification, setSquadNotification] = useState<{
     squadName: string;
     startedBy: string;
     ideaBy: string;
     members: string[];
-    squadId: number;
+    squadId: string;
   } | null>(null);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-  const [newlyAddedId, setNewlyAddedId] = useState<number | null>(null);
-  const [editingCheckId, setEditingCheckId] = useState<number | null>(null);
+  const [newlyAddedId, setNewlyAddedId] = useState<string | null>(null);
+  const [editingCheckId, setEditingCheckId] = useState<string | null>(null);
   const [editingCheckText, setEditingCheckText] = useState("");
-  const [autoSelectSquadId, setAutoSelectSquadId] = useState<number | null>(null);
+  const [autoSelectSquadId, setAutoSelectSquadId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<{ id: string; type: string; title: string; body: string | null; related_user_id: string | null; related_squad_id: string | null; related_check_id: string | null; is_read: boolean; created_at: string }[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -5432,10 +5427,10 @@ export default function Home() {
   const handleEditEvent = async (updated: { title: string; venue: string; date: string; time: string; vibe: string[] }) => {
     if (!editingEvent) return;
 
-    // Update in database if logged in and has a dbId
-    if (!isDemoMode && userId && editingEvent.dbId) {
+    // Update in database if logged in
+    if (!isDemoMode && userId) {
       try {
-        await db.updateEvent(editingEvent.dbId, {
+        await db.updateEvent(editingEvent.id, {
           title: updated.title,
           venue: updated.venue,
           date_display: updated.date,
@@ -5489,8 +5484,7 @@ export default function Home() {
         }
 
         return {
-          id: parseInt(c.id.slice(0, 8), 16) || Date.now(),
-          dbId: c.id,
+          id: c.id,
           text: c.text,
           author: c.author.display_name,
           authorId: c.author_id,
@@ -5505,23 +5499,22 @@ export default function Home() {
           })),
           isYours: c.author_id === userId,
           maxSquadSize: c.max_squad_size,
-          squadDbId: c.squads?.[0]?.id,
+          squadId: c.squads?.[0]?.id,
           squadMemberCount: c.squads?.[0]?.members?.length ?? 0,
           eventDate: c.event_date ?? undefined,
           eventDateLabel: c.event_date ? new Date(c.event_date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined,
         };
       });
-      // Preserve squadLocalId/inSquad from previous state (set by loadRealData cross-referencing)
+      // Preserve squadId/inSquad from previous state (set by loadRealData cross-referencing)
       // so that a standalone loadChecks call (e.g. from subscribeToChecks) doesn't wipe them
       setChecks((prev) => {
-        const prevMap = new Map(prev.map((c) => [c.dbId, c]));
+        const prevMap = new Map(prev.map((c) => [c.id, c]));
         return transformedChecks.map((c) => {
-          const existing = c.dbId ? prevMap.get(c.dbId) : undefined;
+          const existing = prevMap.get(c.id);
           if (existing) {
             return {
               ...c,
-              squadLocalId: c.squadLocalId ?? existing.squadLocalId,
-              squadDbId: c.squadDbId ?? existing.squadDbId,
+              squadId: c.squadId ?? existing.squadId,
               inSquad: c.inSquad ?? existing.inSquad,
             };
           }
@@ -5533,9 +5526,14 @@ export default function Home() {
     }
   }, [isDemoMode, userId]);
 
+  // Guard against concurrent loadRealData calls
+  const isLoadingRef = useRef(false);
+
   // Load real data when logged in (non-demo mode)
   const loadRealData = useCallback(async () => {
     if (isDemoMode || !userId) return;
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
 
     try {
       // Load saved events
@@ -5553,8 +5551,7 @@ export default function Home() {
         : {};
 
       const transformedEvents: Event[] = savedEvents.map((se) => ({
-        id: parseInt(se.event!.id.slice(0, 8), 16) || Date.now(),
-        dbId: se.event!.id,
+        id: se.event!.id,
         createdBy: se.event!.created_by ?? undefined,
         title: se.event!.title,
         venue: se.event!.venue ?? "",
@@ -5578,8 +5575,7 @@ export default function Home() {
       const transformedTonight: Event[] = publicEvents
         .filter((e) => e.venue && e.date_display) // Hide events with no venue or date
         .map((e) => ({
-          id: parseInt(e.id.slice(0, 8), 16) || Date.now(),
-          dbId: e.id,
+          id: e.id,
           createdBy: e.created_by ?? undefined,
           title: e.title,
           venue: e.venue ?? "",
@@ -5600,8 +5596,7 @@ export default function Home() {
       // Load friends
       const friendsList = await db.getFriends();
       const transformedFriends: Friend[] = friendsList.map(({ profile: p, friendshipId }) => ({
-        id: parseInt(p.id.slice(0, 8), 16) || Date.now(),
-        odbc: p.id,
+        id: p.id,
         friendshipId,
         name: p.display_name,
         username: p.username,
@@ -5615,8 +5610,7 @@ export default function Home() {
       // Load pending friend requests (incoming)
       const pendingRequests = await db.getPendingRequests();
       const incomingFriends: Friend[] = pendingRequests.map((f) => ({
-        id: parseInt(f.requester!.id.slice(0, 8), 16) || Date.now(),
-        odbc: f.requester!.id,
+        id: f.requester!.id,
         friendshipId: f.id,
         name: f.requester!.display_name,
         username: f.requester!.username,
@@ -5630,8 +5624,7 @@ export default function Home() {
       try {
         const suggestedUsers = await db.getSuggestedUsers();
         suggestedFriends = suggestedUsers.map((p) => ({
-          id: parseInt(p.id.slice(0, 8), 16) || Date.now(),
-          odbc: p.id,
+          id: p.id,
           name: p.display_name,
           username: p.username,
           avatar: p.avatar_letter,
@@ -5679,8 +5672,7 @@ export default function Home() {
             }));
           const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
           return {
-            id: parseInt(s.id.slice(0, 8), 16) || Date.now(),
-            dbId: s.id,
+            id: s.id,
             name: s.name,
             event: s.event ? `${s.event.title} — ${s.event.date_display}` : undefined,
             eventDate: s.event?.date_display ?? undefined,
@@ -5689,7 +5681,7 @@ export default function Home() {
             messages,
             lastMsg: lastMessage ? `${lastMessage.sender}: ${lastMessage.text}` : "",
             time: lastMessage ? lastMessage.time : fmtTime(s.created_at),
-            checkDbId: s.check_id ?? undefined,
+            checkId: s.check_id ?? undefined,
             meetingSpot: s.meeting_spot ?? undefined,
             arrivalTime: s.arrival_time ?? undefined,
             transportNotes: s.transport_notes ?? undefined,
@@ -5698,23 +5690,19 @@ export default function Home() {
         setSquads(transformedSquads);
 
         // Link checks to their squads
-        const checkToSquad = new Map<string, { localId: number; dbId?: string; inSquad: boolean }>();
+        const checkToSquad = new Map<string, { squadId: string; inSquad: boolean }>();
         for (const sq of transformedSquads) {
-          if (sq.checkDbId) {
-            checkToSquad.set(sq.checkDbId, {
-              localId: sq.id,
-              dbId: sq.dbId,
+          if (sq.checkId) {
+            checkToSquad.set(sq.checkId, {
+              squadId: sq.id,
               inSquad: true, // if the squad shows up in getSquads, user is a member
             });
           }
         }
-        // Also check for squads the user is NOT a member of (via check_id on squads)
-        // These won't show up in getSquads, so we check via the checks themselves
         if (checkToSquad.size > 0) {
           setChecks((prev) => prev.map((c) => {
-            if (!c.dbId) return c;
-            const sq = checkToSquad.get(c.dbId);
-            if (sq) return { ...c, squadLocalId: sq.localId, squadDbId: sq.dbId, inSquad: sq.inSquad };
+            const sq = checkToSquad.get(c.id);
+            if (sq) return { ...c, squadId: sq.squadId, inSquad: sq.inSquad };
             return c;
           }));
         }
@@ -5724,6 +5712,8 @@ export default function Home() {
 
     } catch (err) {
       console.error("Failed to load data:", err);
+    } finally {
+      isLoadingRef.current = false;
     }
   }, [isDemoMode, userId]);
   const loadRealDataRef = useRef(loadRealData);
@@ -5731,14 +5721,14 @@ export default function Home() {
 
   // Load squad pool members when EventLobby opens
   useEffect(() => {
-    if (!socialEvent?.dbId || isDemoMode) {
+    if (!socialEvent?.id || isDemoMode) {
       setSquadPoolMembers([]);
       setInSquadPool(false);
       return;
     }
     (async () => {
       try {
-        const pool = await db.getCrewPool(socialEvent.dbId!);
+        const pool = await db.getCrewPool(socialEvent.id);
         setInSquadPool(pool.some((entry) => entry.user_id === userId));
         // Convert pool entries to Person objects (exclude self)
         const poolPeople: Person[] = pool
@@ -5754,7 +5744,7 @@ export default function Home() {
         console.warn("Failed to load squad pool:", err);
       }
     })();
-  }, [socialEvent?.dbId, isDemoMode, userId]);
+  }, [socialEvent?.id, isDemoMode, userId]);
 
   // Helper for time ago formatting
   const formatTimeAgo = (date: Date): string => {
@@ -5769,12 +5759,24 @@ export default function Home() {
     return "now";
   };
 
-  // Trigger data load when logged in and on tab change
+  // Trigger data load when logged in
   useEffect(() => {
     if (isLoggedIn && !isDemoMode) {
       loadRealData();
     }
-  }, [isLoggedIn, isDemoMode, loadRealData, tab]);
+  }, [isLoggedIn, isDemoMode, loadRealData]);
+
+  // Reload data when user returns to the app (visibility change)
+  useEffect(() => {
+    if (!isLoggedIn || isDemoMode) return;
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        loadRealDataRef.current();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [isLoggedIn, isDemoMode]);
 
   // Load notifications and subscribe to realtime updates
   useEffect(() => {
@@ -5809,8 +5811,7 @@ export default function Home() {
           ]);
           if (profile) {
             const incoming: Friend = {
-              id: parseInt(profile.id.slice(0, 8), 16) || Date.now(),
-              odbc: profile.id,
+              id: profile.id,
               friendshipId: friendship?.id ?? undefined,
               name: profile.display_name,
               username: profile.username,
@@ -5819,7 +5820,7 @@ export default function Home() {
               igHandle: profile.ig_handle ?? undefined,
             };
             setSuggestions((prev) => {
-              if (prev.some((s) => s.odbc === profile.id)) return prev;
+              if (prev.some((s) => s.id === profile.id)) return prev;
               return [incoming, ...prev];
             });
           }
@@ -5834,21 +5835,20 @@ export default function Home() {
         if (newNotif.body) showToastRef.current(newNotif.body);
         const relatedId = newNotif.related_user_id;
         setSuggestions((prev) => {
-          const person = prev.find((s) => s.odbc === relatedId);
+          const person = prev.find((s) => s.id === relatedId);
           if (person) {
             setFriends((prevFriends) => {
-              if (prevFriends.some((f) => f.odbc === relatedId)) return prevFriends;
+              if (prevFriends.some((f) => f.id === relatedId)) return prevFriends;
               return [...prevFriends, { ...person, status: "friend" as const, availability: "open" as const }];
             });
-            return prev.filter((s) => s.odbc !== relatedId);
+            return prev.filter((s) => s.id !== relatedId);
           }
           db.getProfileById(relatedId).then((profile) => {
             if (profile) {
               setFriends((prevFriends) => {
-                if (prevFriends.some((f) => f.odbc === relatedId)) return prevFriends;
+                if (prevFriends.some((f) => f.id === relatedId)) return prevFriends;
                 return [...prevFriends, {
-                  id: parseInt(profile.id.slice(0, 8), 16) || Date.now(),
-                  odbc: profile.id,
+                  id: profile.id,
                   name: profile.display_name,
                   username: profile.username,
                   avatar: profile.avatar_letter,
@@ -5877,18 +5877,18 @@ export default function Home() {
 
       if (event === "DELETE") {
         // Other user unfriended us — remove from friends list and suggestions
-        setFriends((prev) => prev.filter((f) => f.odbc !== otherUserId));
-        setSuggestions((prev) => prev.filter((s) => s.odbc !== otherUserId));
+        setFriends((prev) => prev.filter((f) => f.id !== otherUserId));
+        setSuggestions((prev) => prev.filter((s) => s.id !== otherUserId));
       } else if (event === "UPDATE" && friendship.status === "accepted") {
         // Our request was accepted, or a mutual request auto-accepted
         setSuggestions((prev) => {
-          const person = prev.find((s) => s.odbc === otherUserId);
+          const person = prev.find((s) => s.id === otherUserId);
           if (person) {
             setFriends((prevFriends) => {
-              if (prevFriends.some((f) => f.odbc === otherUserId)) return prevFriends;
+              if (prevFriends.some((f) => f.id === otherUserId)) return prevFriends;
               return [...prevFriends, { ...person, status: "friend" as const, availability: "open" as const }];
             });
-            return prev.filter((s) => s.odbc !== otherUserId);
+            return prev.filter((s) => s.id !== otherUserId);
           }
           return prev;
         });
@@ -5898,10 +5898,9 @@ export default function Home() {
           const profile = await db.getProfileById(otherUserId);
           if (profile) {
             setSuggestions((prev) => {
-              if (prev.some((s) => s.odbc === otherUserId)) return prev;
+              if (prev.some((s) => s.id === otherUserId)) return prev;
               return [{
-                id: parseInt(profile.id.slice(0, 8), 16) || Date.now(),
-                odbc: profile.id,
+                id: profile.id,
                 friendshipId: friendship.id,
                 name: profile.display_name,
                 username: profile.username,
@@ -5987,7 +5986,7 @@ export default function Home() {
     }
   };
 
-  const toggleSave = (id: number) => {
+  const toggleSave = (id: string) => {
     const event = events.find((e) => e.id === id);
     if (!event) return;
     const newSaved = !event.saved;
@@ -5995,27 +5994,40 @@ export default function Home() {
       prev.map((e) => e.id === id ? { ...e, saved: newSaved } : e)
     );
     showToast(newSaved ? "Added to your calendar ✓" : "Removed from calendar");
-    if (!isDemoMode && event.dbId) {
-      (newSaved ? db.saveEvent(event.dbId) : db.unsaveEvent(event.dbId))
-        .catch((err) => console.error("Failed to toggle save:", err));
+    if (!isDemoMode && event.id) {
+      (newSaved ? db.saveEvent(event.id) : db.unsaveEvent(event.id))
+        .catch((err) => {
+          console.error("Failed to toggle save:", err);
+          setEvents((prev) =>
+            prev.map((e) => e.id === id ? { ...e, saved: !newSaved } : e)
+          );
+          showToast("Failed to save — try again");
+        });
     }
   };
 
-  const toggleDown = (id: number) => {
+  const toggleDown = (id: string) => {
     const event = events.find((e) => e.id === id);
     if (!event) return;
     const newDown = !event.isDown;
+    const prevSaved = event.saved;
     setEvents((prev) =>
       prev.map((e) => e.id === id ? { ...e, isDown: newDown, saved: newDown ? true : e.saved } : e)
     );
     showToast(newDown ? "You're down! 🤙" : "Maybe next time");
-    if (!isDemoMode && event.dbId) {
-      db.toggleDown(event.dbId, newDown)
-        .catch((err) => console.error("Failed to toggle down:", err));
+    if (!isDemoMode && event.id) {
+      db.toggleDown(event.id, newDown)
+        .catch((err) => {
+          console.error("Failed to toggle down:", err);
+          setEvents((prev) =>
+            prev.map((e) => e.id === id ? { ...e, isDown: !newDown, saved: prevSaved } : e)
+          );
+          showToast("Failed to update — try again");
+        });
     }
   };
 
-  const respondToCheck = (checkId: number, status: "down" | "maybe") => {
+  const respondToCheck = (checkId: string, status: "down" | "maybe") => {
     const check = checks.find((c) => c.id === checkId);
     setMyCheckResponses((prev) => ({ ...prev, [checkId]: status }));
     // Add yourself to the check's responses
@@ -6033,15 +6045,15 @@ export default function Home() {
           }
           return {
             ...c,
-            responses: [...c.responses, { name: "You", avatar: profile!.avatar_letter, status }],
+            responses: [...c.responses, { name: "You", avatar: profile?.avatar_letter ?? "?", status }],
           };
         }
         return c;
       })
     );
     showToast(status === "down" ? "You're down! 🤙" : "Marked as maybe");
-    if (!isDemoMode && check?.dbId) {
-      db.respondToCheck(check.dbId, status)
+    if (!isDemoMode && check?.id) {
+      db.respondToCheck(check.id, status)
         .then(() => {
           // Reload checks after "down" to pick up auto-join squad membership from DB trigger
           if (status === "down") loadChecks();
@@ -6060,13 +6072,13 @@ export default function Home() {
 
     // Persist to DB in prod mode
     let squadDbId: string | undefined;
-    if (!isDemoMode && check.dbId) {
+    if (!isDemoMode && check.id) {
       try {
         const memberIds = [
           ...downPeople.map((p) => p.odbc).filter((id): id is string => !!id),
           ...(check.authorId ? [check.authorId] : []),
         ];
-        const dbSquad = await db.createSquad(squadName, memberIds, undefined, check.dbId);
+        const dbSquad = await db.createSquad(squadName, memberIds, undefined, check.id);
         await db.sendMessage(dbSquad.id, "let's make this happen! 🔥");
         squadDbId = dbSquad.id;
       } catch (err: any) {
@@ -6077,12 +6089,11 @@ export default function Home() {
     }
 
     const newSquad: Squad = {
-      id: Date.now(),
-      dbId: squadDbId,
+      id: squadDbId ?? `local-squad-${Date.now()}`,
       name: squadName,
       event: `${check.author}'s idea · ${check.expiresIn} left`,
       members: [
-        { name: "You", avatar: profile!.avatar_letter },
+        { name: "You", avatar: profile?.avatar_letter ?? "?" },
         ...downPeople.map((p) => ({ name: p.name, avatar: p.avatar })),
         ...(!check.isYours ? [{ name: check.author, avatar: check.author.charAt(0).toUpperCase() }] : []),
       ],
@@ -6110,7 +6121,7 @@ export default function Home() {
     setSquads((prev) => [newSquad, ...prev]);
 
     // Mark the check as having a squad
-    setChecks((prev) => prev.map((c) => c.id === check.id ? { ...c, squadLocalId: newSquad.id } : c));
+    setChecks((prev) => prev.map((c) => c.id === check.id ? { ...c, squadId: newSquad.id } : c));
 
     // Show notification
     setSquadNotification({
@@ -6129,9 +6140,9 @@ export default function Home() {
     const squadName = event.title.slice(0, 30) + (event.title.length > 30 ? "..." : "");
 
     let squadDbId: string | undefined;
-    if (!isDemoMode && event.dbId) {
+    if (!isDemoMode && event.id) {
       try {
-        const dbSquad = await db.createSquad(squadName, selectedUserIds, event.dbId);
+        const dbSquad = await db.createSquad(squadName, selectedUserIds, event.id);
         await db.sendMessage(dbSquad.id, `squad's up for ${event.title}! 🔥`);
         squadDbId = dbSquad.id;
       } catch (err: any) {
@@ -6149,21 +6160,20 @@ export default function Home() {
     const poolSelectedIds = squadPoolMembers
       .filter((p) => p.userId && selectedUserIds.includes(p.userId))
       .map((p) => p.userId!);
-    if (poolSelectedIds.length > 0 && event.dbId) {
+    if (poolSelectedIds.length > 0 && event.id) {
       const allToRemove = inSquadPool ? [userId!, ...poolSelectedIds] : poolSelectedIds;
-      db.removeFromCrewPool(event.dbId, allToRemove).catch(() => {});
+      db.removeFromCrewPool(event.id, allToRemove).catch(() => {});
       setSquadPoolMembers((prev) => prev.filter((p) => !poolSelectedIds.includes(p.userId!)));
       if (inSquadPool) setInSquadPool(false);
     }
 
     const newSquad: Squad = {
-      id: Date.now(),
-      dbId: squadDbId,
+      id: squadDbId ?? `local-squad-${Date.now()}`,
       name: squadName,
       event: `${event.title} — ${event.date}`,
       eventDate: event.date,
       members: [
-        { name: "You", avatar: profile!.avatar_letter },
+        { name: "You", avatar: profile?.avatar_letter ?? "?" },
         ...selectedPeople.map((p) => ({ name: p.name, avatar: p.avatar })),
       ],
       messages: [
@@ -6203,23 +6213,23 @@ export default function Home() {
   };
 
   const handleJoinSquadPool = async (event: Event) => {
-    if (!event.dbId || isDemoMode) return;
+    if (!event.id || isDemoMode) return;
 
     try {
       if (inSquadPool) {
-        await db.leaveCrewPool(event.dbId);
+        await db.leaveCrewPool(event.id);
         setInSquadPool(false);
         setSquadPoolMembers((prev) => prev.filter((p) => p.userId !== userId));
         showToast("Left squad pool");
         return;
       }
 
-      await db.joinCrewPool(event.dbId);
+      await db.joinCrewPool(event.id);
       setInSquadPool(true);
       showToast("You're looking for a squad!");
 
       // Refresh pool members to show the full list
-      const pool = await db.getCrewPool(event.dbId);
+      const pool = await db.getCrewPool(event.id);
       const poolPeople: Person[] = pool
         .filter((entry) => entry.user_id !== userId)
         .map((entry) => ({
@@ -6493,8 +6503,8 @@ export default function Home() {
                     {checks.map((check) => (
                       <div
                         key={check.id}
-                        onClick={check.squadLocalId ? () => {
-                          setAutoSelectSquadId(check.squadLocalId!);
+                        onClick={check.squadId ? () => {
+                          setAutoSelectSquadId(check.squadId!);
                           setTab("groups");
                         } : undefined}
                         style={{
@@ -6503,7 +6513,7 @@ export default function Home() {
                           overflow: "hidden",
                           marginBottom: 8,
                           border: `1px solid ${check.isYours ? "rgba(232,255,90,0.2)" : color.border}`,
-                          cursor: check.squadLocalId ? "pointer" : undefined,
+                          cursor: check.squadId ? "pointer" : undefined,
                         }}
                       >
                         {/* Expiry progress bar — hidden for open (no expiry) checks */}
@@ -6594,8 +6604,8 @@ export default function Home() {
                                   );
                                   setEditingCheckId(null);
                                   showToast("Check updated!");
-                                  if (!isDemoMode && check.dbId) {
-                                    db.updateInterestCheck(check.dbId, editingCheckText.trim()).catch((err) => console.error("Failed to update check:", err));
+                                  if (!isDemoMode && check.id) {
+                                    db.updateInterestCheck(check.id, editingCheckText.trim()).catch((err) => console.error("Failed to update check:", err));
                                   }
                                 } else if (e.key === "Escape") {
                                   setEditingCheckId(null);
@@ -6623,8 +6633,8 @@ export default function Home() {
                                   );
                                   setEditingCheckId(null);
                                   showToast("Check updated!");
-                                  if (!isDemoMode && check.dbId) {
-                                    db.updateInterestCheck(check.dbId, editingCheckText.trim()).catch((err) => console.error("Failed to update check:", err));
+                                  if (!isDemoMode && check.id) {
+                                    db.updateInterestCheck(check.id, editingCheckText.trim()).catch((err) => console.error("Failed to update check:", err));
                                   }
                                 }
                               }}
@@ -6674,7 +6684,7 @@ export default function Home() {
                                 </span>
                               )}
                             </div>
-                            {check.isYours && (check.squadLocalId || check.squadDbId) && (
+                            {check.isYours && (check.squadId || check.squadId) && (
                               <div
                                 style={{
                                   display: "flex",
@@ -6688,8 +6698,8 @@ export default function Home() {
                                 }}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (check.squadLocalId) {
-                                    setAutoSelectSquadId(check.squadLocalId);
+                                  if (check.squadId) {
+                                    setAutoSelectSquadId(check.squadId);
                                   }
                                   setTab("groups");
                                 }}
@@ -6701,7 +6711,7 @@ export default function Home() {
                                 <span style={{ fontFamily: font.mono, fontSize: 10, color: "#AF52DE", marginLeft: "auto" }}>→</span>
                               </div>
                             )}
-                            {check.isYours && !check.squadLocalId && !check.squadDbId && (
+                            {check.isYours && !check.squadId && !check.squadId && (
                               <div style={{ display: "flex", gap: 4, flexShrink: 0, marginTop: 2 }}>
                                 <button
                                   onClick={(e) => {
@@ -6726,9 +6736,9 @@ export default function Home() {
                                   onClick={async (e) => {
                                     e.stopPropagation();
                                     setChecks((prev) => prev.filter((c) => c.id !== check.id));
-                                    if (check.dbId) {
+                                    if (!isDemoMode) {
                                       try {
-                                        await db.deleteInterestCheck(check.dbId);
+                                        await db.deleteInterestCheck(check.id);
                                       } catch (err) {
                                         console.error("Failed to delete check:", err);
                                       }
@@ -6834,8 +6844,8 @@ export default function Home() {
                                           : c
                                       )
                                     );
-                                    if (!isDemoMode && check.dbId) {
-                                      db.removeCheckResponse(check.dbId).catch((err) => console.error("Failed to remove response:", err));
+                                    if (!isDemoMode && check.id) {
+                                      db.removeCheckResponse(check.id).catch((err) => console.error("Failed to remove response:", err));
                                     }
                                   } else {
                                     respondToCheck(check.id, "down");
@@ -6871,8 +6881,8 @@ export default function Home() {
                                           : c
                                       )
                                     );
-                                    if (!isDemoMode && check.dbId) {
-                                      db.removeCheckResponse(check.dbId).catch((err) => console.error("Failed to remove response:", err));
+                                    if (!isDemoMode && check.id) {
+                                      db.removeCheckResponse(check.id).catch((err) => console.error("Failed to remove response:", err));
                                     }
                                   } else {
                                     respondToCheck(check.id, "maybe");
@@ -6892,11 +6902,11 @@ export default function Home() {
                                 {myCheckResponses[check.id] === "maybe" ? "✓ Maybe" : "Maybe"}
                               </button>
                               {myCheckResponses[check.id] === "down" && (
-                                check.squadLocalId ? (
+                                check.squadId ? (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setAutoSelectSquadId(check.squadLocalId!);
+                                      setAutoSelectSquadId(check.squadId!);
                                       setTab("groups");
                                     }}
                                     style={{
@@ -6913,7 +6923,7 @@ export default function Home() {
                                   >
                                     💬 Squad Chat →
                                   </button>
-                                ) : check.squadDbId ? (
+                                ) : check.squadId ? (
                                   (check.squadMemberCount ?? 0) >= (check.maxSquadSize ?? 5) ? (
                                     <span style={{
                                       fontFamily: font.mono,
@@ -6928,7 +6938,7 @@ export default function Home() {
                                       onClick={async (e) => {
                                         e.stopPropagation();
                                         try {
-                                          await db.joinSquad(check.squadDbId!);
+                                          await db.joinSquad(check.squadId!);
                                           showToast("Joined the squad! 🚀");
                                         } catch (err: any) {
                                           const code = err && typeof err === 'object' && 'code' in err ? err.code : '';
@@ -7011,7 +7021,7 @@ export default function Home() {
                         onToggleDown={() => toggleDown(e.id)}
                         onOpenSocial={() => setSocialEvent(e)}
                         onLongPress={
-                          (e.createdBy === userId || (!e.createdBy && e.dbId) || isDemoMode) ? () => setEditingEvent(e) : undefined
+                          (e.createdBy === userId || !e.createdBy || isDemoMode) ? () => setEditingEvent(e) : undefined
                         }
                         isNew={e.id === newlyAddedId}
                       />
@@ -7256,21 +7266,21 @@ export default function Home() {
                           showToast(newSaved ? "Saved to your calendar ✓" : "Removed");
 
                           // Persist to DB
-                          if (!isDemoMode && e.dbId) {
+                          if (!isDemoMode) {
                             try {
                               if (newSaved) {
-                                await db.saveEvent(e.dbId);
-                                await db.toggleDown(e.dbId, true);
+                                await db.saveEvent(e.id);
+                                await db.toggleDown(e.id, true);
                                 // Add to saved events list so it shows in the feed
                                 const savedEvent: Event = { ...e, saved: true, isDown: true };
                                 setEvents((prev) => {
-                                  if (prev.some((ev) => ev.dbId === e.dbId)) return prev;
+                                  if (prev.some((ev) => ev.id === e.id)) return prev;
                                   return [savedEvent, ...prev];
                                 });
                               } else {
-                                await db.unsaveEvent(e.dbId);
+                                await db.unsaveEvent(e.id);
                                 // Remove from saved events list
-                                setEvents((prev) => prev.filter((ev) => ev.dbId !== e.dbId));
+                                setEvents((prev) => prev.filter((ev) => ev.id !== e.id));
                               }
                             } catch (err: unknown) {
                               // Ignore duplicate save (unique constraint)
@@ -7595,8 +7605,7 @@ export default function Home() {
 
               // Add to local state with the real ID
               const newEvent: Event = {
-                id: parseInt(dbEvent.id.slice(0, 8), 16) || Date.now(),
-                dbId: dbEvent.id,
+                id: dbEvent.id,
                 createdBy: userId,
                 title: dbEvent.title || title,
                 venue: dbEvent.venue || venue,
@@ -7623,7 +7632,7 @@ export default function Home() {
           } else {
             // Demo mode - just use local state
             const newEvent: Event = {
-              id: Date.now(),
+              id: `local-event-${Date.now()}`,
               title,
               venue,
               date: dateDisplay,
@@ -7658,8 +7667,7 @@ export default function Home() {
             try {
               const dbCheck = await db.createInterestCheck(idea, expiresInHours, eventDate, maxSquadSize);
               const newCheck: InterestCheck = {
-                id: parseInt(dbCheck.id.slice(0, 8), 16) || Date.now(),
-                dbId: dbCheck.id,
+                id: dbCheck.id,
                 text: idea,
                 author: profile?.display_name || "You",
                 timeAgo: "now",
@@ -7680,7 +7688,7 @@ export default function Home() {
           } else {
             // Demo mode - local state + simulated responses
             const newCheck: InterestCheck = {
-              id: Date.now(),
+              id: `local-check-${Date.now()}`,
               text: idea,
               author: "You",
               timeAgo: "now",
@@ -7876,7 +7884,7 @@ export default function Home() {
                         setNotificationsOpen(false);
                         // If friend_request but already friends, show friends tab instead of empty add tab
                         const alreadyFriends = n.type === "friend_request" && n.related_user_id &&
-                          friends.some((f) => f.odbc === n.related_user_id);
+                          friends.some((f) => f.id === n.related_user_id);
                         setFriendsInitialTab(n.type === "friend_request" && !alreadyFriends ? "add" : "friends");
                         setFriendsOpen(true);
                       } else if (n.type === "squad_message" || n.type === "squad_invite") {
@@ -7994,7 +8002,7 @@ export default function Home() {
         suggestions={suggestions}
         onAddFriend={async (id) => {
           const person = suggestions.find((s) => s.id === id);
-          if (!person?.odbc) {
+          if (!person || isDemoMode) {
             // Demo mode - just update local state
             setSuggestions((prev) =>
               prev.map((s) => (s.id === id ? { ...s, status: "pending" as const } : s))
@@ -8005,7 +8013,7 @@ export default function Home() {
 
           // Real mode - send to database
           try {
-            await db.sendFriendRequest(person.odbc);
+            await db.sendFriendRequest(person.id);
             setSuggestions((prev) =>
               prev.map((s) => (s.id === id ? { ...s, status: "pending" as const } : s))
             );
@@ -8060,16 +8068,15 @@ export default function Home() {
         }}
         onSearchUsers={!isDemoMode && userId ? async (query) => {
           const results = await db.searchUsers(query);
-          const friendIds = new Set(friends.map((f) => f.odbc).filter(Boolean));
+          const friendIds = new Set(friends.map((f) => f.id));
           const pendingIds = new Set(
-            suggestions.filter((s) => s.status === "pending" || s.status === "incoming").map((s) => s.odbc).filter(Boolean)
+            suggestions.filter((s) => s.status === "pending" || s.status === "incoming").map((s) => s.id)
           );
 
           return results
             .filter((p) => p.id !== userId)
             .map((p) => ({
-              id: parseInt(p.id.slice(0, 8), 16) || Date.now(),
-              odbc: p.id,
+              id: p.id,
               name: p.display_name,
               username: p.username,
               avatar: p.avatar_letter,

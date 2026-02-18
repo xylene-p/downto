@@ -28,7 +28,7 @@ The core loop works end-to-end in production: OTP code auth (8-digit, replaced m
 
 6. ~~**No error boundaries.**~~ **DONE** — `error.tsx` + `global-error.tsx` catch render errors with styled recovery UI.
 
-7. **UUID-to-number ID collision risk.** Local IDs are generated via `parseInt(uuid.slice(0, 8), 16)` (used ~15 times). This truncates a UUID to 32 bits — collision probability grows fast with more events/users. Two events with the same truncated ID will cause state bugs.
+7. ~~**UUID-to-number ID collision risk.**~~ **DONE** — All interfaces (Event, InterestCheck, Squad, Friend) now use full UUID strings as `id`. Removed `dbId`/`odbc` indirection. No more `parseInt(uuid.slice(0, 8), 16)` truncation.
 
 8. **No logout confirmation or session expiry handling.** If the Supabase session expires mid-use, API calls fail silently. Users have to manually reload.
 
@@ -56,7 +56,7 @@ The core loop works end-to-end in production: OTP code auth (8-digit, replaced m
 - **Break up `page.tsx`** — ~7,500 lines in one component. Extract feed, calendar, groups, profile, modals into separate files.
 - **Calendar sync** (Google Calendar / Apple .ics export)
 - **Offline support** — service worker only handles push notifications, no caching strategy
-- **Optimistic UI updates** — all mutations wait for DB response before updating the UI
+- **Optimistic UI updates** — toggleSave/toggleDown now optimistically update with rollback; other mutations still wait for DB response
 - **Infinite scroll / pagination** — all events, checks, and squads are loaded at once
 - **Desktop/tablet layout** — currently a centered 420px column
 - **Analytics / error tracking** — no Sentry, no Vercel Analytics
@@ -67,7 +67,7 @@ The core loop works end-to-end in production: OTP code auth (8-digit, replaced m
 
 ## Known Bugs
 
-- **Duplicate numeric IDs possible** — `parseInt(uuid.slice(0, 8), 16)` used for local IDs can collide, causing wrong-event-editing bugs or state corruption.
+- ~~**Duplicate numeric IDs possible**~~ **FIXED** — all entities now use full UUID strings as their `id` field.
 - ~~**IG scraping broken for private posts**~~ **FIXED** — clear error messages + manual entry fallback.
 - ~~**`events.date` stored as null for manually created events**~~ **FIXED** — `parseDateToISO()` parses display strings to ISO dates.
 - ~~**Hooks file (`hooks.ts`) is dead code**~~ **FIXED** — deleted.
@@ -128,3 +128,8 @@ The core loop works end-to-end in production: OTP code auth (8-digit, replaced m
 - IG link on events — igHandle badge on event cards links to original Instagram post (↗ opens in new tab)
 - Reusable UserProfileOverlay — tappable avatars/names in squad chats, event lobbies, and friends list open a centered profile card with name, avatar, @username, IG handle, availability, and contextual friend actions (add/remove/accept/pending)
 - Auto-join squad from interest check — DB trigger adds "down" responders to existing squad if room; configurable max squad size (2-5) with pill picker in check creation UI; check cards show squad capacity (X/Y) and "Squad full" when at cap
+- UUID-to-string ID migration — all interfaces use full UUID strings, removed `dbId`/`odbc` indirection, eliminated `parseInt(uuid.slice(0,8), 16)` collision risk
+- Concurrent loadRealData guard — `isLoadingRef` prevents overlapping data loads from tab switches, visibility changes, and realtime callbacks
+- Removed `tab` from loadRealData useEffect deps — added `visibilitychange` listener instead to avoid full reload on every tab switch
+- Fixed `profile!` non-null assertions — replaced 3 remaining crash-prone `profile!` with `profile?.` and fallback
+- Optimistic rollback on toggleSave/toggleDown — DB failures now revert the UI and show a toast instead of silently desyncing
