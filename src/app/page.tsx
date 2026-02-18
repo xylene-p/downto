@@ -3393,7 +3393,6 @@ const DEMO_NOTIFICATIONS: { id: string; type: string; title: string; body: strin
   { id: "n1", type: "friend_request", title: "Raya wants to be friends", body: "@raya_k sent you a request", related_user_id: null, related_squad_id: null, related_check_id: null, is_read: false, created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
   { id: "n2", type: "check_response", title: "Sara is down!", body: "Responded to your check \"rooftop hangs friday?\"", related_user_id: null, related_squad_id: null, related_check_id: null, is_read: false, created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() },
   { id: "n3", type: "friend_accepted", title: "Devon accepted your request", body: "You and @devon.mp3 are now friends", related_user_id: null, related_squad_id: null, related_check_id: null, is_read: true, created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() },
-  { id: "n4", type: "squad_message", title: "New message in MoMA Squad", body: "Luke: \"who's bringing the camera?\"", related_user_id: null, related_squad_id: null, related_check_id: null, is_read: false, created_at: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString() },
 ];
 
 const DEMO_SEARCH_USERS: Friend[] = [
@@ -5411,6 +5410,7 @@ export default function Home() {
   const [autoSelectSquadId, setAutoSelectSquadId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<{ id: string; type: string; title: string; body: string | null; related_user_id: string | null; related_squad_id: string | null; related_check_id: string | null; is_read: boolean; created_at: string }[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [hasUnreadSquadMessage, setHasUnreadSquadMessage] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushSupported, setPushSupported] = useState(false);
@@ -5799,8 +5799,13 @@ export default function Home() {
 
     // Subscribe to new notifications in realtime
     const channel = db.subscribeToNotifications(userId, async (newNotif) => {
-      setNotifications((prev) => [newNotif, ...prev]);
-      setUnreadCount((prev) => prev + 1);
+      // Squad messages are filtered from the notification panel — only show in groups tab badge
+      if (newNotif.type === "squad_message") {
+        setHasUnreadSquadMessage(true);
+      } else {
+        setNotifications((prev) => [newNotif, ...prev]);
+        setUnreadCount((prev) => prev + 1);
+      }
 
       if (newNotif.type === "friend_request" && newNotif.related_user_id) {
         if (newNotif.body) showToastRef.current(newNotif.body);
@@ -7390,7 +7395,10 @@ export default function Home() {
           {TABS.map((t) => (
             <button
               key={t}
-              onClick={() => setTab(t)}
+              onClick={() => {
+                setTab(t);
+                if (t === "groups") setHasUnreadSquadMessage(false);
+              }}
               style={{
                 background: "none",
                 border: "none",
@@ -7412,7 +7420,7 @@ export default function Home() {
               >
                 {tabIcons[t]} {tabLabels[t]}
               </span>
-              {t === "groups" && notifications.some((n) => (n.type === "squad_message" || n.type === "squad_invite") && !n.is_read) && (
+              {t === "groups" && (hasUnreadSquadMessage || notifications.some((n) => n.type === "squad_invite" && !n.is_read)) && (
                 <div
                   style={{
                     position: "absolute",
@@ -7861,7 +7869,7 @@ export default function Home() {
                       color: color.faint,
                     }}
                   >
-                    You&apos;ll see friend requests, check responses, and squad messages here
+                    You&apos;ll see friend requests, check responses, and squad invites here
                   </p>
                 </div>
               ) : (

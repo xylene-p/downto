@@ -741,6 +741,7 @@ export async function getNotifications(): Promise<Notification[]> {
     .from('notifications')
     .select('*, related_user:profiles!related_user_id(*)')
     .eq('user_id', user.id)
+    .neq('type', 'squad_message')
     .order('created_at', { ascending: false })
     .limit(50);
 
@@ -756,7 +757,8 @@ export async function getUnreadCount(): Promise<number> {
     .from('notifications')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', user.id)
-    .eq('is_read', false);
+    .eq('is_read', false)
+    .neq('type', 'squad_message');
 
   if (error) throw error;
   return count ?? 0;
