@@ -1,19 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, CSSProperties } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import * as db from "@/lib/db";
-import type { Profile } from "@/lib/types";
 import { font, color } from "@/lib/styles";
-import { toLocalISODate, sanitize, sanitizeVibes, parseDateToISO, parseNaturalDate, formatTimeAgo } from "@/lib/utils";
-import type { Person, Event, InterestCheck, ScrapedEvent, Squad, Friend, AvailabilityStatus, Tab } from "@/lib/ui-types";
-import { TABS, AVAILABILITY_OPTIONS, EXPIRY_OPTIONS } from "@/lib/ui-types";
+import { sanitize, sanitizeVibes, parseDateToISO } from "@/lib/utils";
+import type { Person, Event, InterestCheck, Squad, Friend, Tab } from "@/lib/ui-types";
 import { DEMO_EVENTS, DEMO_CHECKS, DEMO_TONIGHT, DEMO_SQUADS, DEMO_FRIENDS, DEMO_SUGGESTIONS, DEMO_NOTIFICATIONS, DEMO_SEARCH_USERS } from "@/lib/demo-data";
 import GlobalStyles from "@/components/GlobalStyles";
 import Grain from "@/components/Grain";
 import AuthScreen from "@/components/AuthScreen";
 import ProfileSetupScreen from "@/components/ProfileSetupScreen";
-import EventCard from "@/components/events/EventCard";
 import EditEventModal from "@/components/events/EditEventModal";
 import EventLobby from "@/components/events/EventLobby";
 import AddModal from "@/components/events/PasteModal";
@@ -31,9 +28,6 @@ import NotificationsPanel from "@/components/NotificationsPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
-
-
-
 
 
 // ─── Main App ───────────────────────────────────────────────────────────────
