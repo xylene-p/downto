@@ -417,14 +417,14 @@ export async function getSuggestedUsers(): Promise<Profile[]> {
 // INTEREST CHECKS
 // ============================================================================
 
-export async function getActiveChecks(): Promise<(InterestCheck & { author: Profile; responses: (CheckResponse & { user: Profile })[]; squads: { id: string }[] })[]> {
+export async function getActiveChecks(): Promise<(InterestCheck & { author: Profile; responses: (CheckResponse & { user: Profile })[]; squads: { id: string; members: { id: string }[] }[] })[]> {
   const { data, error } = await supabase
     .from('interest_checks')
     .select(`
       *,
       author:profiles!author_id(*),
       responses:check_responses(*, user:profiles(*)),
-      squads(id)
+      squads(id, members:squad_members(id))
     `)
     .or(`expires_at.gt.${new Date().toISOString()},expires_at.is.null`)
     .order('created_at', { ascending: false });
@@ -433,7 +433,7 @@ export async function getActiveChecks(): Promise<(InterestCheck & { author: Prof
   return data ?? [];
 }
 
-export async function createInterestCheck(text: string, expiresInHours: number | null = 24, eventDate: string | null = null): Promise<InterestCheck> {
+export async function createInterestCheck(text: string, expiresInHours: number | null = 24, eventDate: string | null = null, maxSquadSize: number = 5): Promise<InterestCheck> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -451,6 +451,7 @@ export async function createInterestCheck(text: string, expiresInHours: number |
       text,
       expires_at: expiresAt,
       event_date: eventDate,
+      max_squad_size: maxSquadSize,
     })
     .select()
     .single();
@@ -511,7 +512,7 @@ export async function respondToCheck(
       check_id: checkId,
       user_id: user.id,
       response,
-    })
+    }, { onConflict: 'check_id,user_id' })
     .select()
     .single();
 

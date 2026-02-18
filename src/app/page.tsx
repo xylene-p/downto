@@ -289,8 +289,10 @@ interface InterestCheck {
   isYours?: boolean;
   eventDate?: string; // ISO date from natural language parsing
   eventDateLabel?: string; // display label like "Sat, Feb 22"
+  maxSquadSize?: number; // max members allowed (2-5, default 5)
   squadLocalId?: number; // local ID of the squad created from this check
   squadDbId?: string; // DB UUID of the squad
+  squadMemberCount?: number; // current member count in the squad
   inSquad?: boolean; // whether current user is already a member
 }
 
@@ -535,12 +537,13 @@ const PasteModal = ({
   open: boolean;
   onClose: () => void;
   onSubmit: (e: ScrapedEvent, sharePublicly: boolean) => void;
-  onInterestCheck: (idea: string, expiresInHours: number | null, eventDate: string | null) => void;
+  onInterestCheck: (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number) => void;
 }) => {
   const [mode, setMode] = useState<"paste" | "idea" | "manual">("paste");
   const [url, setUrl] = useState("");
   const [idea, setIdea] = useState("");
   const [checkTimer, setCheckTimer] = useState<number | null>(24);
+  const [checkSquadSize, setCheckSquadSize] = useState(5);
   const detectedDate = idea ? parseNaturalDate(idea) : null;
   const [dateDismissed, setDateDismissed] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -1293,11 +1296,40 @@ const PasteModal = ({
                 ))}
               </div>
             </div>
+            {/* Squad size picker */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontFamily: font.mono, fontSize: 10, color: color.dim, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.15em" }}>
+                Squad size
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {[2, 3, 4, 5].map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => setCheckSquadSize(size)}
+                    style={{
+                      flex: 1,
+                      padding: "10px 0",
+                      background: checkSquadSize === size ? color.accent : "transparent",
+                      color: checkSquadSize === size ? "#000" : color.muted,
+                      border: `1px solid ${checkSquadSize === size ? color.accent : color.borderMid}`,
+                      borderRadius: 10,
+                      fontFamily: font.mono,
+                      fontSize: 12,
+                      fontWeight: checkSquadSize === size ? 700 : 400,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
             <button
               onClick={() => {
                 if (idea.trim()) {
                   const eventDate = (!dateDismissed && detectedDate) ? detectedDate.iso : null;
-                  onInterestCheck(sanitize(idea, 280), checkTimer, eventDate);
+                  onInterestCheck(sanitize(idea, 280), checkTimer, eventDate, checkSquadSize);
                   onClose();
                 }
               }}
@@ -5472,7 +5504,9 @@ export default function Home() {
             odbc: r.user_id,
           })),
           isYours: c.author_id === userId,
+          maxSquadSize: c.max_squad_size,
           squadDbId: c.squads?.[0]?.id,
+          squadMemberCount: c.squads?.[0]?.members?.length ?? 0,
           eventDate: c.event_date ?? undefined,
           eventDateLabel: c.event_date ? new Date(c.event_date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined,
         };
@@ -5632,7 +5666,7 @@ export default function Home() {
         const transformedSquads: Squad[] = squadsList.map((s) => {
           const members = (s.members ?? []).map((m) => ({
             name: m.user_id === userId ? "You" : (m.user?.display_name ?? "Unknown"),
-            avatar: m.user_id === userId ? (profile!.avatar_letter) : (m.user?.avatar_letter ?? "?"),
+            avatar: m.user_id === userId ? (profile?.avatar_letter ?? "?") : (m.user?.avatar_letter ?? "?"),
             userId: m.user_id,
           }));
           const messages = (s.messages ?? [])
@@ -6008,12 +6042,19 @@ export default function Home() {
     showToast(status === "down" ? "You're down! 🤙" : "Marked as maybe");
     if (!isDemoMode && check?.dbId) {
       db.respondToCheck(check.dbId, status)
+        .then(() => {
+          // Reload checks after "down" to pick up auto-join squad membership from DB trigger
+          if (status === "down") loadChecks();
+        })
         .catch((err) => console.error("Failed to respond to check:", err));
     }
   };
 
   const startSquadFromCheck = async (check: InterestCheck) => {
-    const downPeople = check.responses.filter((r) => r.status === "down" && r.name !== "You");
+    const maxSize = check.maxSquadSize ?? 5;
+    // Cap members: maxSize - 1 (author takes one slot)
+    const allDown = check.responses.filter((r) => r.status === "down" && r.name !== "You");
+    const downPeople = allDown.slice(0, maxSize - 1);
     const memberNames = downPeople.map((p) => p.name);
     const squadName = check.text.slice(0, 30) + (check.text.length > 30 ? "..." : "");
 
@@ -6655,7 +6696,7 @@ export default function Home() {
                               >
                                 <span style={{ fontSize: 12 }}>💬</span>
                                 <span style={{ fontFamily: font.mono, fontSize: 10, color: "#AF52DE", fontWeight: 600 }}>
-                                  Squad chat started
+                                  Squad chat{check.squadMemberCount ? ` · ${check.squadMemberCount}/${check.maxSquadSize ?? 5}` : ""}
                                 </span>
                                 <span style={{ fontFamily: font.mono, fontSize: 10, color: "#AF52DE", marginLeft: "auto" }}>→</span>
                               </div>
@@ -6873,33 +6914,49 @@ export default function Home() {
                                     💬 Squad Chat →
                                   </button>
                                 ) : check.squadDbId ? (
-                                  <button
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      try {
-                                        await db.joinSquad(check.squadDbId!);
-                                        showToast("Joined the squad! 🚀");
-                                        await loadRealData();
-                                        setTab("groups");
-                                      } catch (err: any) {
-                                        console.error("Failed to join squad:", err);
-                                        showToast("Failed to join squad");
-                                      }
-                                    }}
-                                    style={{
-                                      background: "transparent",
-                                      color: "#AF52DE",
-                                      border: "1px solid #AF52DE",
-                                      borderRadius: 8,
-                                      padding: "6px 10px",
+                                  (check.squadMemberCount ?? 0) >= (check.maxSquadSize ?? 5) ? (
+                                    <span style={{
                                       fontFamily: font.mono,
                                       fontSize: 10,
-                                      fontWeight: 700,
-                                      cursor: "pointer",
-                                    }}
-                                  >
-                                    Join Squad Chat →
-                                  </button>
+                                      color: color.dim,
+                                      padding: "6px 10px",
+                                    }}>
+                                      Squad full ({check.squadMemberCount}/{check.maxSquadSize ?? 5})
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          await db.joinSquad(check.squadDbId!);
+                                          showToast("Joined the squad! 🚀");
+                                        } catch (err: any) {
+                                          const code = err && typeof err === 'object' && 'code' in err ? err.code : '';
+                                          if (code !== '23505') {
+                                            console.error("Failed to join squad:", err);
+                                            showToast("Failed to join squad");
+                                            return;
+                                          }
+                                          // Already a member — proceed normally
+                                        }
+                                        await loadRealData();
+                                        setTab("groups");
+                                      }}
+                                      style={{
+                                        background: "transparent",
+                                        color: "#AF52DE",
+                                        border: "1px solid #AF52DE",
+                                        borderRadius: 8,
+                                        padding: "6px 10px",
+                                        fontFamily: font.mono,
+                                        fontSize: 10,
+                                        fontWeight: 700,
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      Join Squad Chat →
+                                    </button>
+                                  )
                                 ) : (
                                   <button
                                     onClick={(e) => {
@@ -7593,13 +7650,13 @@ export default function Home() {
             showToast("Event saved! 🎯");
           }
         }}
-        onInterestCheck={async (idea, expiresInHours, eventDate) => {
+        onInterestCheck={async (idea, expiresInHours, eventDate, maxSquadSize) => {
           const expiresLabel = expiresInHours == null ? "open" : expiresInHours >= 24 ? "24h" : `${expiresInHours}h`;
           const dateLabel = eventDate ? new Date(eventDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined;
           // Save to database if logged in (not demo mode)
           if (!isDemoMode && userId) {
             try {
-              const dbCheck = await db.createInterestCheck(idea, expiresInHours, eventDate);
+              const dbCheck = await db.createInterestCheck(idea, expiresInHours, eventDate, maxSquadSize);
               const newCheck: InterestCheck = {
                 id: parseInt(dbCheck.id.slice(0, 8), 16) || Date.now(),
                 dbId: dbCheck.id,
@@ -7610,6 +7667,7 @@ export default function Home() {
                 expiryPercent: 0,
                 responses: [],
                 isYours: true,
+                maxSquadSize,
                 eventDate: eventDate ?? undefined,
                 eventDateLabel: dateLabel,
               };
@@ -7630,6 +7688,7 @@ export default function Home() {
               expiryPercent: 0,
               responses: [],
               isYours: true,
+              maxSquadSize,
               eventDate: eventDate ?? undefined,
               eventDateLabel: dateLabel,
             };
