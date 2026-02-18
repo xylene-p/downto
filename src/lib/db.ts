@@ -56,19 +56,19 @@ export async function getProfileById(id: string): Promise<Profile | null> {
   return data;
 }
 
-export async function getFriendshipWith(userId: string): Promise<string | null> {
+export async function getFriendshipWith(userId: string): Promise<{ id: string; status: string; isRequester: boolean } | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
   const { data, error } = await supabase
     .from('friendships')
-    .select('id')
+    .select('id, status, requester_id')
     .or(`and(requester_id.eq.${user.id},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${user.id})`)
     .limit(1)
     .maybeSingle();
 
   if (error || !data) return null;
-  return data.id;
+  return { id: data.id, status: data.status, isRequester: data.requester_id === user.id };
 }
 
 // ============================================================================
