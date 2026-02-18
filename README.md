@@ -7,7 +7,7 @@ Save events from Instagram to your calendar, see who else is going, form small s
 - Paste an IG link (or Letterboxd, or enter manually) to save an event
 - Mark yourself as "down" — see which friends are too
 - Post interest checks ("who's down for Thai tonight?") with configurable expiry and squad size
-- Friends respond down/maybe/nah — start a squad chat from the responses
+- Friends respond down or maybe — start a squad chat from the responses
 - Real-time messaging with logistics coordination (meeting spot, arrival time, transport)
 - Push notifications so you don't miss when plans are forming
 
