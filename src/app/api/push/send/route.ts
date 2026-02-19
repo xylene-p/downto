@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import webpush from 'web-push';
+import { getServiceClient } from '@/lib/supabase-admin';
 
 export const runtime = 'nodejs';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const webhookSecret = process.env.PUSH_WEBHOOK_SECRET!;
 
 webpush.setVapidDetails(
@@ -13,10 +11,6 @@ webpush.setVapidDetails(
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
   process.env.VAPID_PRIVATE_KEY!
 );
-
-function getServiceClient() {
-  return createClient(supabaseUrl, serviceRoleKey);
-}
 
 export async function POST(request: NextRequest) {
   // Validate Supabase webhook secret (sent in x-supabase-webhook-secret header)
