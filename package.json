@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
+    "dev:prod": "bash -c '[ -f .env.development.local ] && mv .env.development.local .env.development.local.bak; trap \"[ -f .env.development.local.bak ] && mv .env.development.local.bak .env.development.local\" EXIT; next dev'",
     "build": "next build",
     "start": "next start"
   },
