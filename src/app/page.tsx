@@ -276,60 +276,54 @@ export default function Home() {
         db.getSquads().catch((err) => { logWarn("loadSquads", "Failed", { error: err }); return [] as Awaited<ReturnType<typeof db.getSquads>>; }),
       ]);
 
-      // Phase 2: Batch fetch people down (depends on event IDs from phase 1)
+      // Phase 2: Transform and set all state immediately (no waiting for social data)
       const savedEventIds = savedEvents.map((se) => se.event!.id);
-      const allEventIds = [...new Set([...savedEventIds, ...publicEvents.map((e) => e.id), ...friendsEvents.map((e) => e.id)])];
-      const peopleDownMap = allEventIds.length > 0
-        ? await db.getPeopleDownBatch(allEventIds)
-        : {};
-
-      // Phase 3: Transform and set all state
-
-      // --- Events ---
-      const transformedEvents: Event[] = savedEvents.map((se) => ({
-        id: se.event!.id,
-        createdBy: se.event!.created_by ?? undefined,
-        title: se.event!.title,
-        venue: se.event!.venue ?? "",
-        date: se.event!.date_display ?? "",
-        time: se.event!.time_display ?? "",
-        vibe: se.event!.vibes,
-        image: se.event!.image_url ?? "",
-        igHandle: se.event!.ig_handle ?? "",
-        igUrl: se.event!.ig_url ?? undefined,
-        diceUrl: se.event!.dice_url ?? undefined,
-        saved: true,
-        isDown: se.is_down,
-        peopleDown: peopleDownMap[se.event!.id] ?? [],
-        neighborhood: se.event!.neighborhood ?? undefined,
-      }));
-
       const savedEventIdSet = new Set(savedEventIds);
-      const friendsTransformed: Event[] = friendsEvents
-        .filter((e) => !savedEventIdSet.has(e.id))
-        .map((e) => ({
-          id: e.id,
-          createdBy: e.created_by ?? undefined,
-          title: e.title,
-          venue: e.venue ?? "",
-          date: e.date_display ?? "",
-          time: e.time_display ?? "",
-          vibe: e.vibes,
-          image: e.image_url ?? "",
-          igHandle: e.ig_handle ?? "",
-          igUrl: e.ig_url ?? undefined,
-          diceUrl: e.dice_url ?? undefined,
-          saved: false,
-          isDown: false,
-          peopleDown: peopleDownMap[e.id] ?? [],
-          neighborhood: e.neighborhood ?? undefined,
-        }));
-      setEvents([...transformedEvents, ...friendsTransformed]);
-
-      // --- Tonight ---
       const savedDownMap = new Map(savedEvents.map((se) => [se.event!.id, se.is_down]));
       const today = new Date().toISOString().split('T')[0];
-      const transformedTonight: Event[] = publicEvents
+
+      // --- Events (render immediately with empty peopleDown) ---
+      setEvents([
+        ...savedEvents.map((se) => ({
+          id: se.event!.id,
+          createdBy: se.event!.created_by ?? undefined,
+          title: se.event!.title,
+          venue: se.event!.venue ?? "",
+          date: se.event!.date_display ?? "",
+          time: se.event!.time_display ?? "",
+          vibe: se.event!.vibes,
+          image: se.event!.image_url ?? "",
+          igHandle: se.event!.ig_handle ?? "",
+          igUrl: se.event!.ig_url ?? undefined,
+          diceUrl: se.event!.dice_url ?? undefined,
+          saved: true,
+          isDown: se.is_down,
+          peopleDown: [] as Person[],
+          neighborhood: se.event!.neighborhood ?? undefined,
+        })),
+        ...friendsEvents
+          .filter((e) => !savedEventIdSet.has(e.id))
+          .map((e) => ({
+            id: e.id,
+            createdBy: e.created_by ?? undefined,
+            title: e.title,
+            venue: e.venue ?? "",
+            date: e.date_display ?? "",
+            time: e.time_display ?? "",
+            vibe: e.vibes,
+            image: e.image_url ?? "",
+            igHandle: e.ig_handle ?? "",
+            igUrl: e.ig_url ?? undefined,
+            diceUrl: e.dice_url ?? undefined,
+            saved: false,
+            isDown: false,
+            peopleDown: [] as Person[],
+            neighborhood: e.neighborhood ?? undefined,
+          })),
+      ]);
+
+      // --- Tonight ---
+      setTonightEvents(publicEvents
         .filter((e) => e.venue && e.date_display)
         .filter((e) => !e.date || e.date === today)
         .map((e) => ({
@@ -347,10 +341,9 @@ export default function Home() {
           saved: savedEventIdSet.has(e.id),
           isDown: savedDownMap.get(e.id) ?? false,
           isPublic: true,
-          peopleDown: peopleDownMap[e.id] ?? [],
+          peopleDown: [] as Person[],
           neighborhood: e.neighborhood ?? undefined,
-        }));
-      setTonightEvents(transformedTonight);
+        })));
 
       // --- Friends ---
       const transformedFriends: Friend[] = friendsList.map(({ profile: p, friendshipId }) => ({
@@ -501,6 +494,21 @@ export default function Home() {
           if (sq) return { ...c, squadId: sq.squadId, inSquad: sq.inSquad };
           return c;
         }));
+      }
+
+      // Feed is now renderable — show it before backfilling social data
+      setFeedLoaded(true);
+
+      // Phase 3: Backfill social data (peopleDown)
+      const allEventIds = [...new Set([...savedEventIds, ...publicEvents.map((e) => e.id), ...friendsEvents.map((e) => e.id)])];
+      if (allEventIds.length > 0) {
+        try {
+          const peopleDownMap = await db.getPeopleDownBatch(allEventIds);
+          setEvents((prev) => prev.map((e) => ({ ...e, peopleDown: peopleDownMap[e.id] ?? e.peopleDown })));
+          setTonightEvents((prev) => prev.map((e) => ({ ...e, peopleDown: peopleDownMap[e.id] ?? e.peopleDown })));
+        } catch (err) {
+          logWarn("loadPeopleDown", "Failed to load social data", { error: err });
+        }
       }
 
     } catch (err) {
