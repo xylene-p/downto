@@ -10,6 +10,14 @@ import {
 import GlobalStyles from "./GlobalStyles";
 import Grain from "./Grain";
 
+function isIOSNotStandalone(): boolean {
+  if (typeof window === "undefined") return false;
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isStandalone = (window.navigator as unknown as { standalone?: boolean }).standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+  return isIOS && !isStandalone;
+}
+
 const EnableNotificationsScreen = ({
   onComplete,
 }: {
@@ -17,6 +25,7 @@ const EnableNotificationsScreen = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const supported = isPushSupported();
+  const iosNeedsPWA = !supported && isIOSNotStandalone();
 
   const handleEnable = async () => {
     setLoading(true);
@@ -90,8 +99,35 @@ const EnableNotificationsScreen = ({
           opacity: loading ? 0.6 : 1,
         }}
       >
-        {loading ? "enabling..." : supported ? "enable notifications" : "notifications not supported"}
+        {loading
+          ? "enabling..."
+          : supported
+            ? "enable notifications"
+            : iosNeedsPWA
+              ? "add to home screen first"
+              : "notifications not supported"}
       </button>
+
+      {iosNeedsPWA && (
+        <p
+          style={{
+            fontFamily: font.mono,
+            fontSize: 11,
+            color: color.dim,
+            textAlign: "center",
+            lineHeight: 1.6,
+            marginBottom: 16,
+            marginTop: 0,
+          }}
+        >
+          tap{" "}
+          <span style={{ fontSize: 14, verticalAlign: "middle" }}>
+            {/* Safari share icon */}
+            &#x1F4E4;
+          </span>{" "}
+          then &quot;Add to Home Screen&quot; to enable push notifications on iOS
+        </p>
+      )}
 
       <button
         onClick={() => onComplete(false)}
