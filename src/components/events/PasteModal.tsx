@@ -103,14 +103,16 @@ const AddModal = ({
       });
       setSharePublicly(data.isPublicPost || false);
 
-      // Check for existing event with this IG/Dice URL → social signal
-      if (data.igUrl || data.diceUrl) {
+      // Check for existing event with this IG/Dice/Letterboxd URL → social signal
+      if (data.igUrl || data.diceUrl || data.letterboxdUrl) {
         try {
           const existingEvent = data.igUrl
             ? await db.findEventByIgUrl(data.igUrl)
             : data.diceUrl
               ? await db.findEventByDiceUrl(data.diceUrl)
-              : null;
+              : data.letterboxdUrl
+                ? await db.findEventByLetterboxdUrl(data.letterboxdUrl)
+                : null;
           if (existingEvent) {
             const signal = await db.getEventSocialSignal(existingEvent.id);
             if (signal.totalDown > 0) {

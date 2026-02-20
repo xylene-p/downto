@@ -181,6 +181,16 @@ export async function findEventByDiceUrl(diceUrl: string): Promise<import('./typ
   return data;
 }
 
+export async function findEventByLetterboxdUrl(letterboxdUrl: string): Promise<import('./types').Event | null> {
+  const { data } = await supabase
+    .from('events')
+    .select('*')
+    .eq('letterboxd_url', letterboxdUrl)
+    .limit(1)
+    .maybeSingle();
+  return data;
+}
+
 // ============================================================================
 // SAVED EVENTS
 // ============================================================================

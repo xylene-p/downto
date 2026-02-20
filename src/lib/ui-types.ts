@@ -17,6 +17,7 @@ export interface Event {
   igHandle: string;
   igUrl?: string;
   diceUrl?: string;
+  letterboxdUrl?: string;
   saved: boolean;
   isDown: boolean;
   peopleDown: Person[];

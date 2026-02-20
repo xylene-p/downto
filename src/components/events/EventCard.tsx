@@ -102,7 +102,7 @@ const EventCard = ({
             <span style={{ fontSize: 12 }}>&#9998;</span>
           </button>
         )}
-        {event.igHandle && (
+        {(event.igHandle || event.diceUrl || event.letterboxdUrl) && (
           <div style={{ position: "absolute", top: 12, right: 12 }}>
             {event.igUrl ? (
               <a
@@ -127,7 +127,53 @@ const EventCard = ({
               >
                 {event.igHandle} ↗
               </a>
-            ) : (
+            ) : event.diceUrl ? (
+              <a
+                href={event.diceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: "rgba(0,0,0,0.6)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                  color: "#aaa",
+                  padding: "6px 10px",
+                  borderRadius: 20,
+                  fontFamily: font.mono,
+                  fontSize: 10,
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                dice.fm ↗
+              </a>
+            ) : event.letterboxdUrl ? (
+              <a
+                href={event.letterboxdUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: "rgba(0,0,0,0.6)",
+                  backdropFilter: "blur(10px)",
+                  WebkitBackdropFilter: "blur(10px)",
+                  color: "#aaa",
+                  padding: "6px 10px",
+                  borderRadius: 20,
+                  fontFamily: font.mono,
+                  fontSize: 10,
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                letterboxd ↗
+              </a>
+            ) : event.igHandle ? (
               <span
                 style={{
                   background: "rgba(0,0,0,0.6)",
@@ -142,7 +188,7 @@ const EventCard = ({
               >
                 {event.igHandle}
               </span>
-            )}
+            ) : null}
           </div>
         )}
         <div
