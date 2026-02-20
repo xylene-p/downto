@@ -168,9 +168,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "A valid URL is required" }, { status: 400 });
     }
 
-    // Check if it's a Letterboxd URL
+    // Check if it's a Letterboxd URL (including boxd.it short links)
     const letterboxdPattern = /letterboxd\.com\/film\/([a-z0-9-]+)/i;
-    const letterboxdMatch = url.match(letterboxdPattern);
+    const boxdItPattern = /boxd\.it\/[A-Za-z0-9]+/i;
+    let letterboxdMatch = url.match(letterboxdPattern);
+
+    if (!letterboxdMatch && boxdItPattern.test(url)) {
+      // boxd.it is Letterboxd's short URL — follow the redirect to get the canonical URL
+      try {
+        const redirectRes = await fetch(url, { redirect: 'follow', headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        }});
+        const resolvedUrl = redirectRes.url;
+        letterboxdMatch = resolvedUrl.match(letterboxdPattern);
+        if (letterboxdMatch) {
+          const movieData = await scrapeLetterboxd(resolvedUrl);
+          return NextResponse.json(movieData);
+        }
+      } catch {
+        return NextResponse.json({ error: "Could not resolve short link. Try pasting the full Letterboxd URL." }, { status: 400 });
+      }
+    }
 
     if (letterboxdMatch) {
       const movieData = await scrapeLetterboxd(url);
