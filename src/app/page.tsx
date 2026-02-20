@@ -138,13 +138,19 @@ export default function Home() {
   const handleEditEvent = async (updated: { title: string; venue: string; date: string; time: string; vibe: string[] }) => {
     if (!editingEvent) return;
 
+    // Normalize date display (e.g. "3/19" → "Wed, Mar 19")
+    const dateISO = parseDateToISO(updated.date);
+    const dateDisplay = dateISO
+      ? new Date(dateISO + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+      : updated.date;
+
     // Update in database if logged in
     if (!isDemoMode && userId) {
       try {
         await db.updateEvent(editingEvent.id, {
           title: updated.title,
           venue: updated.venue,
-          date_display: updated.date,
+          date_display: dateDisplay,
           time_display: updated.time,
           vibes: updated.vibe,
         });
@@ -159,7 +165,7 @@ export default function Home() {
     const updateList = (prev: Event[]) =>
       prev.map((e) =>
         e.id === editingEvent.id
-          ? { ...e, title: updated.title, venue: updated.venue, date: updated.date, time: updated.time, vibe: updated.vibe }
+          ? { ...e, title: updated.title, venue: updated.venue, date: dateDisplay, time: updated.time, vibe: updated.vibe }
           : e
       );
     setEvents(updateList);

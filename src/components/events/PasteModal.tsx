@@ -507,6 +507,7 @@ const AddModal = ({
               onChange={(e) => setScraped({ ...scraped, title: e.target.value })}
               style={{
                 width: "100%",
+                boxSizing: "border-box",
                 background: "transparent",
                 border: "none",
                 borderBottom: `1px solid ${color.borderMid}`,
