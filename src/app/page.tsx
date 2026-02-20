@@ -11,6 +11,7 @@ import GlobalStyles from "@/components/GlobalStyles";
 import Grain from "@/components/Grain";
 import AuthScreen from "@/components/AuthScreen";
 import ProfileSetupScreen from "@/components/ProfileSetupScreen";
+import EnableNotificationsScreen from "@/components/EnableNotificationsScreen";
 import FirstCheckScreen from "@/components/FirstCheckScreen";
 import EditEventModal from "@/components/events/EditEventModal";
 import EventLobby from "@/components/events/EventLobby";
@@ -73,6 +74,12 @@ export default function Home() {
   const { toastMsg, setToastMsg, toastAction, setToastAction, showToast, showToastWithAction, showToastRef } = useToast();
   const { pushEnabled, pushSupported, handleTogglePush } = usePushNotifications(isLoggedIn, isDemoMode, showToast);
   const [addModalDefaultMode, setAddModalDefaultMode] = useState<"paste" | "idea" | "manual" | null>(null);
+  const [showNotifPrompt, setShowNotifPrompt] = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("showNotifPrompt") === "true";
+    }
+    return false;
+  });
   const [showFirstCheck, setShowFirstCheck] = useState(() => {
     if (typeof window !== "undefined") {
       return sessionStorage.getItem("showFirstCheck") === "true";
@@ -302,8 +309,10 @@ export default function Home() {
       // Build cross-reference maps for tonight events
       const savedDownMap = new Map(savedEvents.map((se) => [se.event!.id, se.is_down]));
 
+      const today = new Date().toISOString().split('T')[0];
       const transformedTonight: Event[] = publicEvents
         .filter((e) => e.venue && e.date_display) // Hide events with no venue or date
+        .filter((e) => !e.date || e.date === today) // Only show today's events in Tonight
         .map((e) => ({
           id: e.id,
           createdBy: e.created_by ?? undefined,
@@ -1057,6 +1066,20 @@ export default function Home() {
         profile={profile}
         onComplete={(updated) => {
           setProfile(updated);
+          setShowNotifPrompt(true);
+          sessionStorage.setItem("showNotifPrompt", "true");
+        }}
+      />
+    );
+  }
+
+  if (showNotifPrompt) {
+    return (
+      <EnableNotificationsScreen
+        onComplete={() => {
+          localStorage.setItem("pushAutoPrompted", "1");
+          setShowNotifPrompt(false);
+          sessionStorage.removeItem("showNotifPrompt");
           setShowFirstCheck(true);
           sessionStorage.setItem("showFirstCheck", "true");
         }}
@@ -1246,7 +1269,11 @@ export default function Home() {
           const title = sanitize(rawTitle, 100);
           if (!title) { showToast("Event needs a title"); return; }
           const venue = sanitize(e.venue || "TBD", 100);
-          const dateDisplay = sanitize(e.date || "TBD", 50);
+          const rawDate = sanitize(e.date || "TBD", 50);
+          const dateISO = parseDateToISO(rawDate);
+          const dateDisplay = dateISO
+            ? new Date(dateISO + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+            : rawDate;
           const timeDisplay = sanitize(e.time || "TBD", 50);
           const vibes = sanitizeVibes(e.vibe);
           const imageUrl = e.thumbnail || "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&q=80";
