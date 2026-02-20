@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import * as db from "@/lib/db";
 import { font, color } from "@/lib/styles";
 import { sanitize, sanitizeVibes, parseDateToISO } from "@/lib/utils";
+import type { Profile } from "@/lib/types";
 import type { Person, Event, InterestCheck, Squad, Friend, Tab } from "@/lib/ui-types";
 import { DEMO_EVENTS, DEMO_CHECKS, DEMO_TONIGHT, DEMO_SQUADS, DEMO_FRIENDS, DEMO_SUGGESTIONS, DEMO_NOTIFICATIONS, DEMO_SEARCH_USERS } from "@/lib/demo-data";
 import GlobalStyles from "@/components/GlobalStyles";
@@ -75,12 +76,6 @@ export default function Home() {
   const { toastMsg, setToastMsg, toastAction, setToastAction, showToast, showToastWithAction, showToastRef } = useToast();
   const { pushEnabled, pushSupported, handleTogglePush } = usePushNotifications(isLoggedIn, isDemoMode, showToast);
   const [addModalDefaultMode, setAddModalDefaultMode] = useState<"paste" | "idea" | "manual" | null>(null);
-  const [showNotifPrompt, setShowNotifPrompt] = useState(() => {
-    if (typeof window !== "undefined") {
-      return sessionStorage.getItem("showNotifPrompt") === "true";
-    }
-    return false;
-  });
   const [showFirstCheck, setShowFirstCheck] = useState(() => {
     if (typeof window !== "undefined") {
       return sessionStorage.getItem("showFirstCheck") === "true";
@@ -296,6 +291,7 @@ export default function Home() {
           igHandle: se.event!.ig_handle ?? "",
           igUrl: se.event!.ig_url ?? undefined,
           diceUrl: se.event!.dice_url ?? undefined,
+          letterboxdUrl: se.event!.letterboxd_url ?? undefined,
           saved: true,
           isDown: se.is_down,
           peopleDown: [] as Person[],
@@ -315,6 +311,7 @@ export default function Home() {
             igHandle: e.ig_handle ?? "",
             igUrl: e.ig_url ?? undefined,
             diceUrl: e.dice_url ?? undefined,
+            letterboxdUrl: e.letterboxd_url ?? undefined,
             saved: false,
             isDown: false,
             peopleDown: [] as Person[],
@@ -338,6 +335,7 @@ export default function Home() {
           igHandle: e.ig_handle ?? "",
           igUrl: e.ig_url ?? undefined,
           diceUrl: e.dice_url ?? undefined,
+          letterboxdUrl: e.letterboxd_url ?? undefined,
           saved: savedEventIdSet.has(e.id),
           isDown: savedDownMap.get(e.id) ?? false,
           isPublic: true,
@@ -1122,26 +1120,22 @@ export default function Home() {
     );
   }
 
-  if (profile && !profile.onboarded) {
+  if (profile && !profile.onboarded && !profile.username) {
     return (
       <ProfileSetupScreen
         profile={profile}
         onComplete={(updated) => {
           setProfile(updated);
-          setShowNotifPrompt(true);
-          sessionStorage.setItem("showNotifPrompt", "true");
         }}
       />
     );
   }
 
-  if (showNotifPrompt) {
+  if (profile && !profile.onboarded && !showFirstCheck) {
     return (
       <EnableNotificationsScreen
         onComplete={() => {
           localStorage.setItem("pushAutoPrompted", "1");
-          setShowNotifPrompt(false);
-          sessionStorage.removeItem("showNotifPrompt");
           setShowFirstCheck(true);
           sessionStorage.setItem("showFirstCheck", "true");
         }}
@@ -1149,22 +1143,32 @@ export default function Home() {
     );
   }
 
-  if (showFirstCheck) {
+  if (profile && !profile.onboarded && showFirstCheck) {
+    const finishOnboarding = async () => {
+      setShowFirstCheck(false);
+      sessionStorage.removeItem("showFirstCheck");
+      if (!isDemoMode) {
+        try {
+          const updated = await db.updateProfile({ onboarded: true } as Partial<Profile>);
+          setProfile(updated);
+        } catch (err) {
+          logError("finishOnboarding", err);
+          setProfile((prev) => prev ? { ...prev, onboarded: true } : prev);
+        }
+      } else {
+        setProfile((prev) => prev ? { ...prev, onboarded: true } : prev);
+      }
+      setFriendsInitialTab("add");
+      setFriendsOpen(true);
+    };
+
     return (
       <FirstCheckScreen
         onComplete={async (idea, expiresInHours, eventDate, maxSquadSize) => {
           await handleCreateCheck(idea, expiresInHours, eventDate, maxSquadSize);
-          setShowFirstCheck(false);
-          sessionStorage.removeItem("showFirstCheck");
-          setFriendsInitialTab("add");
-          setFriendsOpen(true);
+          await finishOnboarding();
         }}
-        onSkip={() => {
-          setShowFirstCheck(false);
-          sessionStorage.removeItem("showFirstCheck");
-          setFriendsInitialTab("add");
-          setFriendsOpen(true);
-        }}
+        onSkip={finishOnboarding}
       />
     );
   }
@@ -1370,16 +1374,19 @@ export default function Home() {
           const igHandle = sanitize(e.igHandle || "", 30);
           const igUrl = e.igUrl || null;
           const diceUrl = e.diceUrl || null;
+          const letterboxdUrl = e.letterboxdUrl || null;
 
           // Save to database if logged in (not demo mode)
           if (!isDemoMode && userId) {
             try {
-              // Check for existing event with same IG/Dice URL (dedup)
+              // Check for existing event with same IG/Dice/Letterboxd URL (dedup)
               let dbEvent: Awaited<ReturnType<typeof db.createEvent>> | null = null;
               if (igUrl) {
                 dbEvent = await db.findEventByIgUrl(igUrl);
               } else if (diceUrl) {
                 dbEvent = await db.findEventByDiceUrl(diceUrl);
+              } else if (letterboxdUrl) {
+                dbEvent = await db.findEventByLetterboxdUrl(letterboxdUrl);
               }
 
               if (!dbEvent) {
@@ -1396,6 +1403,7 @@ export default function Home() {
                   ig_handle: igHandle,
                   ig_url: igUrl,
                   dice_url: diceUrl,
+                  letterboxd_url: letterboxdUrl,
                   is_public: sharePublicly,
                   created_by: userId,
                 });
@@ -1424,6 +1432,7 @@ export default function Home() {
                 igHandle: dbEvent.ig_handle || igHandle,
                 igUrl: dbEvent.ig_url ?? undefined,
                 diceUrl: dbEvent.dice_url ?? undefined,
+                letterboxdUrl: dbEvent.letterboxd_url ?? undefined,
                 saved: true,
                 isDown: true,
                 isPublic: dbEvent.is_public ?? sharePublicly,
@@ -1451,6 +1460,7 @@ export default function Home() {
               igHandle,
               igUrl: e.igUrl,
               diceUrl: e.diceUrl,
+              letterboxdUrl: e.letterboxdUrl,
               saved: true,
               isDown: true,
               isPublic: sharePublicly,

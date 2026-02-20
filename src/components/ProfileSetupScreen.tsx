@@ -28,7 +28,7 @@ const ProfileSetupScreen = ({
     setSaving(true);
     setUsernameError(null);
     try {
-      const updates: Partial<Profile> & { onboarded: true } = { onboarded: true, username };
+      const updates: Partial<Profile> = { username };
       if (displayName.trim()) updates.display_name = displayName.trim();
       if (igHandle.trim()) updates.ig_handle = igHandle.trim().replace(/^@/, "");
       const updated = await db.updateProfile(updates);
