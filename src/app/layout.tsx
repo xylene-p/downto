@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import DevProdBanner from "@/components/DevProdBanner";
 
 export const metadata: Metadata = {
   title: "down to",
@@ -47,6 +48,7 @@ export default function RootLayout({
           overflowX: "hidden",
         }}
       >
+        <DevProdBanner />
         {children}
       </body>
     </html>
