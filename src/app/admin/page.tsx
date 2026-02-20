@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { color, font } from "@/lib/styles";
@@ -20,6 +21,7 @@ interface Metrics {
 
 export default function AdminPage() {
   const { isLoggedIn, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,8 +29,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!isLoggedIn) {
-      setError("Not logged in");
-      setLoading(false);
+      router.replace("/");
       return;
     }
 
