@@ -253,24 +253,37 @@ export default function Home() {
     isLoadingRef.current = true;
 
     try {
-      // Load saved events
-      const savedEvents = await db.getSavedEvents();
+      // Phase 1: Fetch all independent data in parallel
+      const [
+        savedEvents,
+        publicEvents,
+        friendsEvents,
+        friendsList,
+        pendingRequests,
+        suggestedUsers,
+        activeChecks,
+        squadsList,
+      ] = await Promise.all([
+        db.getSavedEvents(),
+        db.getPublicEvents(),
+        db.getFriendsEvents(),
+        db.getFriends(),
+        db.getPendingRequests(),
+        db.getSuggestedUsers().catch((err) => { logWarn("loadSuggestions", "Failed", { error: err }); return [] as Awaited<ReturnType<typeof db.getSuggestedUsers>>; }),
+        db.getActiveChecks().catch((err) => { logWarn("loadChecks", "Failed", { error: err }); return [] as Awaited<ReturnType<typeof db.getActiveChecks>>; }),
+        db.getSquads().catch((err) => { logWarn("loadSquads", "Failed", { error: err }); return [] as Awaited<ReturnType<typeof db.getSquads>>; }),
+      ]);
+
+      // Phase 2: Batch fetch people down (depends on event IDs from phase 1)
       const savedEventIds = savedEvents.map((se) => se.event!.id);
-
-      // Load public/tonight events
-      const publicEvents = await db.getPublicEvents();
-      const publicEventIds = publicEvents.map((e) => e.id);
-
-      // Load friends' non-public events
-      const friendsEvents = await db.getFriendsEvents();
-      const friendsEventIds = friendsEvents.map((e) => e.id);
-
-      // Batch fetch people down for all events
-      const allEventIds = [...new Set([...savedEventIds, ...publicEventIds, ...friendsEventIds])];
+      const allEventIds = [...new Set([...savedEventIds, ...publicEvents.map((e) => e.id), ...friendsEvents.map((e) => e.id)])];
       const peopleDownMap = allEventIds.length > 0
         ? await db.getPeopleDownBatch(allEventIds)
         : {};
 
+      // Phase 3: Transform and set all state
+
+      // --- Events ---
       const transformedEvents: Event[] = savedEvents.map((se) => ({
         id: se.event!.id,
         createdBy: se.event!.created_by ?? undefined,
@@ -289,7 +302,6 @@ export default function Home() {
         neighborhood: se.event!.neighborhood ?? undefined,
       }));
 
-      // Merge friends' non-public events (skip ones already saved by this user)
       const savedEventIdSet = new Set(savedEventIds);
       const friendsTransformed: Event[] = friendsEvents
         .filter((e) => !savedEventIdSet.has(e.id))
@@ -312,13 +324,12 @@ export default function Home() {
         }));
       setEvents([...transformedEvents, ...friendsTransformed]);
 
-      // Build cross-reference maps for tonight events
+      // --- Tonight ---
       const savedDownMap = new Map(savedEvents.map((se) => [se.event!.id, se.is_down]));
-
       const today = new Date().toISOString().split('T')[0];
       const transformedTonight: Event[] = publicEvents
-        .filter((e) => e.venue && e.date_display) // Hide events with no venue or date
-        .filter((e) => !e.date || e.date === today) // Only show today's events in Tonight
+        .filter((e) => e.venue && e.date_display)
+        .filter((e) => !e.date || e.date === today)
         .map((e) => ({
           id: e.id,
           createdBy: e.created_by ?? undefined,
@@ -339,8 +350,7 @@ export default function Home() {
         }));
       setTonightEvents(transformedTonight);
 
-      // Load friends
-      const friendsList = await db.getFriends();
+      // --- Friends ---
       const transformedFriends: Friend[] = friendsList.map(({ profile: p, friendshipId }) => ({
         id: p.id,
         friendshipId,
@@ -353,8 +363,6 @@ export default function Home() {
       }));
       setFriends(transformedFriends);
 
-      // Load pending friend requests (incoming)
-      const pendingRequests = await db.getPendingRequests();
       const incomingFriends: Friend[] = pendingRequests.map((f) => ({
         id: f.requester!.id,
         friendshipId: f.id,
@@ -364,96 +372,133 @@ export default function Home() {
         status: "incoming" as const,
         igHandle: f.requester!.ig_handle ?? undefined,
       }));
-
-      // Load suggested users (people not yet friends)
-      let suggestedFriends: Friend[] = [];
-      try {
-        const suggestedUsers = await db.getSuggestedUsers();
-        suggestedFriends = suggestedUsers.map((p) => ({
-          id: p.id,
-          name: p.display_name,
-          username: p.username,
-          avatar: p.avatar_letter,
-          status: "none" as const,
-          igHandle: p.ig_handle ?? undefined,
-        }));
-      } catch (suggestErr) {
-        logWarn("loadSuggestions", "Failed to load suggestions", { error: suggestErr });
-      }
-
-      // Merge incoming requests + suggestions
+      const suggestedFriends: Friend[] = suggestedUsers.map((p) => ({
+        id: p.id,
+        name: p.display_name,
+        username: p.username,
+        avatar: p.avatar_letter,
+        status: "none" as const,
+        igHandle: p.ig_handle ?? undefined,
+      }));
       setSuggestions([...incomingFriends, ...suggestedFriends]);
 
-      // Load interest checks
-      await loadChecks();
+      // --- Interest checks ---
+      const now = new Date();
+      const transformedChecks: InterestCheck[] = activeChecks.map((c) => {
+        const created = new Date(c.created_at);
+        const msElapsed = now.getTime() - created.getTime();
+        const minsElapsed = Math.floor(msElapsed / (1000 * 60));
+        const hoursElapsed = Math.floor(msElapsed / (1000 * 60 * 60));
 
-      // Load squads (separate try/catch so other data still loads if this fails)
-      try {
-        const squadsList = await db.getSquads();
-        const fmtTime = (iso: string) => {
-          const d = new Date(iso);
-          const now = new Date();
-          const diffMs = now.getTime() - d.getTime();
-          const diffMins = Math.floor(diffMs / (1000 * 60));
-          const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-          if (diffDays > 0) return `${diffDays}d`;
-          if (diffHours > 0) return `${diffHours}h`;
-          if (diffMins > 0) return `${diffMins}m`;
-          return "now";
+        let expiresIn: string;
+        let expiryPercent: number;
+        if (!c.expires_at) {
+          expiresIn = "open";
+          expiryPercent = 0;
+        } else {
+          const expires = new Date(c.expires_at);
+          const totalDuration = expires.getTime() - created.getTime();
+          expiryPercent = Math.min(100, (msElapsed / totalDuration) * 100);
+          const msRemaining = expires.getTime() - now.getTime();
+          const hoursRemaining = Math.floor(msRemaining / (1000 * 60 * 60));
+          const minsRemaining = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
+          expiresIn = hoursRemaining > 0 ? `${hoursRemaining}h` : minsRemaining > 0 ? `${minsRemaining}m` : "expired";
+        }
+
+        return {
+          id: c.id,
+          text: c.text,
+          author: c.author.display_name,
+          authorId: c.author_id,
+          timeAgo: hoursElapsed > 0 ? `${hoursElapsed}h` : minsElapsed > 0 ? `${minsElapsed}m` : "now",
+          expiresIn,
+          expiryPercent,
+          responses: c.responses.map((r) => ({
+            name: r.user_id === userId ? "You" : (r.user?.display_name ?? "Unknown"),
+            avatar: r.user?.avatar_letter ?? "?",
+            status: r.response,
+            odbc: r.user_id,
+          })),
+          isYours: c.author_id === userId,
+          maxSquadSize: c.max_squad_size,
+          squadId: c.squads?.[0]?.id,
+          squadMemberCount: c.squads?.[0]?.members?.length ?? 0,
+          eventDate: c.event_date ?? undefined,
+          eventDateLabel: c.event_date ? new Date(c.event_date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined,
         };
-        const transformedSquads: Squad[] = squadsList.map((s) => {
-          const members = (s.members ?? []).map((m) => ({
-            name: m.user_id === userId ? "You" : (m.user?.display_name ?? "Unknown"),
-            avatar: m.user?.avatar_letter ?? m.user?.display_name?.charAt(0)?.toUpperCase() ?? "?",
-            userId: m.user_id,
-          }));
-          const messages = (s.messages ?? [])
-            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-            .map((msg) => ({
-              sender: msg.sender_id === userId ? "You" : (msg.sender?.display_name ?? "Unknown"),
-              text: msg.text,
-              time: fmtTime(msg.created_at),
-              isYou: msg.sender_id === userId,
-            }));
-          const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
-          return {
-            id: s.id,
-            name: s.name,
-            event: s.event ? `${s.event.title} — ${s.event.date_display}` : undefined,
-            eventDate: s.event?.date_display ?? undefined,
-            eventIsoDate: s.event?.date ?? undefined,
-            members,
-            messages,
-            lastMsg: lastMessage ? `${lastMessage.sender}: ${lastMessage.text}` : "",
-            time: lastMessage ? lastMessage.time : fmtTime(s.created_at),
-            checkId: s.check_id ?? undefined,
-            meetingSpot: s.meeting_spot ?? undefined,
-            arrivalTime: s.arrival_time ?? undefined,
-            transportNotes: s.transport_notes ?? undefined,
-          };
-        });
-        setSquads(transformedSquads);
-
-        // Link checks to their squads
-        const checkToSquad = new Map<string, { squadId: string; inSquad: boolean }>();
-        for (const sq of transformedSquads) {
-          if (sq.checkId) {
-            checkToSquad.set(sq.checkId, {
-              squadId: sq.id,
-              inSquad: true, // if the squad shows up in getSquads, user is a member
-            });
+      });
+      setChecks((prev) => {
+        const prevMap = new Map(prev.map((c) => [c.id, c]));
+        return transformedChecks.map((c) => {
+          const existing = prevMap.get(c.id);
+          if (existing) {
+            return { ...c, squadId: c.squadId ?? existing.squadId, inSquad: c.inSquad ?? existing.inSquad };
           }
-        }
-        if (checkToSquad.size > 0) {
-          setChecks((prev) => prev.map((c) => {
-            const sq = checkToSquad.get(c.id);
-            if (sq) return { ...c, squadId: sq.squadId, inSquad: sq.inSquad };
-            return c;
+          return c;
+        });
+      });
+
+      // --- Squads ---
+      const fmtTime = (iso: string) => {
+        const d = new Date(iso);
+        const diffMs = now.getTime() - d.getTime();
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        if (diffDays > 0) return `${diffDays}d`;
+        if (diffHours > 0) return `${diffHours}h`;
+        if (diffMins > 0) return `${diffMins}m`;
+        return "now";
+      };
+      const transformedSquads: Squad[] = squadsList.map((s) => {
+        const members = (s.members ?? []).map((m) => ({
+          name: m.user_id === userId ? "You" : (m.user?.display_name ?? "Unknown"),
+          avatar: m.user?.avatar_letter ?? m.user?.display_name?.charAt(0)?.toUpperCase() ?? "?",
+          userId: m.user_id,
+        }));
+        const messages = (s.messages ?? [])
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+          .map((msg) => ({
+            sender: msg.sender_id === userId ? "You" : (msg.sender?.display_name ?? "Unknown"),
+            text: msg.text,
+            time: fmtTime(msg.created_at),
+            isYou: msg.sender_id === userId,
           }));
+        const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+        return {
+          id: s.id,
+          name: s.name,
+          event: s.event ? `${s.event.title} — ${s.event.date_display}` : undefined,
+          eventDate: s.event?.date_display ?? undefined,
+          eventIsoDate: s.event?.date ?? undefined,
+          members,
+          messages,
+          lastMsg: lastMessage ? `${lastMessage.sender}: ${lastMessage.text}` : "",
+          time: lastMessage ? lastMessage.time : fmtTime(s.created_at),
+          checkId: s.check_id ?? undefined,
+          meetingSpot: s.meeting_spot ?? undefined,
+          arrivalTime: s.arrival_time ?? undefined,
+          transportNotes: s.transport_notes ?? undefined,
+        };
+      });
+      setSquads(transformedSquads);
+
+      // Link checks to their squads
+      const checkToSquad = new Map<string, { squadId: string; inSquad: boolean }>();
+      for (const sq of transformedSquads) {
+        if (sq.checkId) {
+          checkToSquad.set(sq.checkId, {
+            squadId: sq.id,
+            inSquad: true,
+          });
         }
-      } catch (squadErr) {
-        logWarn("loadSquads", "Failed to load squads", { error: squadErr });
+      }
+      if (checkToSquad.size > 0) {
+        setChecks((prev) => prev.map((c) => {
+          const sq = checkToSquad.get(c.id);
+          if (sq) return { ...c, squadId: sq.squadId, inSquad: sq.inSquad };
+          return c;
+        }));
       }
 
     } catch (err) {
@@ -1223,6 +1268,12 @@ export default function Home() {
             pushSupported={pushSupported}
             onTogglePush={handleTogglePush}
             showToast={showToast}
+            onUpdateProfile={async (updates) => {
+              if (!isDemoMode) {
+                const updated = await db.updateProfile(updates);
+                setProfile(updated);
+              }
+            }}
             onAvailabilityChange={async (status) => {
               if (!isDemoMode) {
                 try {

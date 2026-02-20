@@ -15,6 +15,7 @@ const ProfileView = ({
   pushSupported,
   onTogglePush,
   onAvailabilityChange,
+  onUpdateProfile,
   showToast,
 }: {
   friends: Friend[];
@@ -25,6 +26,7 @@ const ProfileView = ({
   pushSupported: boolean;
   onTogglePush: () => void;
   onAvailabilityChange?: (status: AvailabilityStatus) => void;
+  onUpdateProfile?: (updates: Partial<Profile>) => Promise<void>;
   showToast?: (msg: string) => void;
 }) => {
   const [availability, setAvailability] = useState<AvailabilityStatus>(
@@ -35,6 +37,8 @@ const ProfileView = ({
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customExpiry, setCustomExpiry] = useState("");
   const [pendingStatus, setPendingStatus] = useState<AvailabilityStatus | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
 
   const handleStatusSelect = (status: AvailabilityStatus) => {
     if (status === "open") {
@@ -77,6 +81,17 @@ const ProfileView = ({
     }
   };
 
+  const handleNameSave = async () => {
+    const trimmed = nameInput.trim();
+    if (!trimmed || !onUpdateProfile) return;
+    try {
+      await onUpdateProfile({ display_name: trimmed });
+      setEditingName(false);
+    } catch {
+      showToast?.("Failed to update name");
+    }
+  };
+
   const displayName = profile?.display_name ?? "kat";
   const avatarLetter = profile?.avatar_letter ?? displayName.charAt(0).toUpperCase();
 
@@ -101,9 +116,85 @@ const ProfileView = ({
       >
         {avatarLetter}
       </div>
-      <h2 style={{ fontFamily: font.serif, fontSize: 24, color: color.text, fontWeight: 400 }}>
-        {displayName}
-      </h2>
+      {editingName ? (
+        <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center", marginTop: 4 }}>
+          <input
+            type="text"
+            value={nameInput}
+            onChange={(e) => {
+              if (e.target.value.length <= 30) setNameInput(e.target.value);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleNameSave();
+              if (e.key === "Escape") setEditingName(false);
+            }}
+            autoFocus
+            style={{
+              background: color.deep,
+              border: `1px solid ${color.borderMid}`,
+              borderRadius: 10,
+              padding: "8px 12px",
+              fontFamily: font.serif,
+              fontSize: 20,
+              color: color.text,
+              outline: "none",
+              width: 160,
+              textAlign: "center",
+            }}
+          />
+          <button
+            onClick={handleNameSave}
+            disabled={!nameInput.trim()}
+            style={{
+              background: nameInput.trim() ? color.accent : color.borderMid,
+              color: nameInput.trim() ? "#000" : color.dim,
+              border: "none",
+              borderRadius: 10,
+              padding: "8px 14px",
+              fontFamily: font.mono,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: nameInput.trim() ? "pointer" : "not-allowed",
+            }}
+          >
+            Save
+          </button>
+          <button
+            onClick={() => setEditingName(false)}
+            style={{
+              background: "transparent",
+              border: "none",
+              fontFamily: font.mono,
+              fontSize: 11,
+              color: color.faint,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <h2
+          onClick={() => {
+            if (onUpdateProfile) {
+              setNameInput(displayName);
+              setEditingName(true);
+            }
+          }}
+          style={{
+            fontFamily: font.serif,
+            fontSize: 24,
+            color: color.text,
+            fontWeight: 400,
+            cursor: onUpdateProfile ? "pointer" : "default",
+          }}
+        >
+          {displayName}
+          {onUpdateProfile && (
+            <span style={{ fontSize: 12, color: color.faint, marginLeft: 6 }}>✎</span>
+          )}
+        </h2>
+      )}
       <p style={{ fontFamily: font.mono, fontSize: 11, color: color.dim, marginTop: 4 }}>
         @{profile?.username ?? "you"}
       </p>
