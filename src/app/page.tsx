@@ -447,6 +447,21 @@ export default function Home() {
   const loadRealDataRef = useRef(loadRealData);
   loadRealDataRef.current = loadRealData;
 
+  const loadNotifications = useCallback(async () => {
+    try {
+      const [notifs, count] = await Promise.all([
+        db.getNotifications(),
+        db.getUnreadCount(),
+      ]);
+      setNotifications(notifs);
+      setUnreadCount(count);
+    } catch (err) {
+      logWarn("loadNotifications", "Failed to load notifications", { error: err });
+    }
+  }, []);
+  const loadNotificationsRef = useRef(loadNotifications);
+  loadNotificationsRef.current = loadNotifications;
+
   // Load squad pool members when EventLobby opens
   useEffect(() => {
     if (!socialEvent?.id || isDemoMode) {
@@ -487,6 +502,7 @@ export default function Home() {
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
         loadRealDataRef.current();
+        loadNotificationsRef.current();
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
@@ -498,19 +514,7 @@ export default function Home() {
     if (!isLoggedIn || isDemoMode || !userId) return;
 
     // Load initial notifications
-    const loadNotifications = async () => {
-      try {
-        const [notifs, count] = await Promise.all([
-          db.getNotifications(),
-          db.getUnreadCount(),
-        ]);
-        setNotifications(notifs);
-        setUnreadCount(count);
-      } catch (err) {
-        logWarn("loadNotifications", "Failed to load notifications", { error: err });
-      }
-    };
-    loadNotifications();
+    loadNotificationsRef.current();
 
     // Subscribe to new notifications in realtime
     const channel = db.subscribeToNotifications(userId, async (newNotif) => {
