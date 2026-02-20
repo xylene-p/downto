@@ -99,13 +99,18 @@ const AddModal = ({
         director: data.director,
         thumbnail: data.thumbnail,
         letterboxdUrl: data.letterboxdUrl,
+        diceUrl: data.diceUrl,
       });
       setSharePublicly(data.isPublicPost || false);
 
-      // Check for existing event with this IG URL → social signal
-      if (data.igUrl) {
+      // Check for existing event with this IG/Dice URL → social signal
+      if (data.igUrl || data.diceUrl) {
         try {
-          const existingEvent = await db.findEventByIgUrl(data.igUrl);
+          const existingEvent = data.igUrl
+            ? await db.findEventByIgUrl(data.igUrl)
+            : data.diceUrl
+              ? await db.findEventByDiceUrl(data.diceUrl)
+              : null;
           if (existingEvent) {
             const signal = await db.getEventSocialSignal(existingEvent.id);
             if (signal.totalDown > 0) {
@@ -217,7 +222,7 @@ const AddModal = ({
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handlePull()}
-                placeholder="paste an IG or Letterboxd link..."
+                placeholder="paste an IG, Letterboxd, or Dice link..."
                 style={{
                   flex: 1,
                   background: color.deep,
@@ -267,7 +272,7 @@ const AddModal = ({
                 lineHeight: 1.5,
               }}
             >
-              Paste a Letterboxd or Instagram link to pull event details.
+              Paste an Instagram, Letterboxd, or Dice link to pull event details.
             </div>
           </div>
         )}
@@ -293,7 +298,7 @@ const AddModal = ({
                 animation: "spin 0.8s linear infinite",
               }}
             />
-            {url.includes("letterboxd.com") ? "fetching movie details..." : "scraping event details..."}
+            {url.includes("letterboxd.com") ? "fetching movie details..." : url.includes("dice.fm") ? "fetching event details..." : "scraping event details..."}
           </div>
         )}
 
@@ -630,7 +635,7 @@ const AddModal = ({
                       marginBottom: 2,
                     }}
                   >
-                    Public IG post detected
+                    {scraped.diceUrl ? "Public Dice event detected" : "Public IG post detected"}
                   </div>
                   <div
                     style={{

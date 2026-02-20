@@ -160,6 +160,137 @@ async function scrapeLetterboxd(url: string) {
   };
 }
 
+// Scrape Dice.fm event page
+async function scrapeDice(url: string) {
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Could not fetch Dice event page");
+  }
+
+  const html = await response.text();
+
+  let title = "";
+  let venue = "TBD";
+  let date = "TBD";
+  let time = "TBD";
+  let image = "";
+
+  // Primary: Try JSON-LD structured data
+  const jsonLdMatch = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/i);
+  if (jsonLdMatch) {
+    try {
+      const jsonLd = JSON.parse(jsonLdMatch[1]);
+      // Could be a single object or an array
+      const eventData = Array.isArray(jsonLd)
+        ? jsonLd.find((item: Record<string, unknown>) => item['@type'] === 'MusicEvent' || item['@type'] === 'Event')
+        : (jsonLd['@type'] === 'MusicEvent' || jsonLd['@type'] === 'Event') ? jsonLd : null;
+
+      if (eventData) {
+        title = eventData.name || "";
+        if (eventData.location?.name) {
+          venue = eventData.location.name;
+          if (eventData.location.address?.addressLocality) {
+            venue += `, ${eventData.location.address.addressLocality}`;
+          }
+        }
+        if (eventData.startDate) {
+          const d = new Date(eventData.startDate);
+          date = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+          time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).toUpperCase();
+        }
+        if (eventData.image) {
+          image = Array.isArray(eventData.image) ? eventData.image[0] : eventData.image;
+        }
+      }
+    } catch {
+      // JSON-LD parse failed, fall through to fallback
+    }
+  }
+
+  // Fallback: Parse <title> tag — format: "{title} Tickets | {price} | {date} @ {venue}, {city} | DICE"
+  if (!title) {
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (titleMatch) {
+      const titleText = strip(titleMatch[1]);
+      const parts = titleText.split('|').map(p => p.trim());
+      if (parts.length >= 4) {
+        title = parts[0].replace(/\s*Tickets\s*$/i, '').trim();
+        // parts[2] has "date @ venue, city"
+        const dateVenue = parts[2];
+        const atSplit = dateVenue.split('@').map(p => p.trim());
+        if (atSplit.length === 2) {
+          if (date === "TBD") date = atSplit[0];
+          if (venue === "TBD") venue = atSplit[1];
+        }
+      } else if (parts.length >= 1) {
+        title = parts[0].replace(/\s*Tickets\s*$/i, '').trim();
+      }
+    }
+  }
+
+  // Fallback image: look for dice-media.imgix.net URLs
+  if (!image) {
+    const imgMatch = html.match(/https:\/\/dice-media\.imgix\.net\/[^"'\s]+/);
+    if (imgMatch) {
+      image = imgMatch[0];
+    }
+  }
+
+  // Extract description for vibe inference
+  const descMatch = html.match(/<meta property="og:description" content="([^"]+)"/i);
+  const description = descMatch ? descMatch[1].toLowerCase() : "";
+  const fullText = `${title} ${description}`.toLowerCase();
+
+  const vibeKeywords: Record<string, string> = {
+    'dj': 'music',
+    'dance': 'dancing',
+    'techno': 'techno',
+    'house': 'house',
+    'hip hop': 'hip hop',
+    'hip-hop': 'hip hop',
+    'r&b': 'r&b',
+    'jazz': 'jazz',
+    'comedy': 'comedy',
+    'standup': 'comedy',
+    'party': 'party',
+    'rave': 'rave',
+    'club': 'nightlife',
+    'festival': 'festival',
+    'concert': 'concert',
+    'live': 'live music',
+    'bass': 'bass',
+    'drum': 'drum & bass',
+    'ambient': 'ambient',
+    'electronic': 'electronic',
+  };
+
+  const vibes: string[] = [];
+  for (const [keyword, vibe] of Object.entries(vibeKeywords)) {
+    if (fullText.includes(keyword) && !vibes.includes(vibe)) {
+      vibes.push(vibe);
+      if (vibes.length >= 3) break;
+    }
+  }
+
+  return {
+    type: "event" as const,
+    title: strip(title).slice(0, 100) || "Event",
+    venue: strip(venue).slice(0, 100),
+    date: strip(date).slice(0, 50),
+    time: strip(time).slice(0, 50),
+    vibe: vibes.length > 0 ? vibes : ['event'],
+    igHandle: "",
+    thumbnail: image,
+    isPublicPost: true,
+    diceUrl: url,
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { url } = await request.json();
@@ -195,13 +326,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(movieData);
     }
 
+    // Check if it's a Dice.fm URL
+    const dicePattern = /dice\.fm\/event\//i;
+    if (dicePattern.test(url)) {
+      const diceData = await scrapeDice(url);
+      return NextResponse.json(diceData);
+    }
+
     // Check if it's an Instagram URL
     const igUrlPattern = /instagram\.com\/(p|reel|tv)\/([A-Za-z0-9_-]+)/;
     const igMatch = url.match(igUrlPattern);
 
     if (!igMatch) {
       return NextResponse.json({
-        error: "Unsupported URL. Try an Instagram or Letterboxd link."
+        error: "Unsupported URL. Try an Instagram, Letterboxd, or Dice link."
       }, { status: 400 });
     }
 

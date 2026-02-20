@@ -27,6 +27,7 @@ export interface Event {
   image_url: string | null;
   ig_handle: string | null;
   ig_url: string | null;
+  dice_url: string | null;
   is_public: boolean;
   created_by: string | null;
   created_at: string;

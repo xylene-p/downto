@@ -269,6 +269,7 @@ export default function Home() {
         image: se.event!.image_url ?? "",
         igHandle: se.event!.ig_handle ?? "",
         igUrl: se.event!.ig_url ?? undefined,
+        diceUrl: se.event!.dice_url ?? undefined,
         saved: true,
         isDown: se.is_down,
         peopleDown: peopleDownMap[se.event!.id] ?? [],
@@ -290,6 +291,7 @@ export default function Home() {
           image: e.image_url ?? "",
           igHandle: e.ig_handle ?? "",
           igUrl: e.ig_url ?? undefined,
+          diceUrl: e.dice_url ?? undefined,
           saved: false,
           isDown: false,
           peopleDown: peopleDownMap[e.id] ?? [],
@@ -313,6 +315,7 @@ export default function Home() {
           image: e.image_url ?? "",
           igHandle: e.ig_handle ?? "",
           igUrl: e.ig_url ?? undefined,
+          diceUrl: e.dice_url ?? undefined,
           saved: savedEventIdSet.has(e.id),
           isDown: savedDownMap.get(e.id) ?? false,
           isPublic: true,
@@ -1249,14 +1252,17 @@ export default function Home() {
           const imageUrl = e.thumbnail || "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&q=80";
           const igHandle = sanitize(e.igHandle || "", 30);
           const igUrl = e.igUrl || null;
+          const diceUrl = e.diceUrl || null;
 
           // Save to database if logged in (not demo mode)
           if (!isDemoMode && userId) {
             try {
-              // Check for existing event with same IG URL (dedup)
+              // Check for existing event with same IG/Dice URL (dedup)
               let dbEvent: Awaited<ReturnType<typeof db.createEvent>> | null = null;
               if (igUrl) {
                 dbEvent = await db.findEventByIgUrl(igUrl);
+              } else if (diceUrl) {
+                dbEvent = await db.findEventByDiceUrl(diceUrl);
               }
 
               if (!dbEvent) {
@@ -1272,6 +1278,7 @@ export default function Home() {
                   image_url: imageUrl,
                   ig_handle: igHandle,
                   ig_url: igUrl,
+                  dice_url: diceUrl,
                   is_public: sharePublicly,
                   created_by: userId,
                 });
@@ -1299,6 +1306,7 @@ export default function Home() {
                 image: dbEvent.image_url || imageUrl,
                 igHandle: dbEvent.ig_handle || igHandle,
                 igUrl: dbEvent.ig_url ?? undefined,
+                diceUrl: dbEvent.dice_url ?? undefined,
                 saved: true,
                 isDown: true,
                 isPublic: dbEvent.is_public ?? sharePublicly,
@@ -1325,6 +1333,7 @@ export default function Home() {
               image: imageUrl,
               igHandle,
               igUrl: e.igUrl,
+              diceUrl: e.diceUrl,
               saved: true,
               isDown: true,
               isPublic: sharePublicly,

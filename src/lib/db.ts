@@ -171,6 +171,16 @@ export async function findEventByIgUrl(igUrl: string): Promise<import('./types')
   return data;
 }
 
+export async function findEventByDiceUrl(diceUrl: string): Promise<import('./types').Event | null> {
+  const { data } = await supabase
+    .from('events')
+    .select('*')
+    .eq('dice_url', diceUrl)
+    .limit(1)
+    .maybeSingle();
+  return data;
+}
+
 // ============================================================================
 // SAVED EVENTS
 // ============================================================================

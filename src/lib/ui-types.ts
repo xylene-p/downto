@@ -16,6 +16,7 @@ export interface Event {
   image: string;
   igHandle: string;
   igUrl?: string;
+  diceUrl?: string;
   saved: boolean;
   isDown: boolean;
   peopleDown: Person[];
@@ -56,6 +57,7 @@ export interface ScrapedEvent {
   director?: string;
   thumbnail?: string;
   letterboxdUrl?: string;
+  diceUrl?: string;
 }
 
 export interface Squad {
