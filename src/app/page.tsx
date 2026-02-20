@@ -43,6 +43,7 @@ export default function Home() {
   const [tonightEvents, setTonightEvents] = useState<Event[]>([]); // Loaded from DB or demo data
   const [checks, setChecks] = useState<InterestCheck[]>([]);
   const [squads, setSquads] = useState<Squad[]>([]);
+  const [feedLoaded, setFeedLoaded] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [socialEvent, setSocialEvent] = useState<Event | null>(null);
   const [squadPoolMembers, setSquadPoolMembers] = useState<Person[]>([]);
@@ -104,6 +105,7 @@ export default function Home() {
       window.history.replaceState({}, "", "/");
       setIsLoggedIn(true);
       setIsDemoMode(true);
+      setFeedLoaded(true);
       setEvents(DEMO_EVENTS);
       setChecks(DEMO_CHECKS);
       setSquads(DEMO_SQUADS);
@@ -505,6 +507,7 @@ export default function Home() {
       logError("loadRealData", err);
     } finally {
       isLoadingRef.current = false;
+      setFeedLoaded(true);
     }
   }, [isDemoMode, userId]);
   const loadRealDataRef = useRef(loadRealData);
@@ -1190,7 +1193,29 @@ export default function Home() {
 
       {/* Content */}
       <div style={{ paddingBottom: 90 }}>
-        {tab === "feed" && (
+        {!feedLoaded && !isDemoMode && (
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "80px 20px",
+            gap: 12,
+          }}>
+            <div style={{
+              width: 24,
+              height: 24,
+              border: `2px solid ${color.borderMid}`,
+              borderTopColor: color.accent,
+              borderRadius: "50%",
+              animation: "spin 0.8s linear infinite",
+            }} />
+            <p style={{ fontFamily: font.mono, fontSize: 12, color: color.dim }}>
+              loading your feed...
+            </p>
+          </div>
+        )}
+        {feedLoaded && tab === "feed" && (
           <FeedView
             feedMode={feedMode}
             setFeedMode={setFeedMode}
@@ -1233,8 +1258,8 @@ export default function Home() {
             }}
           />
         )}
-        {tab === "calendar" && <CalendarView events={events} />}
-        {tab === "groups" && (
+        {feedLoaded && tab === "calendar" && <CalendarView events={events} />}
+        {feedLoaded && tab === "groups" && (
           <GroupsView
             squads={squads}
             onSquadUpdate={setSquads}
@@ -1252,7 +1277,7 @@ export default function Home() {
             onViewProfile={(uid) => setViewingUserId(uid)}
           />
         )}
-        {tab === "profile" && (
+        {feedLoaded && tab === "profile" && (
           <ProfileView
             friends={friends}
             onOpenFriends={() => setFriendsOpen(true)}
