@@ -187,11 +187,13 @@ const ProfileView = ({
             color: color.text,
             fontWeight: 400,
             cursor: onUpdateProfile ? "pointer" : "default",
+            position: "relative",
+            display: "inline-block",
           }}
         >
           {displayName}
           {onUpdateProfile && (
-            <span style={{ fontSize: 12, color: color.faint, marginLeft: 6 }}>✎</span>
+            <span style={{ position: "absolute", top: "50%", transform: "translateY(-50%)", marginLeft: 8, fontSize: 12, color: color.faint }}>✎</span>
           )}
         </h2>
       )}
