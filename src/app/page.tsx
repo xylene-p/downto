@@ -771,7 +771,7 @@ export default function Home() {
     }
   };
 
-  const toggleDown = (id: string) => {
+  const toggleDown = async (id: string) => {
     const event = events.find((e) => e.id === id);
     if (!event) return;
     const newDown = !event.isDown;
@@ -781,14 +781,21 @@ export default function Home() {
     );
     showToast(newDown ? "You're down! 🤙" : "Maybe next time");
     if (!isDemoMode && event.id) {
-      db.toggleDown(event.id, newDown)
-        .catch((err) => {
+      try {
+        if (newDown && !prevSaved) {
+          await db.saveEvent(event.id);
+        }
+        await db.toggleDown(event.id, newDown);
+      } catch (err: unknown) {
+        const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : '';
+        if (code !== '23505') {
           logError("toggleDown", err, { eventId: id });
           setEvents((prev) =>
             prev.map((e) => e.id === id ? { ...e, isDown: !newDown, saved: prevSaved } : e)
           );
           showToast("Failed to update — try again");
-        });
+        }
+      }
     }
   };
 
