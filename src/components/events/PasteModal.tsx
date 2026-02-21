@@ -182,8 +182,6 @@ const AddModal = ({
           borderRadius: "24px 24px 0 0",
           width: "100%",
           maxWidth: 420,
-          maxHeight: "85vh",
-          overflowY: "auto",
           padding: "0 24px 40px",
           animation: "slideUp 0.3s ease-out",
           transition: dragging.current ? "none" : "transform 0.2s ease-out",
