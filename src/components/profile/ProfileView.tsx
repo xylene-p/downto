@@ -39,6 +39,8 @@ const ProfileView = ({
   const [pendingStatus, setPendingStatus] = useState<AvailabilityStatus | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
+  const [editingIg, setEditingIg] = useState(false);
+  const [igInput, setIgInput] = useState("");
 
   const handleStatusSelect = (status: AvailabilityStatus) => {
     if (status === "open") {
@@ -89,6 +91,17 @@ const ProfileView = ({
       setEditingName(false);
     } catch {
       showToast?.("Failed to update name");
+    }
+  };
+
+  const handleIgSave = async () => {
+    if (!onUpdateProfile) return;
+    const trimmed = igInput.trim().replace(/^@/, "");
+    try {
+      await onUpdateProfile({ ig_handle: trimmed || null });
+      setEditingIg(false);
+    } catch {
+      showToast?.("Failed to update Instagram");
     }
   };
 
@@ -516,8 +529,77 @@ const ProfileView = ({
       >
         Settings
       </div>
-      {profile?.ig_handle && (
+      {editingIg ? (
         <div
+          style={{
+            padding: "14px 0",
+            borderBottom: `1px solid ${color.border}`,
+          }}
+        >
+          <div style={{ fontFamily: font.mono, fontSize: 12, color: color.muted, marginBottom: 8 }}>Instagram</div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ fontFamily: font.mono, fontSize: 12, color: color.dim }}>@</span>
+            <input
+              type="text"
+              value={igInput}
+              onChange={(e) => setIgInput(e.target.value.replace(/^@/, ""))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleIgSave();
+                if (e.key === "Escape") setEditingIg(false);
+              }}
+              placeholder="username"
+              autoFocus
+              style={{
+                flex: 1,
+                background: color.deep,
+                border: `1px solid ${color.borderMid}`,
+                borderRadius: 10,
+                padding: "8px 12px",
+                fontFamily: font.mono,
+                fontSize: 12,
+                color: color.text,
+                outline: "none",
+              }}
+            />
+            <button
+              onClick={handleIgSave}
+              style={{
+                background: color.accent,
+                color: "#000",
+                border: "none",
+                borderRadius: 10,
+                padding: "8px 14px",
+                fontFamily: font.mono,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              Save
+            </button>
+            <button
+              onClick={() => setEditingIg(false)}
+              style={{
+                background: "transparent",
+                border: "none",
+                fontFamily: font.mono,
+                fontSize: 11,
+                color: color.faint,
+                cursor: "pointer",
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div
+          onClick={() => {
+            if (onUpdateProfile) {
+              setIgInput(profile?.ig_handle ?? "");
+              setEditingIg(true);
+            }
+          }}
           style={{
             padding: "14px 0",
             borderBottom: `1px solid ${color.border}`,
@@ -527,10 +609,26 @@ const ProfileView = ({
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            cursor: onUpdateProfile ? "pointer" : "default",
           }}
         >
           <span>Instagram</span>
-          <span style={{ color: color.dim, fontSize: 11 }}>@{profile.ig_handle}</span>
+          {profile?.ig_handle ? (
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <a
+                href={`https://instagram.com/${profile.ig_handle}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                style={{ color: color.dim, fontSize: 11, textDecoration: "none" }}
+              >
+                @{profile.ig_handle}
+              </a>
+              {onUpdateProfile && <span style={{ fontSize: 10, color: color.faint }}>✎</span>}
+            </span>
+          ) : (
+            onUpdateProfile && <span style={{ color: color.faint, fontSize: 11 }}>Add →</span>
+          )}
         </div>
       )}
       {pushSupported && (

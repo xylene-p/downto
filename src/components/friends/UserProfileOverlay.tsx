@@ -186,9 +186,14 @@ const UserProfileOverlay = ({
 
             {/* IG Handle */}
             {profileData.ig_handle && (
-              <div style={{ fontFamily: font.mono, fontSize: 11, color: color.faint, marginBottom: 8 }}>
+              <a
+                href={`https://instagram.com/${profileData.ig_handle}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontFamily: font.mono, fontSize: 11, color: color.faint, marginBottom: 8, textDecoration: "none" }}
+              >
                 ig: @{profileData.ig_handle}
-              </div>
+              </a>
             )}
 
             {/* Availability */}
