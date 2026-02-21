@@ -65,6 +65,14 @@ export interface InterestCheck {
   expires_at: string | null;
   event_date: string | null; // ISO date from natural language parsing
   max_squad_size: number;
+  letterboxd_url: string | null;
+  movie_metadata: {
+    title: string;
+    year?: string;
+    director?: string;
+    thumbnail?: string;
+    vibes?: string[];
+  } | null;
   created_at: string;
   // Joined data
   author?: Profile;

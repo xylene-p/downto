@@ -6,6 +6,15 @@ import type { ScrapedEvent } from "@/lib/ui-types";
 import { parseNaturalDate, sanitize } from "@/lib/utils";
 import * as db from "@/lib/db";
 
+interface CheckMovie {
+  title: string;
+  year?: string;
+  director?: string;
+  thumbnail?: string;
+  vibes?: string[];
+  letterboxdUrl: string;
+}
+
 const AddModal = ({
   open,
   onClose,
@@ -16,7 +25,7 @@ const AddModal = ({
   open: boolean;
   onClose: () => void;
   onSubmit: (e: ScrapedEvent, sharePublicly: boolean) => void;
-  onInterestCheck: (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number) => void;
+  onInterestCheck: (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number, movieData?: CheckMovie) => void;
   defaultMode?: "paste" | "idea" | "manual" | null;
 }) => {
   const [mode, setMode] = useState<"paste" | "idea" | "manual">("idea");
@@ -39,6 +48,10 @@ const AddModal = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const ideaRef = useRef<HTMLTextAreaElement>(null);
   const [socialSignal, setSocialSignal] = useState<{ totalDown: number; friendsDown: number } | null>(null);
+  const [checkMovie, setCheckMovie] = useState<CheckMovie | null>(null);
+  const [checkMovieLoading, setCheckMovieLoading] = useState(false);
+  const checkMovieUrlRef = useRef<string | null>(null);
+  const checkMovieLoadingRef = useRef(false);
 
   useEffect(() => {
     if (open) {
@@ -58,6 +71,10 @@ const AddModal = ({
       setError(null);
       setManual({ title: "", venue: "", date: "", time: "", vibe: "" });
       setSocialSignal(null);
+      setCheckMovie(null);
+      setCheckMovieLoading(false);
+      checkMovieLoadingRef.current = false;
+      checkMovieUrlRef.current = null;
     }
   }, [open, mode, defaultMode]);
 
@@ -84,7 +101,6 @@ const AddModal = ({
       }
 
       setScraped({
-        type: data.type || "event",
         title: data.title,
         venue: data.venue,
         date: data.date,
@@ -93,26 +109,18 @@ const AddModal = ({
         igHandle: data.igHandle || "",
         isPublicPost: data.isPublicPost || false,
         igUrl: data.igUrl,
-        // Movie-specific fields
-        movieTitle: data.movieTitle,
-        year: data.year,
-        director: data.director,
-        thumbnail: data.thumbnail,
-        letterboxdUrl: data.letterboxdUrl,
         diceUrl: data.diceUrl,
       });
       setSharePublicly(data.isPublicPost || false);
 
-      // Check for existing event with this IG/Dice/Letterboxd URL → social signal
-      if (data.igUrl || data.diceUrl || data.letterboxdUrl) {
+      // Check for existing event with this IG/Dice URL → social signal
+      if (data.igUrl || data.diceUrl) {
         try {
           const existingEvent = data.igUrl
             ? await db.findEventByIgUrl(data.igUrl)
             : data.diceUrl
               ? await db.findEventByDiceUrl(data.diceUrl)
-              : data.letterboxdUrl
-                ? await db.findEventByLetterboxdUrl(data.letterboxdUrl)
-                : null;
+              : null;
           if (existingEvent) {
             const signal = await db.getEventSocialSignal(existingEvent.id);
             if (signal.totalDown > 0) {
@@ -224,7 +232,7 @@ const AddModal = ({
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handlePull()}
-                placeholder="paste an IG, Letterboxd, or Dice link..."
+                placeholder="paste an IG or Dice link..."
                 style={{
                   flex: 1,
                   background: color.deep,
@@ -274,7 +282,7 @@ const AddModal = ({
                 lineHeight: 1.5,
               }}
             >
-              Paste an Instagram, Letterboxd, or Dice link to pull event details.
+              Paste an Instagram or Dice link to pull event details.
             </div>
           </div>
         )}
@@ -300,7 +308,7 @@ const AddModal = ({
                 animation: "spin 0.8s linear infinite",
               }}
             />
-            {url.includes("letterboxd.com") ? "fetching movie details..." : url.includes("dice.fm") ? "fetching event details..." : "scraping event details..."}
+            {url.includes("dice.fm") ? "fetching event details..." : "scraping event details..."}
           </div>
         )}
 
@@ -345,155 +353,7 @@ const AddModal = ({
           </div>
         )}
 
-        {scraped && scraped.type === "movie" && (
-          <div
-            style={{
-              background: color.deep,
-              borderRadius: 16,
-              padding: 20,
-              border: `1px solid ${color.borderLight}`,
-              animation: "fadeIn 0.3s ease",
-            }}
-          >
-            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
-              {scraped.thumbnail && (
-                <img
-                  src={scraped.thumbnail}
-                  alt={scraped.movieTitle || scraped.title}
-                  style={{
-                    width: 100,
-                    height: 150,
-                    objectFit: "cover",
-                    borderRadius: 10,
-                    flexShrink: 0,
-                  }}
-                />
-              )}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    fontFamily: font.serif,
-                    fontSize: 22,
-                    color: color.text,
-                    marginBottom: 4,
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {scraped.movieTitle || scraped.title}
-                </div>
-                <div
-                  style={{
-                    fontFamily: font.mono,
-                    fontSize: 12,
-                    color: color.muted,
-                    marginBottom: 4,
-                  }}
-                >
-                  {scraped.year}
-                  {scraped.director && ` · ${scraped.director}`}
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8 }}>
-                  {scraped.vibe.map((v) => (
-                    <span
-                      key={v}
-                      style={{
-                        background: "#1f1f1f",
-                        color: color.accent,
-                        padding: "3px 8px",
-                        borderRadius: 20,
-                        fontFamily: font.mono,
-                        fontSize: 10,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.08em",
-                      }}
-                    >
-                      {v}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-            {/* Editable date/time/venue for movie screening */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-              <input
-                type="text"
-                value={scraped.venue === "TBD" ? "" : scraped.venue}
-                onChange={(e) => setScraped({ ...scraped, venue: e.target.value })}
-                placeholder="Where are you watching?"
-                style={{
-                  background: color.surface,
-                  border: `1px solid ${color.borderMid}`,
-                  borderRadius: 10,
-                  padding: "10px 12px",
-                  color: color.text,
-                  fontFamily: font.mono,
-                  fontSize: 12,
-                  outline: "none",
-                }}
-              />
-              <div style={{ display: "flex", gap: 8 }}>
-                <input
-                  type="text"
-                  value={scraped.date === "TBD" ? "" : scraped.date}
-                  onChange={(e) => setScraped({ ...scraped, date: e.target.value })}
-                  placeholder="Date"
-                  style={{
-                    flex: 1,
-                    background: color.surface,
-                    border: `1px solid ${color.borderMid}`,
-                    borderRadius: 10,
-                    padding: "10px 12px",
-                    color: color.text,
-                    fontFamily: font.mono,
-                    fontSize: 12,
-                    outline: "none",
-                  }}
-                />
-                <input
-                  type="text"
-                  value={scraped.time === "TBD" ? "" : scraped.time}
-                  onChange={(e) => setScraped({ ...scraped, time: e.target.value })}
-                  placeholder="Time"
-                  style={{
-                    flex: 1,
-                    background: color.surface,
-                    border: `1px solid ${color.borderMid}`,
-                    borderRadius: 10,
-                    padding: "10px 12px",
-                    color: color.text,
-                    fontFamily: font.mono,
-                    fontSize: 12,
-                    outline: "none",
-                  }}
-                />
-              </div>
-            </div>
-            <button
-              onClick={async () => {
-                await onSubmit(scraped, false);
-                onClose();
-              }}
-              style={{
-                width: "100%",
-                background: color.accent,
-                color: "#000",
-                border: "none",
-                borderRadius: 12,
-                padding: "14px",
-                fontFamily: font.mono,
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: "pointer",
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-              }}
-            >
-              Save Movie Night →
-            </button>
-          </div>
-        )}
-
-        {scraped && scraped.type !== "movie" && (
+        {scraped && (
           <div
             style={{
               background: color.deep,
@@ -737,7 +597,46 @@ const AddModal = ({
               <textarea
                 ref={ideaRef}
                 value={idea}
-                onChange={(e) => { setIdea(e.target.value.slice(0, 280)); setDateDismissed(false); }}
+                onChange={(e) => {
+                  const val = e.target.value.slice(0, 280);
+                  setIdea(val);
+                  setDateDismissed(false);
+                  // Detect Letterboxd URL
+                  const lbMatch = val.match(/https?:\/\/(www\.)?letterboxd\.com\/film\/[a-z0-9-]+\/?/i)
+                    || val.match(/https?:\/\/boxd\.it\/[a-zA-Z0-9]+\/?/i);
+                  const detectedUrl = lbMatch ? lbMatch[0] : null;
+                  if (detectedUrl && detectedUrl !== checkMovieUrlRef.current && !checkMovieLoadingRef.current) {
+                    checkMovieUrlRef.current = detectedUrl;
+                    checkMovieLoadingRef.current = true;
+                    setCheckMovieLoading(true);
+                    const urlToReplace = detectedUrl;
+                    fetch("/api/scrape", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ url: detectedUrl }),
+                    })
+                      .then((res) => res.json())
+                      .then((data) => {
+                        if (data.movieTitle || data.title) {
+                          const movieTitle = data.movieTitle || data.title;
+                          setCheckMovie({
+                            title: movieTitle,
+                            year: data.year,
+                            director: data.director,
+                            thumbnail: data.thumbnail,
+                            vibes: data.vibe || [],
+                            letterboxdUrl: data.letterboxdUrl || urlToReplace,
+                          });
+                          // Remove the URL from the textarea
+                          setIdea((prev) => prev.replace(urlToReplace, "").trim());
+                        }
+                      })
+                      .catch(() => {})
+                      .finally(() => { setCheckMovieLoading(false); checkMovieLoadingRef.current = false; });
+                  } else if (!detectedUrl && !checkMovie) {
+                    checkMovieUrlRef.current = null;
+                  }
+                }}
                 maxLength={280}
                 placeholder="e.g., dinner at 7 tomorrow? rooftop picnic saturday? movie night?"
                 style={{
@@ -787,6 +686,116 @@ const AddModal = ({
                 >
                   ×
                 </button>
+              </div>
+            )}
+            {/* Movie preview from detected Letterboxd link */}
+            {checkMovieLoading && (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 12,
+                padding: "10px 12px",
+                background: color.deep,
+                borderRadius: 10,
+                border: `1px solid ${color.borderLight}`,
+              }}>
+                <div style={{
+                  width: 16,
+                  height: 16,
+                  border: `2px solid ${color.borderMid}`,
+                  borderTopColor: color.accent,
+                  borderRadius: "50%",
+                  animation: "spin 0.8s linear infinite",
+                  flexShrink: 0,
+                }} />
+                <span style={{ fontFamily: font.mono, fontSize: 11, color: color.dim }}>
+                  fetching movie details...
+                </span>
+              </div>
+            )}
+            {checkMovie && !checkMovieLoading && (
+              <div style={{
+                marginBottom: 12,
+                padding: 12,
+                background: color.deep,
+                borderRadius: 12,
+                border: `1px solid ${color.borderLight}`,
+                animation: "fadeIn 0.3s ease",
+              }}>
+                <div style={{ display: "flex", gap: 12 }}>
+                  {checkMovie.thumbnail && (
+                    <img
+                      src={checkMovie.thumbnail}
+                      alt={checkMovie.title}
+                      style={{
+                        width: 60,
+                        height: 90,
+                        objectFit: "cover",
+                        borderRadius: 8,
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div style={{
+                        fontFamily: font.serif,
+                        fontSize: 17,
+                        color: color.text,
+                        lineHeight: 1.2,
+                        marginBottom: 3,
+                      }}>
+                        {checkMovie.title}
+                      </div>
+                      <button
+                        onClick={() => { setCheckMovie(null); checkMovieUrlRef.current = null; }}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: color.dim,
+                          fontFamily: font.mono,
+                          fontSize: 14,
+                          cursor: "pointer",
+                          padding: "0 2px",
+                          lineHeight: 1,
+                          flexShrink: 0,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div style={{
+                      fontFamily: font.mono,
+                      fontSize: 11,
+                      color: color.muted,
+                      marginBottom: 4,
+                    }}>
+                      {checkMovie.year}{checkMovie.director && ` · ${checkMovie.director}`}
+                    </div>
+                    {checkMovie.vibes && checkMovie.vibes.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+                        {checkMovie.vibes.slice(0, 4).map((v) => (
+                          <span
+                            key={v}
+                            style={{
+                              background: "#1f1f1f",
+                              color: color.accent,
+                              padding: "2px 6px",
+                              borderRadius: 12,
+                              fontFamily: font.mono,
+                              fontSize: 9,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.08em",
+                            }}
+                          >
+                            {v}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
             {/* Timer picker */}
@@ -857,7 +866,7 @@ const AddModal = ({
               onClick={() => {
                 if (idea.trim()) {
                   const eventDate = (!dateDismissed && detectedDate) ? detectedDate.iso : null;
-                  onInterestCheck(sanitize(idea, 280), checkTimer, eventDate, checkSquadSize);
+                  onInterestCheck(sanitize(idea, 280), checkTimer, eventDate, checkSquadSize, checkMovie ?? undefined);
                   onClose();
                 }
               }}
@@ -877,7 +886,7 @@ const AddModal = ({
                 letterSpacing: "0.1em",
               }}
             >
-              Send Interest Check →
+              {checkMovie ? "Send Movie Check →" : "Send Interest Check →"}
             </button>
             <p
               style={{

@@ -199,6 +199,80 @@ export default function FeedView({
                           </div>
                         )}
                         <div style={{ padding: 14 }}>
+                        {/* Movie enrichment card */}
+                        {check.movieTitle && (
+                          <div
+                            onClick={(e) => {
+                              if (check.letterboxdUrl) {
+                                e.stopPropagation();
+                                window.open(check.letterboxdUrl, "_blank", "noopener");
+                              }
+                            }}
+                            style={{
+                              display: "flex",
+                              gap: 10,
+                              marginBottom: 12,
+                              padding: 10,
+                              background: color.deep,
+                              borderRadius: 10,
+                              border: `1px solid ${color.borderLight}`,
+                              cursor: check.letterboxdUrl ? "pointer" : undefined,
+                            }}>
+                            {check.thumbnail && (
+                              <img
+                                src={check.thumbnail}
+                                alt={check.movieTitle}
+                                style={{
+                                  width: 48,
+                                  height: 72,
+                                  objectFit: "cover",
+                                  borderRadius: 6,
+                                  flexShrink: 0,
+                                }}
+                              />
+                            )}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                fontFamily: font.serif,
+                                fontSize: 15,
+                                color: color.text,
+                                lineHeight: 1.2,
+                                marginBottom: 2,
+                              }}>
+                                {check.movieTitle}
+                              </div>
+                              <div style={{
+                                fontFamily: font.mono,
+                                fontSize: 10,
+                                color: color.muted,
+                                marginBottom: 4,
+                              }}>
+                                {check.year}{check.director && ` · ${check.director}`}
+                              </div>
+                              {check.vibes && check.vibes.length > 0 && (
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+                                  {check.vibes.slice(0, 3).map((v) => (
+                                    <span
+                                      key={v}
+                                      style={{
+                                        background: "#1f1f1f",
+                                        color: color.accent,
+                                        padding: "2px 6px",
+                                        borderRadius: 12,
+                                        fontFamily: font.mono,
+                                        fontSize: 8,
+                                        textTransform: "uppercase",
+                                        letterSpacing: "0.08em",
+                                      }}
+                                    >
+                                      {v}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                         <div
                           style={{
                             display: "flex",

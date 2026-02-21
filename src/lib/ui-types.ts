@@ -41,6 +41,12 @@ export interface InterestCheck {
   squadId?: string;
   squadMemberCount?: number;
   inSquad?: boolean;
+  movieTitle?: string;
+  year?: string;
+  director?: string;
+  thumbnail?: string;
+  letterboxdUrl?: string;
+  vibes?: string[];
 }
 
 export interface ScrapedEvent {

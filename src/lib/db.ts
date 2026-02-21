@@ -531,7 +531,13 @@ export async function getActiveChecks(): Promise<(InterestCheck & { author: Prof
   return data ?? [];
 }
 
-export async function createInterestCheck(text: string, expiresInHours: number | null = 24, eventDate: string | null = null, maxSquadSize: number = 5): Promise<InterestCheck> {
+export async function createInterestCheck(
+  text: string,
+  expiresInHours: number | null = 24,
+  eventDate: string | null = null,
+  maxSquadSize: number = 5,
+  movieData?: { letterboxdUrl: string; title: string; year?: string; director?: string; thumbnail?: string; vibes?: string[] },
+): Promise<InterestCheck> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
@@ -542,15 +548,28 @@ export async function createInterestCheck(text: string, expiresInHours: number |
     expiresAt = d.toISOString();
   }
 
+  const insertData: Record<string, unknown> = {
+    author_id: user.id,
+    text,
+    expires_at: expiresAt,
+    event_date: eventDate,
+    max_squad_size: maxSquadSize,
+  };
+
+  if (movieData) {
+    insertData.letterboxd_url = movieData.letterboxdUrl;
+    insertData.movie_metadata = {
+      title: movieData.title,
+      year: movieData.year,
+      director: movieData.director,
+      thumbnail: movieData.thumbnail,
+      vibes: movieData.vibes,
+    };
+  }
+
   const { data, error } = await supabase
     .from('interest_checks')
-    .insert({
-      author_id: user.id,
-      text,
-      expires_at: expiresAt,
-      event_date: eventDate,
-      max_squad_size: maxSquadSize,
-    })
+    .insert(insertData)
     .select()
     .single();
 

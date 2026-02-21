@@ -199,6 +199,7 @@ export default function Home() {
           expiresIn = hoursRemaining > 0 ? `${hoursRemaining}h` : minsRemaining > 0 ? `${minsRemaining}m` : "expired";
         }
 
+        const mm = c.movie_metadata;
         return {
           id: c.id,
           text: c.text,
@@ -219,6 +220,12 @@ export default function Home() {
           squadMemberCount: c.squads?.[0]?.members?.length ?? 0,
           eventDate: c.event_date ?? undefined,
           eventDateLabel: c.event_date ? new Date(c.event_date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined,
+          movieTitle: mm?.title,
+          year: mm?.year,
+          director: mm?.director,
+          thumbnail: mm?.thumbnail,
+          letterboxdUrl: c.letterboxd_url ?? undefined,
+          vibes: mm?.vibes,
         };
       });
       // Preserve squadId/inSquad from previous state (set by loadRealData cross-referencing)
@@ -402,6 +409,7 @@ export default function Home() {
           expiresIn = hoursRemaining > 0 ? `${hoursRemaining}h` : minsRemaining > 0 ? `${minsRemaining}m` : "expired";
         }
 
+        const mm2 = c.movie_metadata;
         return {
           id: c.id,
           text: c.text,
@@ -422,6 +430,12 @@ export default function Home() {
           squadMemberCount: c.squads?.[0]?.members?.length ?? 0,
           eventDate: c.event_date ?? undefined,
           eventDateLabel: c.event_date ? new Date(c.event_date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined,
+          movieTitle: mm2?.title,
+          year: mm2?.year,
+          director: mm2?.director,
+          thumbnail: mm2?.thumbnail,
+          letterboxdUrl: c.letterboxd_url ?? undefined,
+          vibes: mm2?.vibes,
         };
       });
       setChecks((prev) => {
@@ -1040,12 +1054,20 @@ export default function Home() {
     }
   };
 
-  const handleCreateCheck = async (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number) => {
+  const handleCreateCheck = async (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number, movieData?: { letterboxdUrl: string; title: string; year?: string; director?: string; thumbnail?: string; vibes?: string[] }) => {
     const expiresLabel = expiresInHours == null ? "open" : expiresInHours >= 24 ? "24h" : `${expiresInHours}h`;
     const dateLabel = eventDate ? new Date(eventDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined;
+    const movieFields = movieData ? {
+      movieTitle: movieData.title,
+      year: movieData.year,
+      director: movieData.director,
+      thumbnail: movieData.thumbnail,
+      letterboxdUrl: movieData.letterboxdUrl,
+      vibes: movieData.vibes,
+    } : {};
     if (!isDemoMode && userId) {
       try {
-        const dbCheck = await db.createInterestCheck(idea, expiresInHours, eventDate, maxSquadSize);
+        const dbCheck = await db.createInterestCheck(idea, expiresInHours, eventDate, maxSquadSize, movieData);
         const newCheck: InterestCheck = {
           id: dbCheck.id,
           text: idea,
@@ -1058,6 +1080,7 @@ export default function Home() {
           maxSquadSize,
           eventDate: eventDate ?? undefined,
           eventDateLabel: dateLabel,
+          ...movieFields,
         };
         setChecks((prev) => [newCheck, ...prev]);
         setTab("feed");
@@ -1081,6 +1104,7 @@ export default function Home() {
         maxSquadSize,
         eventDate: eventDate ?? undefined,
         eventDateLabel: dateLabel,
+        ...movieFields,
       };
       setChecks((prev) => [newCheck, ...prev]);
       setTab("feed");
