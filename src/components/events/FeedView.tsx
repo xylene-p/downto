@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import * as db from "@/lib/db";
 import type { Profile } from "@/lib/types";
 import { font, color } from "@/lib/styles";
@@ -43,6 +43,9 @@ export interface FeedViewProps {
   onOpenAdd: () => void;
   onOpenFriends: (tab?: "friends" | "add") => void;
   onNavigateToGroups: (squadId?: string) => void;
+  hiddenCheckIds: Set<string>;
+  onHideCheck: (checkId: string) => void;
+  onUnhideCheck: (checkId: string) => void;
 }
 
 export default function FeedView({
@@ -79,7 +82,13 @@ export default function FeedView({
   onOpenAdd,
   onOpenFriends,
   onNavigateToGroups,
+  hiddenCheckIds,
+  onHideCheck,
+  onUnhideCheck,
 }: FeedViewProps) {
+  const [showHidden, setShowHidden] = useState(false);
+  const visibleChecks = checks.filter((c) => !hiddenCheckIds.has(c.id));
+  const hiddenChecks = checks.filter((c) => hiddenCheckIds.has(c.id));
   return (
           <div style={{ padding: "0 16px", animation: "fadeIn 0.3s ease" }}>
             {/* Feed mode toggle */}
@@ -147,7 +156,7 @@ export default function FeedView({
                     >
                       Pulse
                     </div>
-                    {checks.map((check) => (
+                    {visibleChecks.map((check) => (
                       <div
                         key={check.id}
                         onClick={check.squadId ? () => {
@@ -226,15 +235,38 @@ export default function FeedView({
                               {check.author}
                             </span>
                           </div>
-                          <span
-                            style={{
-                              fontFamily: font.mono,
-                              fontSize: 10,
-                              color: check.expiresIn === "open" ? color.dim : check.expiryPercent > 75 ? "#ff6b6b" : color.faint,
-                            }}
-                          >
-                            {check.expiresIn === "open" ? "open" : `${check.expiresIn} left`}
-                          </span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span
+                              style={{
+                                fontFamily: font.mono,
+                                fontSize: 10,
+                                color: check.expiresIn === "open" ? color.dim : check.expiryPercent > 75 ? "#ff6b6b" : color.faint,
+                              }}
+                            >
+                              {check.expiresIn === "open" ? "open" : `${check.expiresIn} left`}
+                            </span>
+                            {!check.isYours && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onHideCheck(check.id);
+                                }}
+                                style={{
+                                  background: "transparent",
+                                  border: "none",
+                                  color: color.faint,
+                                  padding: "2px 4px",
+                                  fontFamily: font.mono,
+                                  fontSize: 12,
+                                  cursor: "pointer",
+                                  lineHeight: 1,
+                                }}
+                                title="Hide this check"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
                         </div>
                         {editingCheckId === check.id ? (
                           <div style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}>
@@ -667,6 +699,88 @@ export default function FeedView({
                         </div>
                       </div>
                     ))}
+                    {hiddenChecks.length > 0 && (
+                      <div>
+                        <button
+                          onClick={() => setShowHidden((prev) => !prev)}
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            color: color.faint,
+                            fontFamily: font.mono,
+                            fontSize: 10,
+                            cursor: "pointer",
+                            padding: "6px 4px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <span style={{ fontSize: 8 }}>{showHidden ? "▼" : "▶"}</span>
+                          Hidden ({hiddenChecks.length})
+                        </button>
+                        {showHidden && hiddenChecks.map((check) => (
+                          <div
+                            key={check.id}
+                            style={{
+                              background: color.card,
+                              borderRadius: 14,
+                              overflow: "hidden",
+                              marginBottom: 8,
+                              border: `1px solid ${color.border}`,
+                              opacity: 0.6,
+                            }}
+                          >
+                            <div style={{ padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                                  <div
+                                    style={{
+                                      width: 24,
+                                      height: 24,
+                                      borderRadius: "50%",
+                                      background: color.borderLight,
+                                      color: color.dim,
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      fontFamily: font.mono,
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    {check.author[0]}
+                                  </div>
+                                  <span style={{ fontFamily: font.mono, fontSize: 11, color: color.muted }}>
+                                    {check.author}
+                                  </span>
+                                </div>
+                                <p style={{ fontFamily: font.serif, fontSize: 16, color: color.dim, margin: 0, lineHeight: 1.4 }}>
+                                  {check.text}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => onUnhideCheck(check.id)}
+                                style={{
+                                  background: "transparent",
+                                  border: `1px solid ${color.borderMid}`,
+                                  borderRadius: 8,
+                                  padding: "6px 10px",
+                                  fontFamily: font.mono,
+                                  fontSize: 10,
+                                  color: color.dim,
+                                  cursor: "pointer",
+                                  flexShrink: 0,
+                                  marginLeft: 12,
+                                }}
+                              >
+                                Unhide
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

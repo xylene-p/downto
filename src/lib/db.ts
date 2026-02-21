@@ -474,6 +474,47 @@ export async function getSuggestedUsers(): Promise<Profile[]> {
 // INTEREST CHECKS
 // ============================================================================
 
+export async function getHiddenCheckIds(): Promise<string[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('hidden_checks')
+    .select('check_id')
+    .eq('user_id', user.id);
+
+  if (error) throw error;
+  return (data ?? []).map((r) => r.check_id);
+}
+
+export async function hideCheck(checkId: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { error } = await supabase
+    .from('hidden_checks')
+    .insert({ user_id: user.id, check_id: checkId });
+
+  if (error) {
+    // Ignore duplicate (already hidden)
+    if (error.code === '23505') return;
+    throw error;
+  }
+}
+
+export async function unhideCheck(checkId: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { error } = await supabase
+    .from('hidden_checks')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('check_id', checkId);
+
+  if (error) throw error;
+}
+
 export async function getActiveChecks(): Promise<(InterestCheck & { author: Profile; responses: (CheckResponse & { user: Profile })[]; squads: { id: string; members: { id: string }[] }[] })[]> {
   const { data, error } = await supabase
     .from('interest_checks')

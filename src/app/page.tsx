@@ -55,6 +55,7 @@ export default function Home() {
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [friendsInitialTab, setFriendsInitialTab] = useState<"friends" | "add">("friends");
   const [myCheckResponses, setMyCheckResponses] = useState<Record<string, "down" | "maybe">>({});
+  const [hiddenCheckIds, setHiddenCheckIds] = useState<Set<string>>(new Set());
   const [squadNotification, setSquadNotification] = useState<{
     squadName: string;
     startedBy: string;
@@ -261,6 +262,7 @@ export default function Home() {
         suggestedUsers,
         activeChecks,
         squadsList,
+        hiddenIds,
       ] = await Promise.all([
         db.getSavedEvents(),
         db.getPublicEvents(),
@@ -270,6 +272,7 @@ export default function Home() {
         db.getSuggestedUsers().catch((err) => { logWarn("loadSuggestions", "Failed", { error: err }); return [] as Awaited<ReturnType<typeof db.getSuggestedUsers>>; }),
         db.getActiveChecks().catch((err) => { logWarn("loadChecks", "Failed", { error: err }); return [] as Awaited<ReturnType<typeof db.getActiveChecks>>; }),
         db.getSquads().catch((err) => { logWarn("loadSquads", "Failed", { error: err }); return [] as Awaited<ReturnType<typeof db.getSquads>>; }),
+        db.getHiddenCheckIds().catch((err) => { logWarn("loadHiddenChecks", "Failed", { error: err }); return [] as string[]; }),
       ]);
 
       // Phase 2: Transform and set all state immediately (no waiting for social data)
@@ -431,6 +434,9 @@ export default function Home() {
           return c;
         });
       });
+
+      // --- Hidden checks ---
+      setHiddenCheckIds(new Set(hiddenIds));
 
       // Hydrate myCheckResponses from existing responses
       const restoredResponses: Record<string, "down" | "maybe"> = {};
@@ -1287,6 +1293,23 @@ export default function Home() {
             onNavigateToGroups={(squadId) => {
               if (squadId) setAutoSelectSquadId(squadId);
               setTab("groups");
+            }}
+            hiddenCheckIds={hiddenCheckIds}
+            onHideCheck={async (checkId) => {
+              setHiddenCheckIds((prev) => new Set(prev).add(checkId));
+              if (!isDemoMode) {
+                db.hideCheck(checkId).catch((err) => logError("hideCheck", err, { checkId }));
+              }
+            }}
+            onUnhideCheck={async (checkId) => {
+              setHiddenCheckIds((prev) => {
+                const next = new Set(prev);
+                next.delete(checkId);
+                return next;
+              });
+              if (!isDemoMode) {
+                db.unhideCheck(checkId).catch((err) => logError("unhideCheck", err, { checkId }));
+              }
             }}
           />
         )}
