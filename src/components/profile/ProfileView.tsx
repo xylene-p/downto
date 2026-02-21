@@ -574,6 +574,31 @@ const ProfileView = ({
           </div>
         )
       )}
+      {profile?.is_test && onUpdateProfile && (
+        <div
+          onClick={async () => {
+            try {
+              await onUpdateProfile({ onboarded: false } as Partial<Profile>);
+              window.location.reload();
+            } catch {
+              showToast?.("Failed to reset");
+            }
+          }}
+          style={{
+            padding: "14px 0",
+            borderBottom: `1px solid ${color.border}`,
+            fontFamily: font.mono,
+            fontSize: 12,
+            color: "#f0ad4e",
+            display: "flex",
+            justifyContent: "space-between",
+            cursor: "pointer",
+          }}
+        >
+          <span>Reset Onboarding</span>
+          <span style={{ color: "#f0ad4e" }}>↺</span>
+        </div>
+      )}
       <div
         onClick={onLogout}
         style={{
