@@ -475,10 +475,10 @@ export default function FeedView({
                                   color: color.accent,
                                 }}
                               >
-                                {check.responses.filter((r) => r.status === "down").length} down
+                                <span style={{ whiteSpace: "nowrap" }}>{check.responses.filter((r) => r.status === "down").length} down</span>
                                 {check.responses.some((r) => r.status === "maybe") && (
-                                  <span style={{ color: color.dim }}>
-                                    {" "}· {check.responses.filter((r) => r.status === "maybe").length} maybe
+                                  <span style={{ color: color.dim, whiteSpace: "nowrap" }}>
+                                    {" "}{check.responses.filter((r) => r.status === "maybe").length} maybe
                                   </span>
                                 )}
                               </span>
