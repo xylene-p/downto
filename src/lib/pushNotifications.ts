@@ -2,6 +2,20 @@ import { supabase } from '@/lib/supabase';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
 
+export function isIOS(): boolean {
+  if (typeof window === 'undefined') return false;
+  const ua = navigator.userAgent;
+  return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+export function isIOSNotStandalone(): boolean {
+  if (!isIOS()) return false;
+  const isStandalone =
+    (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
+    window.matchMedia('(display-mode: standalone)').matches;
+  return !isStandalone;
+}
+
 export function isPushSupported(): boolean {
   return (
     typeof window !== 'undefined' &&

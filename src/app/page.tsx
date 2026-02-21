@@ -27,6 +27,7 @@ import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import Toast from "@/components/Toast";
 import SquadNotificationBanner from "@/components/SquadNotificationBanner";
+import IOSInstallBanner from "@/components/IOSInstallBanner";
 import NotificationsPanel from "@/components/NotificationsPanel";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
@@ -1353,6 +1354,8 @@ export default function Home() {
           }}
         />
       )}
+
+      <IOSInstallBanner />
 
       <AddModal
         open={addModalOpen}

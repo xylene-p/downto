@@ -4,28 +4,130 @@ import { useState } from "react";
 import { font, color } from "@/lib/styles";
 import {
   isPushSupported,
+  isIOSNotStandalone,
   registerServiceWorker,
   subscribeToPush,
 } from "@/lib/pushNotifications";
 import GlobalStyles from "./GlobalStyles";
 import Grain from "./Grain";
 
-function isIOSNotStandalone(): boolean {
-  if (typeof window === "undefined") return false;
-  const ua = navigator.userAgent;
-  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  const isStandalone = (window.navigator as unknown as { standalone?: boolean }).standalone === true || window.matchMedia("(display-mode: standalone)").matches;
-  return isIOS && !isStandalone;
-}
+const IOSInstallScreen = ({ onComplete }: { onComplete: (enabled: boolean) => void }) => (
+  <div
+    style={{
+      maxWidth: 420,
+      margin: "0 auto",
+      minHeight: "100vh",
+      background: color.bg,
+      padding: "60px 24px",
+      display: "flex",
+      flexDirection: "column",
+    }}
+  >
+    <GlobalStyles />
+    <Grain />
 
-const EnableNotificationsScreen = ({
-  onComplete,
-}: {
-  onComplete: (enabled: boolean) => void;
-}) => {
+    <h1
+      style={{
+        fontFamily: font.serif,
+        fontSize: 48,
+        color: color.text,
+        fontWeight: 400,
+        marginBottom: 8,
+        lineHeight: 1.1,
+      }}
+    >
+      install the app
+    </h1>
+    <p
+      style={{
+        fontFamily: font.mono,
+        fontSize: 12,
+        color: color.dim,
+        marginBottom: 40,
+        lineHeight: 1.6,
+      }}
+    >
+      get push notifications, faster loading, and easy access from your home screen
+    </p>
+
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: 40 }}>
+      {[
+        { step: "1", text: <>tap the share button <span style={{ fontSize: 18, verticalAlign: "middle" }}>&#xFE0E;{"\u{1F4E4}"}</span> in Safari</> },
+        { step: "2", text: <>scroll down and tap <strong style={{ color: color.text }}>&quot;Add to Home Screen&quot;</strong></> },
+        { step: "3", text: <>open <strong style={{ color: color.accent }}>down to</strong> from your home screen</> },
+      ].map(({ step, text }) => (
+        <div key={step} style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: "50%",
+              border: `1.5px solid ${color.borderMid}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontFamily: font.mono,
+              fontSize: 13,
+              color: color.accent,
+              flexShrink: 0,
+            }}
+          >
+            {step}
+          </div>
+          <p
+            style={{
+              fontFamily: font.mono,
+              fontSize: 13,
+              color: color.muted,
+              lineHeight: 1.6,
+              paddingTop: 4,
+            }}
+          >
+            {text}
+          </p>
+        </div>
+      ))}
+    </div>
+
+    <button
+      disabled
+      style={{
+        width: "100%",
+        padding: "16px",
+        background: color.borderMid,
+        border: "none",
+        borderRadius: 12,
+        color: color.dim,
+        fontFamily: font.mono,
+        fontSize: 14,
+        fontWeight: 700,
+        cursor: "default",
+        marginBottom: 16,
+      }}
+    >
+      waiting for install...
+    </button>
+
+    <button
+      onClick={() => onComplete(false)}
+      style={{
+        background: "transparent",
+        border: "none",
+        color: color.dim,
+        fontFamily: font.mono,
+        fontSize: 12,
+        cursor: "pointer",
+        alignSelf: "center",
+      }}
+    >
+      skip for now
+    </button>
+  </div>
+);
+
+const NotificationsScreen = ({ onComplete }: { onComplete: (enabled: boolean) => void }) => {
   const [loading, setLoading] = useState(false);
   const supported = isPushSupported();
-  const iosNeedsPWA = !supported && isIOSNotStandalone();
 
   const handleEnable = async () => {
     setLoading(true);
@@ -103,31 +205,8 @@ const EnableNotificationsScreen = ({
           ? "enabling..."
           : supported
             ? "enable notifications"
-            : iosNeedsPWA
-              ? "add to home screen first"
-              : "notifications not supported"}
+            : "notifications not supported"}
       </button>
-
-      {iosNeedsPWA && (
-        <p
-          style={{
-            fontFamily: font.mono,
-            fontSize: 11,
-            color: color.dim,
-            textAlign: "center",
-            lineHeight: 1.6,
-            marginBottom: 16,
-            marginTop: 0,
-          }}
-        >
-          tap{" "}
-          <span style={{ fontSize: 14, verticalAlign: "middle" }}>
-            {/* Safari share icon */}
-            &#x1F4E4;
-          </span>{" "}
-          then &quot;Add to Home Screen&quot; to enable push notifications on iOS
-        </p>
-      )}
 
       <button
         onClick={() => onComplete(false)}
@@ -145,6 +224,17 @@ const EnableNotificationsScreen = ({
       </button>
     </div>
   );
+};
+
+const EnableNotificationsScreen = ({
+  onComplete,
+}: {
+  onComplete: (enabled: boolean) => void;
+}) => {
+  if (isIOSNotStandalone()) {
+    return <IOSInstallScreen onComplete={onComplete} />;
+  }
+  return <NotificationsScreen onComplete={onComplete} />;
 };
 
 export default EnableNotificationsScreen;
