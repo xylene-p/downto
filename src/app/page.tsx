@@ -432,6 +432,18 @@ export default function Home() {
         });
       });
 
+      // Hydrate myCheckResponses from existing responses
+      const restoredResponses: Record<string, "down" | "maybe"> = {};
+      for (const c of transformedChecks) {
+        const myResponse = c.responses.find((r) => r.name === "You");
+        if (myResponse && (myResponse.status === "down" || myResponse.status === "maybe")) {
+          restoredResponses[c.id] = myResponse.status;
+        }
+      }
+      if (Object.keys(restoredResponses).length > 0) {
+        setMyCheckResponses((prev) => ({ ...prev, ...restoredResponses }));
+      }
+
       // --- Squads ---
       const fmtTime = (iso: string) => {
         const d = new Date(iso);
