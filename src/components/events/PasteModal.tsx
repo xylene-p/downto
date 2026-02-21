@@ -176,6 +176,33 @@ const AddModal = ({
       />
       <div
         ref={modalRef}
+        onTouchStart={(e) => {
+          touchStartY.current = e.touches[0].clientY;
+          dragging.current = true;
+        }}
+        onTouchMove={(e) => {
+          if (!dragging.current) return;
+          const deltaY = e.touches[0].clientY - touchStartY.current;
+          if (deltaY > 0 && modalRef.current) {
+            modalRef.current.style.transform = `translateY(${deltaY}px)`;
+            modalRef.current.style.transition = "none";
+          }
+        }}
+        onTouchEnd={(e) => {
+          if (!dragging.current) return;
+          dragging.current = false;
+          const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+          if (modalRef.current) {
+            if (deltaY > 80) {
+              modalRef.current.style.transition = "transform 0.2s ease-out";
+              modalRef.current.style.transform = `translateY(100%)`;
+              setTimeout(onClose, 200);
+            } else {
+              modalRef.current.style.transition = "transform 0.2s ease-out";
+              modalRef.current.style.transform = "translateY(0)";
+            }
+          }
+        }}
         style={{
           position: "relative",
           background: color.surface,
@@ -185,41 +212,13 @@ const AddModal = ({
           overflow: "hidden",
           padding: "0 24px 40px",
           animation: "slideUp 0.3s ease-out",
+          touchAction: "none",
           transition: dragging.current ? "none" : "transform 0.2s ease-out",
         }}
       >
         <div
-          onTouchStart={(e) => {
-            touchStartY.current = e.touches[0].clientY;
-            dragging.current = true;
-          }}
-          onTouchMove={(e) => {
-            if (!dragging.current) return;
-            const deltaY = e.touches[0].clientY - touchStartY.current;
-            if (deltaY > 0 && modalRef.current) {
-              modalRef.current.style.transform = `translateY(${deltaY}px)`;
-              modalRef.current.style.transition = "none";
-            }
-          }}
-          onTouchEnd={(e) => {
-            if (!dragging.current) return;
-            dragging.current = false;
-            const deltaY = e.changedTouches[0].clientY - touchStartY.current;
-            if (modalRef.current) {
-              if (deltaY > 80) {
-                modalRef.current.style.transition = "transform 0.2s ease-out";
-                modalRef.current.style.transform = `translateY(100%)`;
-                setTimeout(onClose, 200);
-              } else {
-                modalRef.current.style.transition = "transform 0.2s ease-out";
-                modalRef.current.style.transform = "translateY(0)";
-              }
-            }
-          }}
           style={{
             padding: "20px 0 12px",
-            cursor: "grab",
-            touchAction: "none",
           }}
         >
           <div
