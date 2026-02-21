@@ -463,6 +463,7 @@ export async function getSuggestedUsers(): Promise<Profile[]> {
     .from('profiles')
     .select('*')
     .not('id', 'in', `(${Array.from(excludeIds).join(',')})`)
+    .neq('is_test', true)
     .limit(10);
 
   if (error) throw error;
@@ -779,6 +780,7 @@ export async function searchUsers(query: string): Promise<Profile[]> {
     .select('*')
     .or(`username.ilike.%${sanitized}%,display_name.ilike.%${sanitized}%`)
     .neq('id', user.id)
+    .neq('is_test', true)
     .limit(20);
 
   if (error) throw error;

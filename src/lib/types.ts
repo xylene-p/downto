@@ -11,6 +11,7 @@ export interface Profile {
   availability: 'open' | 'awkward' | 'not-available';
   ig_handle: string | null;
   onboarded: boolean;
+  is_test: boolean;
   created_at: string;
   updated_at: string;
 }
