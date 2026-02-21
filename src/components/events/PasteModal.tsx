@@ -84,6 +84,13 @@ const AddModal = ({
     }
   }, [open, mode, defaultMode]);
 
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [open]);
+
   const [error, setError] = useState<string | null>(null);
 
   const handlePull = async () => {
