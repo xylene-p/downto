@@ -471,7 +471,7 @@ export default function FeedView({
                             </span>
                           )}
                           {!check.isYours && (
-                            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                               <button
                                 onClick={() => {
                                   if (myCheckResponses[check.id] === "down") {
@@ -500,7 +500,7 @@ export default function FeedView({
                                   color: myCheckResponses[check.id] === "down" ? "#000" : color.text,
                                   border: myCheckResponses[check.id] === "down" ? "none" : `1px solid ${color.borderMid}`,
                                   borderRadius: 8,
-                                  padding: "6px 12px",
+                                  padding: "6px 10px",
                                   fontFamily: font.mono,
                                   fontSize: 10,
                                   fontWeight: 700,
@@ -537,7 +537,7 @@ export default function FeedView({
                                   color: myCheckResponses[check.id] === "maybe" ? "#000" : color.dim,
                                   border: `1px solid ${color.borderMid}`,
                                   borderRadius: 8,
-                                  padding: "6px 10px",
+                                  padding: "6px 8px",
                                   fontFamily: font.mono,
                                   fontSize: 10,
                                   cursor: "pointer",
@@ -557,14 +557,14 @@ export default function FeedView({
                                       color: "#AF52DE",
                                       border: "none",
                                       borderRadius: 8,
-                                      padding: "6px 10px",
+                                      padding: "6px 8px",
                                       fontFamily: font.mono,
                                       fontSize: 10,
                                       fontWeight: 700,
                                       cursor: "pointer",
                                     }}
                                   >
-                                    💬 Squad Chat →
+                                    💬 Squad →
                                   </button>
                                 ) : check.squadId ? (
                                   (check.squadMemberCount ?? 0) >= (check.maxSquadSize ?? 5) ? (
@@ -572,7 +572,7 @@ export default function FeedView({
                                       fontFamily: font.mono,
                                       fontSize: 10,
                                       color: color.dim,
-                                      padding: "6px 10px",
+                                      padding: "6px 8px",
                                     }}>
                                       Squad full ({check.squadMemberCount}/{check.maxSquadSize ?? 5})
                                     </span>
@@ -600,14 +600,14 @@ export default function FeedView({
                                         color: "#AF52DE",
                                         border: "1px solid #AF52DE",
                                         borderRadius: 8,
-                                        padding: "6px 10px",
+                                        padding: "6px 8px",
                                         fontFamily: font.mono,
                                         fontSize: 10,
                                         fontWeight: 700,
                                         cursor: "pointer",
                                       }}
                                     >
-                                      Join Squad Chat →
+                                      Join Squad →
                                     </button>
                                   )
                                 ) : (
@@ -621,14 +621,14 @@ export default function FeedView({
                                       color: color.accent,
                                       border: `1px solid ${color.accent}`,
                                       borderRadius: 8,
-                                      padding: "6px 10px",
+                                      padding: "6px 8px",
                                       fontFamily: font.mono,
                                       fontSize: 10,
                                       fontWeight: 700,
                                       cursor: "pointer",
                                     }}
                                   >
-                                    Start Squad →
+                                    Squad →
                                   </button>
                                 )
                               )}
