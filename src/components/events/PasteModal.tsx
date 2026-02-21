@@ -47,6 +47,9 @@ const AddModal = ({
   });
   const inputRef = useRef<HTMLInputElement>(null);
   const ideaRef = useRef<HTMLTextAreaElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const touchStartY = useRef<number>(0);
+  const dragging = useRef(false);
   const [socialSignal, setSocialSignal] = useState<{ totalDown: number; friendsDown: number } | null>(null);
   const [checkMovie, setCheckMovie] = useState<CheckMovie | null>(null);
   const [checkMovieLoading, setCheckMovieLoading] = useState(false);
@@ -56,6 +59,9 @@ const AddModal = ({
   useEffect(() => {
     if (open) {
       if (defaultMode) setMode(defaultMode);
+      if (modalRef.current) {
+        modalRef.current.style.transform = "translateY(0)";
+      }
       setTimeout(() => {
         if ((defaultMode || mode) === "paste") inputRef.current?.focus();
         else ideaRef.current?.focus();
@@ -162,25 +168,64 @@ const AddModal = ({
         }}
       />
       <div
+        ref={modalRef}
         style={{
           position: "relative",
           background: color.surface,
           borderRadius: "24px 24px 0 0",
           width: "100%",
           maxWidth: 420,
-          padding: "32px 24px 40px",
+          maxHeight: "85vh",
+          overflowY: "auto",
+          padding: "0 24px 40px",
           animation: "slideUp 0.3s ease-out",
+          transition: dragging.current ? "none" : "transform 0.2s ease-out",
         }}
       >
         <div
-          style={{
-            width: 40,
-            height: 4,
-            background: color.faint,
-            borderRadius: 2,
-            margin: "0 auto 24px",
+          onTouchStart={(e) => {
+            touchStartY.current = e.touches[0].clientY;
+            dragging.current = true;
           }}
-        />
+          onTouchMove={(e) => {
+            if (!dragging.current) return;
+            const deltaY = e.touches[0].clientY - touchStartY.current;
+            if (deltaY > 0 && modalRef.current) {
+              modalRef.current.style.transform = `translateY(${deltaY}px)`;
+              modalRef.current.style.transition = "none";
+            }
+          }}
+          onTouchEnd={(e) => {
+            if (!dragging.current) return;
+            dragging.current = false;
+            const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+            if (modalRef.current) {
+              if (deltaY > 80) {
+                modalRef.current.style.transition = "transform 0.2s ease-out";
+                modalRef.current.style.transform = `translateY(100%)`;
+                setTimeout(onClose, 200);
+              } else {
+                modalRef.current.style.transition = "transform 0.2s ease-out";
+                modalRef.current.style.transform = "translateY(0)";
+              }
+            }
+          }}
+          style={{
+            padding: "20px 0 12px",
+            cursor: "grab",
+            touchAction: "none",
+          }}
+        >
+          <div
+            style={{
+              width: 40,
+              height: 4,
+              background: color.faint,
+              borderRadius: 2,
+              margin: "0 auto",
+            }}
+          />
+        </div>
         {/* Mode toggle */}
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
           <button
