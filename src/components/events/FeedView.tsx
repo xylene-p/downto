@@ -303,18 +303,68 @@ export default function FeedView({
                         ) : (
                           <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 12 }}>
                             <div style={{ flex: 1 }}>
-                              <p
-                                style={{
-                                  fontFamily: font.serif,
-                                  fontSize: 18,
-                                  color: color.text,
-                                  margin: 0,
-                                  fontWeight: 400,
-                                  lineHeight: 1.4,
-                                }}
-                              >
-                                {check.text}
-                              </p>
+                              <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+                                <p
+                                  style={{
+                                    fontFamily: font.serif,
+                                    fontSize: 18,
+                                    color: color.text,
+                                    margin: 0,
+                                    fontWeight: 400,
+                                    lineHeight: 1.4,
+                                    flex: 1,
+                                  }}
+                                >
+                                  {check.text}
+                                </p>
+                                {check.isYours && !check.squadId && (
+                                  <div style={{ display: "flex", gap: 2, flexShrink: 0, marginTop: 2 }}>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingCheckId(check.id);
+                                        setEditingCheckText(check.text);
+                                      }}
+                                      style={{
+                                        background: "transparent",
+                                        border: "none",
+                                        color: color.faint,
+                                        padding: "2px 4px",
+                                        fontFamily: font.mono,
+                                        fontSize: 11,
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      &#9998;
+                                    </button>
+                                    <button
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        setChecks((prev) => prev.filter((c) => c.id !== check.id));
+                                        if (!isDemoMode) {
+                                          try {
+                                            await db.deleteInterestCheck(check.id);
+                                          } catch (err) {
+                                            logError("deleteCheck", err, { checkId: check.id });
+                                          }
+                                        }
+                                        showToast("Check removed");
+                                      }}
+                                      style={{
+                                        background: "transparent",
+                                        border: "none",
+                                        color: color.faint,
+                                        padding: "2px 4px",
+                                        fontFamily: font.mono,
+                                        fontSize: 11,
+                                        cursor: "pointer",
+                                      }}
+                                    >
+                                      &#10005;
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                               {check.eventDateLabel && (
                                 <span style={{
                                   display: "inline-block",
@@ -355,75 +405,28 @@ export default function FeedView({
                                 <span style={{ fontFamily: font.mono, fontSize: 10, color: "#AF52DE", marginLeft: "auto" }}>→</span>
                               </div>
                             )}
-                            {check.isYours && !check.squadId && (
-                              <div style={{ display: "flex", gap: 4, flexShrink: 0, marginTop: 2 }}>
-                                {check.responses.some((r) => r.status === "down") && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      startSquadFromCheck(check);
-                                    }}
-                                    style={{
-                                      background: "transparent",
-                                      color: color.accent,
-                                      border: `1px solid ${color.accent}`,
-                                      borderRadius: 6,
-                                      padding: "4px 8px",
-                                      fontFamily: font.mono,
-                                      fontSize: 10,
-                                      fontWeight: 700,
-                                      cursor: "pointer",
-                                    }}
-                                  >
-                                    Squad →
-                                  </button>
-                                )}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingCheckId(check.id);
-                                    setEditingCheckText(check.text);
-                                  }}
-                                  style={{
-                                    background: "rgba(255,255,255,0.06)",
-                                    border: "none",
-                                    color: color.dim,
-                                    borderRadius: 6,
-                                    padding: "4px 8px",
-                                    fontFamily: font.mono,
-                                    fontSize: 10,
-                                    cursor: "pointer",
-                                  }}
-                                >
-                                  &#9998;
-                                </button>
-                                <button
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    setChecks((prev) => prev.filter((c) => c.id !== check.id));
-                                    if (!isDemoMode) {
-                                      try {
-                                        await db.deleteInterestCheck(check.id);
-                                      } catch (err) {
-                                        logError("deleteCheck", err, { checkId: check.id });
-                                      }
-                                    }
-                                    showToast("Check removed");
-                                  }}
-                                  style={{
-                                    background: "rgba(255,255,255,0.06)",
-                                    border: "none",
-                                    color: "#ff6b6b",
-                                    borderRadius: 6,
-                                    padding: "4px 8px",
-                                    fontFamily: font.mono,
-                                    fontSize: 10,
-                                    cursor: "pointer",
-                                  }}
-                                >
-                                  &#10005;
-                                </button>
-                              </div>
+                            {check.isYours && !check.squadId && check.responses.some((r) => r.status === "down") && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startSquadFromCheck(check);
+                                }}
+                                style={{
+                                  background: "transparent",
+                                  color: color.accent,
+                                  border: `1px solid ${color.accent}`,
+                                  borderRadius: 6,
+                                  padding: "4px 8px",
+                                  fontFamily: font.mono,
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  flexShrink: 0,
+                                  marginTop: 2,
+                                }}
+                              >
+                                Squad →
+                              </button>
                             )}
                           </div>
                         )}
