@@ -529,6 +529,7 @@ export default function FeedView({
                                   fontSize: 10,
                                   fontWeight: 700,
                                   cursor: "pointer",
+                                  whiteSpace: "nowrap" as const,
                                 }}
                               >
                                 {myCheckResponses[check.id] === "down" ? "✓ Down" : "Down"}
@@ -565,6 +566,7 @@ export default function FeedView({
                                   fontFamily: font.mono,
                                   fontSize: 10,
                                   cursor: "pointer",
+                                  whiteSpace: "nowrap" as const,
                                 }}
                               >
                                 {myCheckResponses[check.id] === "maybe" ? "✓ Maybe" : "Maybe"}
@@ -586,6 +588,7 @@ export default function FeedView({
                                       fontSize: 10,
                                       fontWeight: 700,
                                       cursor: "pointer",
+                                      whiteSpace: "nowrap" as const,
                                     }}
                                   >
                                     💬 Squad →
@@ -629,6 +632,7 @@ export default function FeedView({
                                         fontSize: 10,
                                         fontWeight: 700,
                                         cursor: "pointer",
+                                        whiteSpace: "nowrap" as const,
                                       }}
                                     >
                                       Join Squad →
@@ -650,6 +654,7 @@ export default function FeedView({
                                       fontSize: 10,
                                       fontWeight: 700,
                                       cursor: "pointer",
+                                      whiteSpace: "nowrap" as const,
                                     }}
                                   >
                                     Squad →
