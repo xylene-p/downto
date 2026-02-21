@@ -355,8 +355,29 @@ export default function FeedView({
                                 <span style={{ fontFamily: font.mono, fontSize: 10, color: "#AF52DE", marginLeft: "auto" }}>→</span>
                               </div>
                             )}
-                            {check.isYours && !check.squadId && !check.squadId && (
+                            {check.isYours && !check.squadId && (
                               <div style={{ display: "flex", gap: 4, flexShrink: 0, marginTop: 2 }}>
+                                {check.responses.some((r) => r.status === "down") && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      startSquadFromCheck(check);
+                                    }}
+                                    style={{
+                                      background: "transparent",
+                                      color: color.accent,
+                                      border: `1px solid ${color.accent}`,
+                                      borderRadius: 6,
+                                      padding: "4px 8px",
+                                      fontFamily: font.mono,
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      cursor: "pointer",
+                                    }}
+                                  >
+                                    Squad →
+                                  </button>
+                                )}
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
