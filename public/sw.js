@@ -40,7 +40,7 @@ self.addEventListener("notificationclick", (event) => {
   let tab = "/";
   if (type === "friend_request" || type === "friend_accepted") {
     tab = "/?tab=profile";
-  } else if (type === "squad_message") {
+  } else if (type === "squad_message" || type === "squad_invite") {
     tab = "/?tab=groups";
   } else if (type === "check_response") {
     tab = "/?tab=feed";
@@ -48,15 +48,17 @@ self.addEventListener("notificationclick", (event) => {
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
-      // Focus existing window if available
+      // Focus existing window and navigate
       for (const client of clients) {
-        if (client.url.includes(self.location.origin)) {
-          client.focus();
-          client.postMessage({
-            type: "NOTIFICATION_CLICK",
-            notificationType: type,
+        if (new URL(client.url).origin === self.location.origin) {
+          return client.focus().then((focused) => {
+            if (focused) {
+              focused.postMessage({
+                type: "NOTIFICATION_CLICK",
+                notificationType: type,
+              });
+            }
           });
-          return;
         }
       }
       // Otherwise open a new window

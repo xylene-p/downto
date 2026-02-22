@@ -39,7 +39,13 @@ import { logError, logWarn } from "@/lib/logger";
 
 export default function Home() {
   const { isLoggedIn, setIsLoggedIn, isLoading, userId, setUserId, profile, setProfile, isDemoMode, setIsDemoMode } = useAuth();
-  const [tab, setTab] = useState<Tab>("feed");
+  const [tab, setTab] = useState<Tab>(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search).get("tab");
+      if (p === "feed" || p === "groups" || p === "profile" || p === "calendar") return p;
+    }
+    return "feed";
+  });
   const [feedMode, setFeedMode] = useState<"foryou" | "tonight">("foryou");
   const [events, setEvents] = useState<Event[]>([]);
   const [tonightEvents, setTonightEvents] = useState<Event[]>([]); // Loaded from DB or demo data
