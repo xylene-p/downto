@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import * as db from "@/lib/db";
 import { font, color } from "@/lib/styles";
 import { formatTimeAgo } from "@/lib/utils";
@@ -38,6 +39,15 @@ const NotificationsPanel = ({
   friends: { id: string }[];
   onNavigate: (action: { type: "friends"; tab: "friends" | "add" } | { type: "groups" } | { type: "feed" }) => void;
 }) => {
+  const touchStartY = useRef(0);
+  const handleSwipeStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+  };
+  const handleSwipeEnd = (e: React.TouchEvent) => {
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (dy > 60) onClose();
+  };
+
   if (!open) return null;
 
   return (
@@ -76,21 +86,30 @@ const NotificationsPanel = ({
         }}
       >
         <div
-          style={{
-            width: 40,
-            height: 4,
-            background: color.faint,
-            borderRadius: 2,
-            margin: "0 auto 16px",
-          }}
-        />
+          onTouchStart={handleSwipeStart}
+          onTouchEnd={handleSwipeEnd}
+          style={{ touchAction: "none" }}
+        >
+          <div
+            style={{
+              width: 40,
+              height: 4,
+              background: color.faint,
+              borderRadius: 2,
+              margin: "0 auto 16px",
+            }}
+          />
+        </div>
         <div
+          onTouchStart={handleSwipeStart}
+          onTouchEnd={handleSwipeEnd}
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
             padding: "0 20px 16px",
             borderBottom: `1px solid ${color.border}`,
+            touchAction: "none",
           }}
         >
           <h2
