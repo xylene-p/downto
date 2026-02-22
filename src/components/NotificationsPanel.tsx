@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import * as db from "@/lib/db";
 import { font, color } from "@/lib/styles";
 import { formatTimeAgo } from "@/lib/utils";
@@ -40,12 +40,28 @@ const NotificationsPanel = ({
   onNavigate: (action: { type: "friends"; tab: "friends" | "add" } | { type: "groups" } | { type: "feed" }) => void;
 }) => {
   const touchStartY = useRef(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [closing, setClosing] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+
   const handleSwipeStart = (e: React.TouchEvent) => {
     touchStartY.current = e.touches[0].clientY;
   };
-  const handleSwipeEnd = (e: React.TouchEvent) => {
-    const dy = e.changedTouches[0].clientY - touchStartY.current;
-    if (dy > 60) onClose();
+  const handleSwipeMove = (e: React.TouchEvent) => {
+    const dy = e.touches[0].clientY - touchStartY.current;
+    if (dy > 0) setDragOffset(dy);
+  };
+  const handleSwipeEnd = () => {
+    if (dragOffset > 60) {
+      setClosing(true);
+      setTimeout(() => {
+        setClosing(false);
+        setDragOffset(0);
+        onClose();
+      }, 250);
+    } else {
+      setDragOffset(0);
+    }
   };
 
   if (!open) return null;
@@ -72,6 +88,7 @@ const NotificationsPanel = ({
         }}
       />
       <div
+        ref={panelRef}
         style={{
           position: "relative",
           background: color.surface,
@@ -80,13 +97,16 @@ const NotificationsPanel = ({
           maxWidth: 420,
           maxHeight: "80vh",
           padding: "24px 0 0",
-          animation: "slideUp 0.3s ease-out",
+          animation: closing ? undefined : "slideUp 0.3s ease-out",
+          transform: closing ? "translateY(100%)" : `translateY(${dragOffset}px)`,
+          transition: closing ? "transform 0.25s ease-in" : (dragOffset === 0 ? "transform 0.2s ease-out" : "none"),
           display: "flex",
           flexDirection: "column",
         }}
       >
         <div
           onTouchStart={handleSwipeStart}
+          onTouchMove={handleSwipeMove}
           onTouchEnd={handleSwipeEnd}
           style={{ touchAction: "none" }}
         >
@@ -102,6 +122,7 @@ const NotificationsPanel = ({
         </div>
         <div
           onTouchStart={handleSwipeStart}
+          onTouchMove={handleSwipeMove}
           onTouchEnd={handleSwipeEnd}
           style={{
             display: "flex",
