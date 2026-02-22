@@ -311,6 +311,11 @@ export default function FeedView({
                               }}
                             >
                               {check.author}
+                              {check.viaFriendName && (
+                                <span style={{ color: color.dim, fontWeight: 400 }}>
+                                  {" "}via {check.viaFriendName}
+                                </span>
+                              )}
                             </span>
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -893,6 +898,11 @@ export default function FeedView({
                                   </div>
                                   <span style={{ fontFamily: font.mono, fontSize: 11, color: color.muted }}>
                                     {check.author}
+                                    {check.viaFriendName && (
+                                      <span style={{ color: color.dim, fontWeight: 400 }}>
+                                        {" "}via {check.viaFriendName}
+                                      </span>
+                                    )}
                                   </span>
                                 </div>
                                 <p style={{ fontFamily: font.serif, fontSize: 16, color: color.dim, margin: 0, lineHeight: 1.4 }}>

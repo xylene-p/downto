@@ -103,6 +103,18 @@ export const DEMO_CHECKS: InterestCheck[] = [
     ],
   },
   {
+    id: "demo-check-5",
+    text: "rooftop drinks saturday? bringing a speaker 🔊",
+    author: "Devon",
+    timeAgo: "3h",
+    expiresIn: "21h",
+    expiryPercent: 12,
+    responses: [
+      { name: "Sara", avatar: "S", status: "down" },
+    ],
+    viaFriendName: "Sara",
+  },
+  {
     id: "demo-check-3",
     text: "coffee run?",
     author: "Janelle",

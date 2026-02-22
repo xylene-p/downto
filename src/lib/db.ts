@@ -515,6 +515,12 @@ export async function unhideCheck(checkId: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function getFofAnnotations(): Promise<{ check_id: string; via_friend_name: string }[]> {
+  const { data, error } = await supabase.rpc('get_fof_check_annotations');
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function getActiveChecks(): Promise<(InterestCheck & { author: Profile; responses: (CheckResponse & { user: Profile })[]; squads: { id: string; members: { id: string }[] }[] })[]> {
   const { data, error } = await supabase
     .from('interest_checks')

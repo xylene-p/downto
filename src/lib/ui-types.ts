@@ -48,6 +48,7 @@ export interface InterestCheck {
   thumbnail?: string;
   letterboxdUrl?: string;
   vibes?: string[];
+  viaFriendName?: string;
 }
 
 export interface ScrapedEvent {

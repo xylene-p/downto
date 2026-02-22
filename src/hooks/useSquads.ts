@@ -1,0 +1,309 @@
+"use client";
+
+import { useState, useCallback, useEffect, type Dispatch, type SetStateAction } from "react";
+import * as db from "@/lib/db";
+import type { Profile } from "@/lib/types";
+import type { Person, Event, InterestCheck, Squad } from "@/lib/ui-types";
+import { logError, logWarn } from "@/lib/logger";
+
+// ─── Hook ──────────────────────────────────────────────────────────────────
+
+interface UseSquadsParams {
+  userId: string | null;
+  isDemoMode: boolean;
+  profile: Profile | null;
+  setChecks: Dispatch<SetStateAction<InterestCheck[]>>;
+  showToast: (msg: string) => void;
+  onSquadCreated?: () => void;
+}
+
+export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, onSquadCreated }: UseSquadsParams) {
+  const [squads, setSquads] = useState<Squad[]>([]);
+  const [socialEvent, setSocialEvent] = useState<Event | null>(null);
+  const [squadPoolMembers, setSquadPoolMembers] = useState<Person[]>([]);
+  const [inSquadPool, setInSquadPool] = useState(false);
+  const [squadNotification, setSquadNotification] = useState<{
+    squadName: string;
+    startedBy: string;
+    ideaBy: string;
+    members: string[];
+    squadId: string;
+  } | null>(null);
+  const [creatingSquad, setCreatingSquad] = useState(false);
+  const [autoSelectSquadId, setAutoSelectSquadId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("squadId");
+    }
+    return null;
+  });
+
+  const hydrateSquads = useCallback((squadsList: Awaited<ReturnType<typeof db.getSquads>>) => {
+    const now = new Date();
+    const fmtTime = (iso: string) => {
+      const d = new Date(iso);
+      const diffMs = now.getTime() - d.getTime();
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDays > 0) return `${diffDays}d`;
+      if (diffHours > 0) return `${diffHours}h`;
+      if (diffMins > 0) return `${diffMins}m`;
+      return "now";
+    };
+    const transformedSquads: Squad[] = squadsList.map((s) => {
+      const members = (s.members ?? []).map((m) => ({
+        name: m.user_id === userId ? "You" : (m.user?.display_name ?? "Unknown"),
+        avatar: m.user?.avatar_letter ?? m.user?.display_name?.charAt(0)?.toUpperCase() ?? "?",
+        userId: m.user_id,
+      }));
+      const messages = (s.messages ?? [])
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        .map((msg) => ({
+          sender: msg.is_system ? "system" : (msg.sender_id === userId ? "You" : (msg.sender?.display_name ?? "Unknown")),
+          text: msg.text,
+          time: fmtTime(msg.created_at),
+          isYou: msg.sender_id === userId,
+        }));
+      const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+      return {
+        id: s.id,
+        name: s.name,
+        event: s.event ? `${s.event.title} — ${s.event.date_display}` : undefined,
+        eventDate: s.event?.date_display ?? undefined,
+        eventIsoDate: s.event?.date ?? undefined,
+        members,
+        messages,
+        lastMsg: lastMessage ? `${lastMessage.sender}: ${lastMessage.text}` : "",
+        time: lastMessage ? lastMessage.time : fmtTime(s.created_at),
+        checkId: s.check_id ?? undefined,
+        meetingSpot: s.meeting_spot ?? undefined,
+        arrivalTime: s.arrival_time ?? undefined,
+        transportNotes: s.transport_notes ?? undefined,
+        expiresAt: s.expires_at ?? undefined,
+        graceStartedAt: s.grace_started_at ?? undefined,
+      };
+    });
+    setSquads(transformedSquads);
+
+    // Link checks to their squads
+    const checkToSquad = new Map<string, { squadId: string; inSquad: boolean }>();
+    for (const sq of transformedSquads) {
+      if (sq.checkId) {
+        checkToSquad.set(sq.checkId, { squadId: sq.id, inSquad: true });
+      }
+    }
+    if (checkToSquad.size > 0) {
+      setChecks((prev) => prev.map((c) => {
+        const sq = checkToSquad.get(c.id);
+        if (sq) return { ...c, squadId: sq.squadId, inSquad: sq.inSquad };
+        return c;
+      }));
+    }
+  }, [userId, setChecks]);
+
+  const startSquadFromCheck = async (check: InterestCheck) => {
+    if (creatingSquad) return;
+    setCreatingSquad(true);
+    const maxSize = check.maxSquadSize ?? 5;
+    const allDown = check.responses.filter((r) => r.status === "down" && r.name !== "You");
+    const downPeople = allDown.slice(0, maxSize - 1);
+    const memberNames = downPeople.map((p) => p.name);
+    const squadName = check.text.slice(0, 30) + (check.text.length > 30 ? "..." : "");
+
+    let squadDbId: string | undefined;
+    if (!isDemoMode && check.id) {
+      try {
+        const memberIds = [
+          ...downPeople.map((p) => p.odbc).filter((id): id is string => !!id),
+          ...(check.authorId ? [check.authorId] : []),
+        ];
+        const dbSquad = await db.createSquad(squadName, memberIds, undefined, check.id);
+        await db.sendMessage(dbSquad.id, "let's make this happen! \u{1F525}");
+        squadDbId = dbSquad.id;
+      } catch (err: any) {
+        logError("createSquadFromCheck", err, { checkId: check.id });
+        showToast(`Failed to create squad: ${err?.message || err}`);
+        setCreatingSquad(false);
+        return;
+      }
+    }
+
+    const newSquad: Squad = {
+      id: squadDbId ?? `local-squad-${Date.now()}`,
+      name: squadName,
+      event: `${check.author}'s idea \u00b7 ${check.expiresIn} left`,
+      members: [
+        { name: "You", avatar: profile?.avatar_letter ?? "?" },
+        ...downPeople.map((p) => ({ name: p.name, avatar: p.avatar })),
+        ...(!check.isYours ? [{ name: check.author, avatar: check.author.charAt(0).toUpperCase() }] : []),
+      ],
+      messages: [
+        { sender: "system", text: `\u2728 Squad formed for "${check.text}"`, time: "now" },
+        { sender: "system", text: `\u{1F4A1} idea by ${check.author} \u00b7 \u{1F680} started by You`, time: "now" },
+        { sender: "You", text: `let's make this happen! \u{1F525}`, time: "now", isYou: true },
+      ],
+      lastMsg: "You: let's make this happen! \u{1F525}",
+      time: "now",
+    };
+    setSquads((prev) => [newSquad, ...prev]);
+    setChecks((prev) => prev.map((c) => c.id === check.id ? { ...c, squadId: newSquad.id } : c));
+
+    setSquadNotification({
+      squadName: check.text,
+      startedBy: "You",
+      ideaBy: check.author,
+      members: memberNames,
+      squadId: newSquad.id,
+    });
+    setTimeout(() => setSquadNotification(null), 4000);
+
+    setCreatingSquad(false);
+    onSquadCreated?.();
+  };
+
+  const startSquadFromEvent = async (event: Event, selectedUserIds: string[]) => {
+    if (creatingSquad) return;
+    setCreatingSquad(true);
+    const squadName = event.title.slice(0, 30) + (event.title.length > 30 ? "..." : "");
+
+    let squadDbId: string | undefined;
+    if (!isDemoMode && event.id) {
+      try {
+        const dbSquad = await db.createSquad(squadName, selectedUserIds, event.id);
+        await db.sendMessage(dbSquad.id, `squad's up for ${event.title}! \u{1F525}`);
+        squadDbId = dbSquad.id;
+      } catch (err: any) {
+        logError("createSquadFromEvent", err, { eventId: event.id });
+        showToast(`Failed to create squad: ${err?.message || err}`);
+        setCreatingSquad(false);
+        return;
+      }
+    }
+
+    const allCandidates = [...event.peopleDown, ...squadPoolMembers];
+    const selectedPeople = allCandidates.filter((p) => p.userId && selectedUserIds.includes(p.userId));
+
+    const poolSelectedIds = squadPoolMembers
+      .filter((p) => p.userId && selectedUserIds.includes(p.userId))
+      .map((p) => p.userId!);
+    if (poolSelectedIds.length > 0 && event.id) {
+      const allToRemove = inSquadPool ? [userId!, ...poolSelectedIds] : poolSelectedIds;
+      db.removeFromCrewPool(event.id, allToRemove).catch(() => {});
+      setSquadPoolMembers((prev) => prev.filter((p) => !poolSelectedIds.includes(p.userId!)));
+      if (inSquadPool) setInSquadPool(false);
+    }
+
+    const newSquad: Squad = {
+      id: squadDbId ?? `local-squad-${Date.now()}`,
+      name: squadName,
+      event: `${event.title} \u2014 ${event.date}`,
+      eventDate: event.date,
+      members: [
+        { name: "You", avatar: profile?.avatar_letter ?? "?" },
+        ...selectedPeople.map((p) => ({ name: p.name, avatar: p.avatar })),
+      ],
+      messages: [
+        { sender: "system", text: `\u2728 Squad formed for "${event.title}"`, time: "now" },
+        { sender: "system", text: `\u{1F4CD} ${event.venue} \u00b7 ${event.date} ${event.time}`, time: "now" },
+        { sender: "You", text: `squad's up for ${event.title}! \u{1F525}`, time: "now", isYou: true },
+      ],
+      lastMsg: `You: squad's up for ${event.title}! \u{1F525}`,
+      time: "now",
+    };
+    setSquads((prev) => [newSquad, ...prev]);
+
+    setSquadNotification({
+      squadName: event.title,
+      startedBy: "You",
+      ideaBy: "event",
+      members: selectedPeople.map((p) => p.name),
+      squadId: newSquad.id,
+    });
+    setTimeout(() => setSquadNotification(null), 4000);
+
+    setSocialEvent(null);
+    setCreatingSquad(false);
+    onSquadCreated?.();
+  };
+
+  const handleJoinSquadPool = async (event: Event) => {
+    if (!event.id || isDemoMode) return;
+
+    try {
+      if (inSquadPool) {
+        await db.leaveCrewPool(event.id);
+        setInSquadPool(false);
+        setSquadPoolMembers((prev) => prev.filter((p) => p.userId !== userId));
+        showToast("Left squad pool");
+        return;
+      }
+
+      await db.joinCrewPool(event.id);
+      setInSquadPool(true);
+      showToast("You're looking for a squad!");
+
+      const pool = await db.getCrewPool(event.id);
+      const poolPeople: Person[] = pool
+        .filter((entry) => entry.user_id !== userId)
+        .map((entry) => ({
+          name: entry.user?.display_name ?? "Unknown",
+          avatar: entry.user?.avatar_letter ?? "?",
+          mutual: false,
+          userId: entry.user_id,
+        }));
+      setSquadPoolMembers(poolPeople);
+    } catch (err: any) {
+      const code = err && typeof err === 'object' && 'code' in err ? err.code : '';
+      if (code === '23505') {
+        showToast("Already looking for a squad");
+        return;
+      }
+      logError("joinSquadPool", err, { eventId: event.id });
+      showToast("Something went wrong");
+    }
+  };
+
+  // Load squad pool members when EventLobby opens
+  useEffect(() => {
+    if (!socialEvent?.id || isDemoMode) {
+      setSquadPoolMembers([]);
+      setInSquadPool(false);
+      return;
+    }
+    (async () => {
+      try {
+        const pool = await db.getCrewPool(socialEvent.id);
+        setInSquadPool(pool.some((entry) => entry.user_id === userId));
+        const poolPeople: Person[] = pool
+          .filter((entry) => entry.user_id !== userId)
+          .map((entry) => ({
+            name: entry.user?.display_name ?? "Unknown",
+            avatar: entry.user?.avatar_letter ?? "?",
+            mutual: false,
+            userId: entry.user_id,
+          }));
+        setSquadPoolMembers(poolPeople);
+      } catch (err) {
+        logWarn("loadSquadPool", "Failed to load squad pool", { eventId: socialEvent?.id });
+      }
+    })();
+  }, [socialEvent?.id, isDemoMode, userId]);
+
+  return {
+    squads,
+    setSquads,
+    socialEvent,
+    setSocialEvent,
+    squadPoolMembers,
+    inSquadPool,
+    squadNotification,
+    setSquadNotification,
+    creatingSquad,
+    autoSelectSquadId,
+    setAutoSelectSquadId,
+    hydrateSquads,
+    startSquadFromCheck,
+    startSquadFromEvent,
+    handleJoinSquadPool,
+  };
+}
