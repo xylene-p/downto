@@ -1405,6 +1405,7 @@ export default function Home() {
             userId={userId}
             onViewProfile={(uid) => setViewingUserId(uid)}
             onChatInputFocus={setChatInputFocused}
+            chatInputFocused={chatInputFocused}
           />
         )}
         {feedLoaded && tab === "profile" && (

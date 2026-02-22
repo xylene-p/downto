@@ -34,6 +34,7 @@ const GroupsView = ({
   userId,
   onViewProfile,
   onChatInputFocus,
+  chatInputFocused,
 }: {
   squads: Squad[];
   onSquadUpdate: (squadsOrUpdater: Squad[] | ((prev: Squad[]) => Squad[])) => void;
@@ -45,6 +46,7 @@ const GroupsView = ({
   userId?: string | null;
   onViewProfile?: (userId: string) => void;
   onChatInputFocus?: (focused: boolean) => void;
+  chatInputFocused?: boolean;
 }) => {
   const onSquadUpdateRef = useRef(onSquadUpdate);
   onSquadUpdateRef.current = onSquadUpdate;
@@ -146,7 +148,7 @@ const GroupsView = ({
   if (selectedSquad) {
     return (
       <div
-        style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 160px)" }}
+        style={{ display: "flex", flexDirection: "column", height: chatInputFocused ? "calc(100vh - 80px)" : "calc(100vh - 160px)" }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
