@@ -48,6 +48,7 @@ const GroupsView = ({
   onSquadUpdateRef.current = onSquadUpdate;
   const [selectedSquad, setSelectedSquad] = useState<Squad | null>(null);
   const [newMsg, setNewMsg] = useState("");
+  const chatInputRef = useRef<HTMLDivElement>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [fieldValue, setFieldValue] = useState("");
   const [logisticsOpen, setLogisticsOpen] = useState(false);
@@ -116,6 +117,7 @@ const GroupsView = ({
     setSelectedSquad(updatedSquad);
     onSquadUpdate((prev) => prev.map((s) => (s.id === updatedSquad.id ? updatedSquad : s)));
     setNewMsg("");
+    if (chatInputRef.current) chatInputRef.current.textContent = "";
 
     // Persist to DB
     if (selectedSquad.id && onSendMessage) {
@@ -729,25 +731,51 @@ const GroupsView = ({
             gap: 8,
           }}
         >
-          <input
-            type="text"
-            value={newMsg}
-            onChange={(e) => setNewMsg(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            enterKeyHint="send"
-            placeholder="Message..."
-            style={{
-              flex: 1,
-              background: color.card,
-              border: `1px solid ${color.borderMid}`,
-              borderRadius: 20,
-              padding: "10px 16px",
-              color: color.text,
-              fontFamily: font.mono,
-              fontSize: 13,
-              outline: "none",
-            }}
-          />
+          <div style={{ flex: 1, position: "relative" }}>
+            {!newMsg && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 10,
+                  left: 16,
+                  color: color.dim,
+                  fontFamily: font.mono,
+                  fontSize: 13,
+                  pointerEvents: "none",
+                }}
+              >
+                Message...
+              </div>
+            )}
+            <div
+              ref={chatInputRef}
+              contentEditable
+              role="textbox"
+              onInput={(e) => setNewMsg((e.target as HTMLDivElement).textContent ?? "")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              style={{
+                background: color.card,
+                border: `1px solid ${color.borderMid}`,
+                borderRadius: 20,
+                padding: "10px 16px",
+                color: color.text,
+                fontFamily: font.mono,
+                fontSize: 13,
+                outline: "none",
+                minHeight: 20,
+                maxHeight: 80,
+                overflowY: "auto",
+                wordBreak: "break-word",
+                WebkitUserSelect: "text",
+                userSelect: "text",
+              }}
+            />
+          </div>
           <button
             onClick={handleSend}
             disabled={!newMsg.trim()}
