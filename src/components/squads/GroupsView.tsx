@@ -53,6 +53,7 @@ const GroupsView = ({
   const [selectedSquad, setSelectedSquad] = useState<Squad | null>(null);
   const [newMsg, setNewMsg] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [fieldValue, setFieldValue] = useState("");
   const [logisticsOpen, setLogisticsOpen] = useState(false);
@@ -75,6 +76,18 @@ const GroupsView = ({
       messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
     }
   }, [selectedSquad?.id, selectedSquad?.messages.length]);
+
+  // Re-sync focus state when app resumes from background
+  useEffect(() => {
+    const handler = () => {
+      if (!document.hidden) {
+        const focused = document.activeElement === chatInputRef.current;
+        onChatInputFocus?.(focused);
+      }
+    };
+    document.addEventListener("visibilitychange", handler);
+    return () => document.removeEventListener("visibilitychange", handler);
+  }, [onChatInputFocus]);
 
   // Subscribe to realtime messages for the selected squad
   useEffect(() => {
@@ -743,12 +756,18 @@ const GroupsView = ({
           }}
         >
           <input
+            ref={chatInputRef}
             type="text"
             value={newMsg}
             onChange={(e) => setNewMsg(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             onFocus={() => onChatInputFocus?.(true)}
-            onBlur={() => onChatInputFocus?.(false)}
+            onBlur={() => {
+              // Delay to avoid false unfocus when app is backgrounded
+              setTimeout(() => {
+                if (!document.hidden) onChatInputFocus?.(false);
+              }, 100);
+            }}
             enterKeyHint="send"
             placeholder="Message..."
             style={{
