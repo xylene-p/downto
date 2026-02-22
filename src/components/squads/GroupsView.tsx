@@ -77,16 +77,17 @@ const GroupsView = ({
     }
   }, [selectedSquad?.id, selectedSquad?.messages.length]);
 
-  // Re-sync focus state when app resumes from background
+  // Track keyboard visibility via visualViewport — reliable across app suspend/resume
   useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const threshold = 100; // keyboard is at least 100px
     const handler = () => {
-      if (!document.hidden) {
-        const focused = document.activeElement === chatInputRef.current;
-        onChatInputFocus?.(focused);
-      }
+      const keyboardOpen = window.innerHeight - vv.height > threshold;
+      onChatInputFocus?.(keyboardOpen);
     };
-    document.addEventListener("visibilitychange", handler);
-    return () => document.removeEventListener("visibilitychange", handler);
+    vv.addEventListener("resize", handler);
+    return () => vv.removeEventListener("resize", handler);
   }, [onChatInputFocus]);
 
   // Subscribe to realtime messages for the selected squad
@@ -761,13 +762,6 @@ const GroupsView = ({
             value={newMsg}
             onChange={(e) => setNewMsg(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            onFocus={() => onChatInputFocus?.(true)}
-            onBlur={() => {
-              // Delay to avoid false unfocus when app is backgrounded
-              setTimeout(() => {
-                if (!document.hidden) onChatInputFocus?.(false);
-              }, 100);
-            }}
             enterKeyHint="send"
             placeholder="Message..."
             style={{
