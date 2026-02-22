@@ -81,7 +81,7 @@ export default function Home() {
     return null;
   });
   const [creatingSquad, setCreatingSquad] = useState(false);
-  const [chatInputFocused, setChatInputFocused] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [notifications, setNotifications] = useState<{ id: string; type: string; title: string; body: string | null; related_user_id: string | null; related_squad_id: string | null; related_check_id: string | null; is_read: boolean; created_at: string }[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [hasUnreadSquadMessage, setHasUnreadSquadMessage] = useState(false);
@@ -1404,8 +1404,7 @@ export default function Home() {
             }}
             userId={userId}
             onViewProfile={(uid) => setViewingUserId(uid)}
-            onChatInputFocus={setChatInputFocused}
-            chatInputFocused={chatInputFocused}
+            onChatOpen={setChatOpen}
           />
         )}
         {feedLoaded && tab === "profile" && (
@@ -1444,7 +1443,7 @@ export default function Home() {
         )}
       </div>
 
-      {!chatInputFocused && (
+      {!chatOpen && (
         <BottomNav
           tab={tab}
           onTabChange={(t) => {

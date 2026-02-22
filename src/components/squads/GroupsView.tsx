@@ -33,8 +33,7 @@ const GroupsView = ({
   onSetSquadDate,
   userId,
   onViewProfile,
-  onChatInputFocus,
-  chatInputFocused,
+  onChatOpen,
 }: {
   squads: Squad[];
   onSquadUpdate: (squadsOrUpdater: Squad[] | ((prev: Squad[]) => Squad[])) => void;
@@ -45,15 +44,13 @@ const GroupsView = ({
   onSetSquadDate?: (squadDbId: string, date: string) => Promise<void>;
   userId?: string | null;
   onViewProfile?: (userId: string) => void;
-  onChatInputFocus?: (focused: boolean) => void;
-  chatInputFocused?: boolean;
+  onChatOpen?: (open: boolean) => void;
 }) => {
   const onSquadUpdateRef = useRef(onSquadUpdate);
   onSquadUpdateRef.current = onSquadUpdate;
   const [selectedSquad, setSelectedSquad] = useState<Squad | null>(null);
   const [newMsg, setNewMsg] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatInputRef = useRef<HTMLInputElement>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [fieldValue, setFieldValue] = useState("");
   const [logisticsOpen, setLogisticsOpen] = useState(false);
@@ -77,18 +74,10 @@ const GroupsView = ({
     }
   }, [selectedSquad?.id, selectedSquad?.messages.length]);
 
-  // Track keyboard visibility via visualViewport — reliable across app suspend/resume
+  // Notify parent when chat is open/closed
   useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const threshold = 100; // keyboard is at least 100px
-    const handler = () => {
-      const keyboardOpen = window.innerHeight - vv.height > threshold;
-      onChatInputFocus?.(keyboardOpen);
-    };
-    vv.addEventListener("resize", handler);
-    return () => vv.removeEventListener("resize", handler);
-  }, [onChatInputFocus]);
+    onChatOpen?.(!!selectedSquad);
+  }, [!!selectedSquad]);
 
   // Subscribe to realtime messages for the selected squad
   useEffect(() => {
@@ -151,27 +140,60 @@ const GroupsView = ({
     }
   };
 
-  // Swipe right to go back to squad list
+  // Drawer swipe-to-close
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
+  const [dragX, setDragX] = useState(0);
+  const [closing, setClosing] = useState(false);
+  const isDragging = useRef(false);
+
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
+    isDragging.current = false;
   };
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
-    // Swipe right: horizontal > 80px, mostly horizontal (not scrolling)
-    if (dx > 80 && dy < 50) {
-      setSelectedSquad(null);
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const dx = e.touches[0].clientX - touchStartX.current;
+    const dy = Math.abs(e.touches[0].clientY - touchStartY.current);
+    if (!isDragging.current && dx > 10 && dy < 30) {
+      isDragging.current = true;
     }
+    if (isDragging.current && dx > 0) {
+      setDragX(dx);
+    }
+  };
+  const handleTouchEnd = () => {
+    if (dragX > 120) {
+      setClosing(true);
+      setTimeout(() => {
+        setSelectedSquad(null);
+        setClosing(false);
+        setDragX(0);
+      }, 250);
+    } else {
+      setDragX(0);
+    }
+    isDragging.current = false;
   };
 
   if (selectedSquad) {
     return (
       <div
-        style={{ display: "flex", flexDirection: "column", height: chatInputFocused ? "calc(100vh - 80px)" : "calc(100vh - 160px)" }}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          height: "100vh",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          background: color.bg,
+          zIndex: 60,
+          transform: closing ? "translateX(100%)" : `translateX(${dragX}px)`,
+          transition: closing ? "transform 0.25s ease-in" : (dragX === 0 ? "transform 0.3s ease-out" : "none"),
+        }}
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         {/* Chat header — compact */}
@@ -757,12 +779,10 @@ const GroupsView = ({
           }}
         >
           <input
-            ref={chatInputRef}
             type="text"
             value={newMsg}
             onChange={(e) => setNewMsg(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            onFocus={() => onChatInputFocus?.(true)}
             enterKeyHint="send"
             placeholder="Message..."
             style={{
