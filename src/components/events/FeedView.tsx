@@ -547,14 +547,13 @@ export default function FeedView({
                         <div
                           style={{
                             display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            gap: 12,
-                            marginTop: 4,
+                            flexDirection: "column",
+                            gap: 10,
+                            marginTop: 8,
                           }}
                         >
                           {check.responses.length > 0 ? (
-                            <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ minWidth: 0 }}>
                               <div
                                 onClick={(e) => {
                                   e.stopPropagation();
