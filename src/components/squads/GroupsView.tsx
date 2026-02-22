@@ -762,6 +762,7 @@ const GroupsView = ({
             value={newMsg}
             onChange={(e) => setNewMsg(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            onFocus={() => onChatInputFocus?.(true)}
             enterKeyHint="send"
             placeholder="Message..."
             style={{
