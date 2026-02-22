@@ -595,17 +595,16 @@ export default function FeedView({
                                   fontFamily: font.mono,
                                   fontSize: 10,
                                   color: color.accent,
+                                  whiteSpace: "nowrap",
                                 }}
                               >
-                                <span style={{ whiteSpace: "nowrap" }}>{check.responses.filter((r) => r.status === "down").length} down</span>
+                                {check.responses.filter((r) => r.status === "down").length} down
                                 {check.responses.some((r) => r.status === "maybe") && (
-                                  <span style={{ color: color.dim, whiteSpace: "nowrap" }}>
+                                  <span style={{ color: color.dim }}>
                                     {" "}{check.responses.filter((r) => r.status === "maybe").length} maybe
                                   </span>
                                 )}
-                              </span>
-                              <span style={{ fontFamily: font.mono, fontSize: 10, color: color.faint }}>
-                                {expandedCheckId === check.id ? "▴" : "▾"}
+                                {" "}<span style={{ color: color.faint, fontSize: 8 }}>{expandedCheckId === check.id ? "▴" : "▾"}</span>
                               </span>
                             </div>
                           ) : (
