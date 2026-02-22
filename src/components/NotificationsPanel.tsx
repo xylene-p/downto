@@ -37,7 +37,7 @@ const NotificationsPanel = ({
   userId: string | null;
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
   friends: { id: string }[];
-  onNavigate: (action: { type: "friends"; tab: "friends" | "add" } | { type: "groups" } | { type: "feed"; checkId?: string }) => void;
+  onNavigate: (action: { type: "friends"; tab: "friends" | "add" } | { type: "groups"; squadId?: string } | { type: "feed"; checkId?: string }) => void;
 }) => {
   const touchStartY = useRef(0);
   const [dragOffset, setDragOffset] = useState(0);
@@ -283,7 +283,7 @@ const NotificationsPanel = ({
                       setUnreadCount((prev) => Math.max(0, prev - 1));
                     }
                     onClose();
-                    onNavigate({ type: "groups" });
+                    onNavigate({ type: "groups", squadId: squadId ?? undefined });
                   } else if (n.type === "check_response") {
                     // Mark single notification as read
                     if (!n.is_read) {

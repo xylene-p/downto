@@ -74,7 +74,12 @@ export default function Home() {
   const [newlyAddedCheckId, setNewlyAddedCheckId] = useState<string | null>(null);
   const [editingCheckId, setEditingCheckId] = useState<string | null>(null);
   const [editingCheckText, setEditingCheckText] = useState("");
-  const [autoSelectSquadId, setAutoSelectSquadId] = useState<string | null>(null);
+  const [autoSelectSquadId, setAutoSelectSquadId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("squadId");
+    }
+    return null;
+  });
   const [creatingSquad, setCreatingSquad] = useState(false);
   const [notifications, setNotifications] = useState<{ id: string; type: string; title: string; body: string | null; related_user_id: string | null; related_squad_id: string | null; related_check_id: string | null; is_read: boolean; created_at: string }[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -783,6 +788,7 @@ export default function Home() {
         if (nType === 'friend_request' || nType === 'friend_accepted') {
           setTab('profile');
         } else if (nType === 'squad_message' || nType === 'squad_invite') {
+          if (event.data.relatedId) setAutoSelectSquadId(event.data.relatedId);
           setTab('groups');
         } else if (nType === 'check_response') {
           setTab('feed');
@@ -1619,6 +1625,7 @@ export default function Home() {
             setFriendsInitialTab(action.tab);
             setFriendsOpen(true);
           } else if (action.type === "groups") {
+            if (action.squadId) setAutoSelectSquadId(action.squadId);
             setTab("groups");
           } else if (action.type === "feed") {
             setTab("feed");

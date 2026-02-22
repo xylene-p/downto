@@ -34,14 +34,14 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const { type } = event.notification.data || {};
+  const { type, relatedId } = event.notification.data || {};
 
   // Map notification type to a tab
   let tab = "/";
   if (type === "friend_request" || type === "friend_accepted") {
     tab = "/?tab=profile";
   } else if (type === "squad_message" || type === "squad_invite") {
-    tab = "/?tab=groups";
+    tab = relatedId ? `/?tab=groups&squadId=${relatedId}` : "/?tab=groups";
   } else if (type === "check_response") {
     tab = "/?tab=feed";
   }
@@ -56,6 +56,7 @@ self.addEventListener("notificationclick", (event) => {
               focused.postMessage({
                 type: "NOTIFICATION_CLICK",
                 notificationType: type,
+                relatedId: relatedId,
               });
             }
           });
