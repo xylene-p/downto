@@ -125,9 +125,29 @@ const GroupsView = ({
     }
   };
 
+  // Swipe right to go back to squad list
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
+    // Swipe right: horizontal > 80px, mostly horizontal (not scrolling)
+    if (dx > 80 && dy < 50) {
+      setSelectedSquad(null);
+    }
+  };
+
   if (selectedSquad) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 160px)" }}>
+      <div
+        style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 160px)" }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* Chat header — compact */}
         <div
           style={{
