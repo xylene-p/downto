@@ -75,6 +75,7 @@ export default function Home() {
   const [editingCheckId, setEditingCheckId] = useState<string | null>(null);
   const [editingCheckText, setEditingCheckText] = useState("");
   const [autoSelectSquadId, setAutoSelectSquadId] = useState<string | null>(null);
+  const [creatingSquad, setCreatingSquad] = useState(false);
   const [notifications, setNotifications] = useState<{ id: string; type: string; title: string; body: string | null; related_user_id: string | null; related_squad_id: string | null; related_check_id: string | null; is_read: boolean; created_at: string }[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [hasUnreadSquadMessage, setHasUnreadSquadMessage] = useState(false);
@@ -875,6 +876,8 @@ export default function Home() {
   };
 
   const startSquadFromCheck = async (check: InterestCheck) => {
+    if (creatingSquad) return;
+    setCreatingSquad(true);
     const maxSize = check.maxSquadSize ?? 5;
     // Cap members: maxSize - 1 (author takes one slot)
     const allDown = check.responses.filter((r) => r.status === "down" && r.name !== "You");
@@ -896,6 +899,7 @@ export default function Home() {
       } catch (err: any) {
         logError("createSquadFromCheck", err, { checkId: check.id });
         showToast(`Failed to create squad: ${err?.message || err}`);
+        setCreatingSquad(false);
         return;
       }
     }
@@ -946,9 +950,12 @@ export default function Home() {
     setTimeout(() => setSquadNotification(null), 4000);
 
     setTab("groups");
+    setCreatingSquad(false);
   };
 
   const startSquadFromEvent = async (event: Event, selectedUserIds: string[]) => {
+    if (creatingSquad) return;
+    setCreatingSquad(true);
     const squadName = event.title.slice(0, 30) + (event.title.length > 30 ? "..." : "");
 
     let squadDbId: string | undefined;
@@ -960,6 +967,7 @@ export default function Home() {
       } catch (err: any) {
         logError("createSquadFromEvent", err, { eventId: event.id });
         showToast(`Failed to create squad: ${err?.message || err}`);
+        setCreatingSquad(false);
         return;
       }
     }
@@ -1022,6 +1030,7 @@ export default function Home() {
 
     setSocialEvent(null);
     setTab("groups");
+    setCreatingSquad(false);
   };
 
   const handleJoinSquadPool = async (event: Event) => {

@@ -244,18 +244,16 @@ const NotificationsPanel = ({
               <button
                 key={n.id}
                 onClick={() => {
-                  // Mark single notification as read
-                  if (!n.is_read) {
-                    if (!isDemoMode && userId) {
-                      db.markNotificationRead(n.id);
-                    }
-                    setNotifications((prev) =>
-                      prev.map((notif) => notif.id === n.id ? { ...notif, is_read: true } : notif)
-                    );
-                    setUnreadCount((prev) => Math.max(0, prev - 1));
-                  }
                   // Navigate based on type
                   if (n.type === "friend_request" || n.type === "friend_accepted") {
+                    // Mark single notification as read
+                    if (!n.is_read) {
+                      if (!isDemoMode && userId) db.markNotificationRead(n.id);
+                      setNotifications((prev) =>
+                        prev.map((notif) => notif.id === n.id ? { ...notif, is_read: true } : notif)
+                      );
+                      setUnreadCount((prev) => Math.max(0, prev - 1));
+                    }
                     onClose();
                     const alreadyFriends = n.type === "friend_request" && n.related_user_id &&
                       friends.some((f) => f.id === n.related_user_id);
@@ -264,9 +262,37 @@ const NotificationsPanel = ({
                       tab: n.type === "friend_request" && !alreadyFriends ? "add" : "friends",
                     });
                   } else if (n.type === "squad_message" || n.type === "squad_invite") {
+                    // Mark all notifications for this squad as read
+                    const squadId = n.related_squad_id;
+                    if (squadId) {
+                      if (!isDemoMode && userId) db.markSquadNotificationsRead(squadId);
+                      const clearedCount = notifications.filter(
+                        (notif) => !notif.is_read && notif.related_squad_id === squadId
+                      ).length;
+                      setNotifications((prev) =>
+                        prev.map((notif) =>
+                          notif.related_squad_id === squadId ? { ...notif, is_read: true } : notif
+                        )
+                      );
+                      setUnreadCount((prev) => Math.max(0, prev - clearedCount));
+                    } else if (!n.is_read) {
+                      if (!isDemoMode && userId) db.markNotificationRead(n.id);
+                      setNotifications((prev) =>
+                        prev.map((notif) => notif.id === n.id ? { ...notif, is_read: true } : notif)
+                      );
+                      setUnreadCount((prev) => Math.max(0, prev - 1));
+                    }
                     onClose();
                     onNavigate({ type: "groups" });
                   } else if (n.type === "check_response") {
+                    // Mark single notification as read
+                    if (!n.is_read) {
+                      if (!isDemoMode && userId) db.markNotificationRead(n.id);
+                      setNotifications((prev) =>
+                        prev.map((notif) => notif.id === n.id ? { ...notif, is_read: true } : notif)
+                      );
+                      setUnreadCount((prev) => Math.max(0, prev - 1));
+                    }
                     onClose();
                     onNavigate({ type: "feed", checkId: n.related_check_id ?? undefined });
                   }
