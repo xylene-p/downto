@@ -548,9 +548,9 @@ export default function FeedView({
                           <div
                             style={{
                               display: "flex",
-                              justifyContent: "space-between",
+                              flexWrap: "wrap",
                               alignItems: "center",
-                              gap: 12,
+                              gap: "8px 12px",
                             }}
                           >
                           {check.responses.length > 0 ? (
@@ -619,7 +619,7 @@ export default function FeedView({
                             </span>
                           )}
                           {!check.isYours && (
-                            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <div style={{ display: "flex", gap: 6, alignItems: "center", marginLeft: "auto" }}>
                               <button
                                 onClick={() => {
                                   if (myCheckResponses[check.id] === "down") {
