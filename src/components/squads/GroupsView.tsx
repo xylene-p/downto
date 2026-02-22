@@ -744,7 +744,7 @@ const GroupsView = ({
               padding: "10px 16px",
               color: color.text,
               fontFamily: font.mono,
-              fontSize: 16,
+              fontSize: 13,
               outline: "none",
             }}
           />
