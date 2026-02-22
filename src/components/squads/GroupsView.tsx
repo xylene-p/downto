@@ -734,6 +734,7 @@ const GroupsView = ({
             value={newMsg}
             onChange={(e) => setNewMsg(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            enterKeyHint="send"
             placeholder="Message..."
             style={{
               flex: 1,
@@ -743,7 +744,7 @@ const GroupsView = ({
               padding: "10px 16px",
               color: color.text,
               fontFamily: font.mono,
-              fontSize: 13,
+              fontSize: 16,
               outline: "none",
             }}
           />
