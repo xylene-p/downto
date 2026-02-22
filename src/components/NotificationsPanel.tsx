@@ -43,6 +43,8 @@ const NotificationsPanel = ({
   const [dragOffset, setDragOffset] = useState(0);
   const [closing, setClosing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
 
   // Lock body scroll when panel is open
   useEffect(() => {
@@ -53,10 +55,14 @@ const NotificationsPanel = ({
 
   const handleSwipeStart = (e: React.TouchEvent) => {
     touchStartY.current = e.touches[0].clientY;
+    isDragging.current = false;
   };
   const handleSwipeMove = (e: React.TouchEvent) => {
     const dy = e.touches[0].clientY - touchStartY.current;
-    if (dy > 0) setDragOffset(dy);
+    if (dy > 0) {
+      isDragging.current = true;
+      setDragOffset(dy);
+    }
   };
   const handleSwipeEnd = () => {
     if (dragOffset > 60) {
@@ -68,6 +74,27 @@ const NotificationsPanel = ({
       }, 250);
     } else {
       setDragOffset(0);
+    }
+    isDragging.current = false;
+  };
+
+  // Scroll-area: start dragging when at top and pulling down
+  const handleScrollTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+    isDragging.current = false;
+  };
+  const handleScrollTouchMove = (e: React.TouchEvent) => {
+    const dy = e.touches[0].clientY - touchStartY.current;
+    const atTop = scrollRef.current ? scrollRef.current.scrollTop <= 0 : true;
+    if (atTop && dy > 0) {
+      isDragging.current = true;
+      e.preventDefault();
+      setDragOffset(dy);
+    }
+  };
+  const handleScrollTouchEnd = () => {
+    if (isDragging.current) {
+      handleSwipeEnd();
     }
   };
 
@@ -175,8 +202,12 @@ const NotificationsPanel = ({
           )}
         </div>
         <div
+          ref={scrollRef}
+          onTouchStart={handleScrollTouchStart}
+          onTouchMove={handleScrollTouchMove}
+          onTouchEnd={handleScrollTouchEnd}
           style={{
-            overflowY: "auto",
+            overflowY: isDragging.current ? "hidden" : "auto",
             flex: 1,
             padding: "0 0 32px",
           }}
