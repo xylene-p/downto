@@ -37,7 +37,7 @@ const NotificationsPanel = ({
   userId: string | null;
   setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
   friends: { id: string }[];
-  onNavigate: (action: { type: "friends"; tab: "friends" | "add" } | { type: "groups" } | { type: "feed" }) => void;
+  onNavigate: (action: { type: "friends"; tab: "friends" | "add" } | { type: "groups" } | { type: "feed"; checkId?: string }) => void;
 }) => {
   const touchStartY = useRef(0);
   const [dragOffset, setDragOffset] = useState(0);
@@ -268,7 +268,7 @@ const NotificationsPanel = ({
                     onNavigate({ type: "groups" });
                   } else if (n.type === "check_response") {
                     onClose();
-                    onNavigate({ type: "feed" });
+                    onNavigate({ type: "feed", checkId: n.related_check_id ?? undefined });
                   }
                 }}
                 style={{

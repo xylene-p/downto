@@ -1604,6 +1604,10 @@ export default function Home() {
           } else if (action.type === "feed") {
             setTab("feed");
             setFeedMode("foryou");
+            if (action.checkId) {
+              setNewlyAddedCheckId(action.checkId);
+              setTimeout(() => setNewlyAddedCheckId(null), 3000);
+            }
           }
         }}
       />

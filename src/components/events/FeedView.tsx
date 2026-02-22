@@ -159,6 +159,9 @@ export default function FeedView({
                     {visibleChecks.map((check) => (
                       <div
                         key={check.id}
+                        ref={check.id === newlyAddedCheckId ? (el) => {
+                          if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                        } : undefined}
                         onClick={check.squadId ? () => {
                           onNavigateToGroups(check.squadId!);
                         } : undefined}
