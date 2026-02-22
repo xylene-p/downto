@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import * as db from "@/lib/db";
 import { font, color } from "@/lib/styles";
 import { formatTimeAgo } from "@/lib/utils";
@@ -43,6 +43,13 @@ const NotificationsPanel = ({
   const [dragOffset, setDragOffset] = useState(0);
   const [closing, setClosing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  // Lock body scroll when panel is open
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
 
   const handleSwipeStart = (e: React.TouchEvent) => {
     touchStartY.current = e.touches[0].clientY;
