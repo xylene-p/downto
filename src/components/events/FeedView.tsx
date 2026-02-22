@@ -545,6 +545,8 @@ export default function FeedView({
                             display: "flex",
                             justifyContent: "space-between",
                             alignItems: "center",
+                            gap: 12,
+                            marginTop: 4,
                           }}
                         >
                           {check.responses.length > 0 ? (
