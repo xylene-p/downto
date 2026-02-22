@@ -424,7 +424,7 @@ export default function FeedView({
                                   {check.text}
                                 </p>
                                 {check.isYours && !check.squadId && (
-                                  <div style={{ display: "flex", gap: 2, flexShrink: 0, marginTop: 2 }}>
+                                  <div style={{ display: "flex", gap: 4, flexShrink: 0, marginTop: 2 }}>
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -433,12 +433,14 @@ export default function FeedView({
                                       }}
                                       style={{
                                         background: "transparent",
-                                        border: "none",
-                                        color: color.faint,
-                                        padding: "2px 4px",
+                                        border: `1px solid ${color.border}`,
+                                        borderRadius: 8,
+                                        color: color.dim,
+                                        padding: "6px 10px",
                                         fontFamily: font.mono,
-                                        fontSize: 11,
+                                        fontSize: 13,
                                         cursor: "pointer",
+                                        lineHeight: 1,
                                       }}
                                     >
                                       &#9998;
@@ -458,12 +460,14 @@ export default function FeedView({
                                       }}
                                       style={{
                                         background: "transparent",
-                                        border: "none",
-                                        color: color.faint,
-                                        padding: "2px 4px",
+                                        border: `1px solid ${color.border}`,
+                                        borderRadius: 8,
+                                        color: color.dim,
+                                        padding: "6px 10px",
                                         fontFamily: font.mono,
-                                        fontSize: 11,
+                                        fontSize: 13,
                                         cursor: "pointer",
+                                        lineHeight: 1,
                                       }}
                                     >
                                       &#10005;
