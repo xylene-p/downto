@@ -1,5 +1,11 @@
 {
   "framework": "nextjs",
   "buildCommand": "npx next build",
-  "outputDirectory": ".next"
+  "outputDirectory": ".next",
+  "crons": [
+    {
+      "path": "/api/cron/squad-expiry",
+      "schedule": "*/15 * * * *"
+    }
+  ]
 }

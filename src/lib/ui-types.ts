@@ -81,6 +81,8 @@ export interface Squad {
   meetingSpot?: string;
   arrivalTime?: string;
   transportNotes?: string;
+  expiresAt?: string;
+  graceStartedAt?: string;
 }
 
 export interface Friend {

@@ -485,7 +485,7 @@ export default function Home() {
         const messages = (s.messages ?? [])
           .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
           .map((msg) => ({
-            sender: msg.sender_id === userId ? "You" : (msg.sender?.display_name ?? "Unknown"),
+            sender: msg.is_system ? "system" : (msg.sender_id === userId ? "You" : (msg.sender?.display_name ?? "Unknown")),
             text: msg.text,
             time: fmtTime(msg.created_at),
             isYou: msg.sender_id === userId,
@@ -505,6 +505,8 @@ export default function Home() {
           meetingSpot: s.meeting_spot ?? undefined,
           arrivalTime: s.arrival_time ?? undefined,
           transportNotes: s.transport_notes ?? undefined,
+          expiresAt: s.expires_at ?? undefined,
+          graceStartedAt: s.grace_started_at ?? undefined,
         };
       });
       setSquads(transformedSquads);
@@ -1351,6 +1353,28 @@ export default function Home() {
             }}
             onLeaveSquad={async (squadDbId) => {
               await db.leaveSquad(squadDbId);
+            }}
+            onSetSquadDate={async (squadDbId, date) => {
+              const token = (await supabase.auth.getSession()).data.session?.access_token;
+              if (!token) return;
+              const res = await fetch('/api/squads/set-date', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ squadId: squadDbId, date }),
+              });
+              if (!res.ok) throw new Error('Failed to set date');
+              const { expires_at } = await res.json();
+              // Update local state
+              const dateLabel = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+              setSquads((prev) => prev.map((s) => s.id === squadDbId ? {
+                ...s,
+                expiresAt: expires_at,
+                graceStartedAt: undefined,
+                messages: [...s.messages, { sender: 'system', text: `${profile?.display_name ?? 'You'} locked in ${dateLabel}`, time: 'now' }],
+              } : s));
             }}
             userId={userId}
             onViewProfile={(uid) => setViewingUserId(uid)}

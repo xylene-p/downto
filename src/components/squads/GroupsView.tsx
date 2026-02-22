@@ -6,6 +6,23 @@ import { font, color } from "@/lib/styles";
 import type { Squad } from "@/lib/ui-types";
 import { logError } from "@/lib/logger";
 
+const formatExpiryLabel = (expiresAt?: string, graceStartedAt?: string): string | null => {
+  if (!expiresAt) return null;
+  const now = Date.now();
+  const expires = new Date(expiresAt).getTime();
+  const msRemaining = expires - now;
+  if (msRemaining <= 0) return "expiring soon";
+  if (graceStartedAt) return "set a date to keep this going";
+  const hours = Math.floor(msRemaining / (1000 * 60 * 60));
+  const mins = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
+  if (hours > 24) {
+    const days = Math.floor(hours / 24);
+    return `expires in ${days}d`;
+  }
+  if (hours > 0) return `expires in ${hours}h`;
+  return `expires in ${mins}m`;
+};
+
 const GroupsView = ({
   squads,
   onSquadUpdate,
@@ -13,6 +30,7 @@ const GroupsView = ({
   onSendMessage,
   onUpdateLogistics,
   onLeaveSquad,
+  onSetSquadDate,
   userId,
   onViewProfile,
 }: {
@@ -22,6 +40,7 @@ const GroupsView = ({
   onSendMessage?: (squadDbId: string, text: string) => Promise<void>;
   onUpdateLogistics?: (squadDbId: string, field: string, value: string) => Promise<void>;
   onLeaveSquad?: (squadDbId: string) => Promise<void>;
+  onSetSquadDate?: (squadDbId: string, date: string) => Promise<void>;
   userId?: string | null;
   onViewProfile?: (userId: string) => void;
 }) => {
@@ -33,6 +52,9 @@ const GroupsView = ({
   const [fieldValue, setFieldValue] = useState("");
   const [logisticsOpen, setLogisticsOpen] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerValue, setDatePickerValue] = useState("");
+  const [settingDate, setSettingDate] = useState(false);
   const logisticsInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -48,7 +70,8 @@ const GroupsView = ({
     const channel = db.subscribeToMessages(selectedSquad.id, (newMessage) => {
       // Skip messages from current user (already added optimistically)
       if (userId && newMessage.sender_id === userId) return;
-      const senderName = newMessage.sender?.display_name ?? "Unknown";
+      const isSystem = newMessage.is_system || newMessage.sender_id === null;
+      const senderName = isSystem ? "system" : (newMessage.sender?.display_name ?? "Unknown");
       const msg = {
         sender: senderName,
         text: newMessage.text,
@@ -175,6 +198,48 @@ const GroupsView = ({
                   {selectedSquad.event}
                 </p>
               )}
+              {(() => {
+                const expiryLabel = formatExpiryLabel(selectedSquad.expiresAt, selectedSquad.graceStartedAt);
+                if (!expiryLabel) return null;
+                const isGrace = !!selectedSquad.graceStartedAt;
+                return (
+                  <p
+                    style={{
+                      fontFamily: font.mono,
+                      fontSize: 10,
+                      color: isGrace ? color.accent : color.faint,
+                      margin: "2px 0 0",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    {expiryLabel}
+                    {isGrace && onSetSquadDate && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDatePicker(true);
+                          setDatePickerValue(new Date(Date.now() + 86400000).toISOString().split("T")[0]);
+                        }}
+                        style={{
+                          background: color.accent,
+                          color: "#000",
+                          border: "none",
+                          borderRadius: 6,
+                          padding: "2px 8px",
+                          fontFamily: font.mono,
+                          fontSize: 9,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Set a date
+                      </button>
+                    )}
+                  </p>
+                );
+              })()}
             </div>
             <div style={{ display: "flex", gap: 4, marginLeft: 12, flexShrink: 0 }}>
               {selectedSquad.members.map((m) => (
@@ -279,6 +344,115 @@ const GroupsView = ({
                   }}
                 >
                   Leave
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Date picker modal */}
+        {showDatePicker && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0, left: 0, right: 0, bottom: 0,
+              background: "rgba(0,0,0,0.7)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}
+            onClick={() => setShowDatePicker(false)}
+          >
+            <div
+              style={{
+                background: color.deep,
+                border: `1px solid ${color.border}`,
+                borderRadius: 16,
+                padding: "24px 20px",
+                maxWidth: 300,
+                width: "90%",
+                textAlign: "center",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p style={{ fontFamily: font.serif, fontSize: 18, color: color.text, marginBottom: 6 }}>
+                Set a date
+              </p>
+              <p style={{ fontFamily: font.mono, fontSize: 11, color: color.dim, marginBottom: 16 }}>
+                Lock in when this is happening
+              </p>
+              <input
+                type="date"
+                value={datePickerValue}
+                onChange={(e) => setDatePickerValue(e.target.value)}
+                min={new Date().toISOString().split("T")[0]}
+                style={{
+                  width: "100%",
+                  background: color.card,
+                  border: `1px solid ${color.border}`,
+                  borderRadius: 10,
+                  padding: "10px 12px",
+                  color: color.text,
+                  fontFamily: font.mono,
+                  fontSize: 13,
+                  outline: "none",
+                  marginBottom: 16,
+                  colorScheme: "dark",
+                }}
+              />
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  onClick={() => setShowDatePicker(false)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    background: "none",
+                    border: `1px solid ${color.border}`,
+                    borderRadius: 10,
+                    color: color.text,
+                    fontFamily: font.mono,
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={!datePickerValue || settingDate}
+                  onClick={async () => {
+                    if (!datePickerValue || !selectedSquad?.id || !onSetSquadDate) return;
+                    setSettingDate(true);
+                    try {
+                      await onSetSquadDate(selectedSquad.id, datePickerValue);
+                      // Update selectedSquad local state
+                      const dateLabel = new Date(datePickerValue + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                      setSelectedSquad((prev) => prev ? {
+                        ...prev,
+                        graceStartedAt: undefined,
+                        messages: [...prev.messages, { sender: "system", text: `You locked in ${dateLabel}`, time: "now" }],
+                      } : prev);
+                      setShowDatePicker(false);
+                    } catch {
+                      // Error handled by parent
+                    } finally {
+                      setSettingDate(false);
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    background: datePickerValue && !settingDate ? color.accent : color.borderMid,
+                    border: "none",
+                    borderRadius: 10,
+                    color: datePickerValue && !settingDate ? "#000" : color.dim,
+                    fontFamily: font.mono,
+                    fontSize: 12,
+                    cursor: datePickerValue && !settingDate ? "pointer" : "default",
+                    fontWeight: 700,
+                  }}
+                >
+                  {settingDate ? "..." : "Lock it in"}
                 </button>
               </div>
             </div>

@@ -680,7 +680,7 @@ export async function getSquads(): Promise<Squad[]> {
 
   const squadIds = memberOf.map(m => m.squad_id);
 
-  // Then fetch those squads with their data
+  // Then fetch those squads with their data (exclude expired)
   const { data, error } = await supabase
     .from('squads')
     .select(`
@@ -690,6 +690,7 @@ export async function getSquads(): Promise<Squad[]> {
       messages(*, sender:profiles!sender_id(*))
     `)
     .in('id', squadIds)
+    .or(`expires_at.gt.${new Date().toISOString()},expires_at.is.null`)
     .order('created_at', { ascending: false })
     .order('created_at', { ascending: true, referencedTable: 'messages' });
 

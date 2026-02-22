@@ -99,6 +99,9 @@ export interface Squad {
   meeting_spot: string | null;
   arrival_time: string | null;
   transport_notes: string | null;
+  expires_at: string | null;
+  grace_started_at: string | null;
+  warned_at: string | null;
   // Joined data
   event?: Event;
   check?: InterestCheck;
@@ -127,9 +130,10 @@ export interface SquadMember {
 export interface Message {
   id: string;
   squad_id: string;
-  sender_id: string;
+  sender_id: string | null;
   text: string;
   created_at: string;
+  is_system: boolean;
   // Joined data
   sender?: Profile;
 }
