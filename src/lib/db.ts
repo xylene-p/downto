@@ -537,6 +537,7 @@ export async function createInterestCheck(
   eventDate: string | null = null,
   maxSquadSize: number = 5,
   movieData?: { letterboxdUrl: string; title: string; year?: string; director?: string; thumbnail?: string; vibes?: string[] },
+  eventTime: string | null = null,
 ): Promise<InterestCheck> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
@@ -553,6 +554,7 @@ export async function createInterestCheck(
     text,
     expires_at: expiresAt,
     event_date: eventDate,
+    event_time: eventTime,
     max_squad_size: maxSquadSize,
   };
 

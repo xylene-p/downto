@@ -227,6 +227,7 @@ export default function Home() {
           squadMemberCount: c.squads?.[0]?.members?.length ?? 0,
           eventDate: c.event_date ?? undefined,
           eventDateLabel: c.event_date ? new Date(c.event_date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined,
+          eventTime: c.event_time ?? undefined,
           movieTitle: mm?.title,
           year: mm?.year,
           director: mm?.director,
@@ -437,6 +438,7 @@ export default function Home() {
           squadMemberCount: c.squads?.[0]?.members?.length ?? 0,
           eventDate: c.event_date ?? undefined,
           eventDateLabel: c.event_date ? new Date(c.event_date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined,
+          eventTime: c.event_time ?? undefined,
           movieTitle: mm2?.title,
           year: mm2?.year,
           director: mm2?.director,
@@ -1071,7 +1073,7 @@ export default function Home() {
     }
   };
 
-  const handleCreateCheck = async (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number, movieData?: { letterboxdUrl: string; title: string; year?: string; director?: string; thumbnail?: string; vibes?: string[] }) => {
+  const handleCreateCheck = async (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number, movieData?: { letterboxdUrl: string; title: string; year?: string; director?: string; thumbnail?: string; vibes?: string[] }, eventTime?: string | null) => {
     const expiresLabel = expiresInHours == null ? "open" : expiresInHours >= 24 ? "24h" : `${expiresInHours}h`;
     const dateLabel = eventDate ? new Date(eventDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined;
     const movieFields = movieData ? {
@@ -1084,7 +1086,7 @@ export default function Home() {
     } : {};
     if (!isDemoMode && userId) {
       try {
-        const dbCheck = await db.createInterestCheck(idea, expiresInHours, eventDate, maxSquadSize, movieData);
+        const dbCheck = await db.createInterestCheck(idea, expiresInHours, eventDate, maxSquadSize, movieData, eventTime ?? null);
         const newCheck: InterestCheck = {
           id: dbCheck.id,
           text: idea,
@@ -1097,6 +1099,7 @@ export default function Home() {
           maxSquadSize,
           eventDate: eventDate ?? undefined,
           eventDateLabel: dateLabel,
+          eventTime: eventTime ?? undefined,
           ...movieFields,
         };
         setChecks((prev) => [newCheck, ...prev]);
@@ -1121,6 +1124,7 @@ export default function Home() {
         maxSquadSize,
         eventDate: eventDate ?? undefined,
         eventDateLabel: dateLabel,
+        eventTime: eventTime ?? undefined,
         ...movieFields,
       };
       setChecks((prev) => [newCheck, ...prev]);
@@ -1231,8 +1235,8 @@ export default function Home() {
 
     return (
       <FirstCheckScreen
-        onComplete={async (idea, expiresInHours, eventDate, maxSquadSize) => {
-          await handleCreateCheck(idea, expiresInHours, eventDate, maxSquadSize);
+        onComplete={async (idea, expiresInHours, eventDate, maxSquadSize, eventTime) => {
+          await handleCreateCheck(idea, expiresInHours, eventDate, maxSquadSize, undefined, eventTime);
           await finishOnboarding();
         }}
         onSkip={finishOnboarding}

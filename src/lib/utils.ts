@@ -166,6 +166,36 @@ export const parseNaturalDate = (text: string): { label: string; iso: string } |
   return null;
 };
 
+/** Scan free text for time phrases, return display string like "7 PM" or null */
+export const parseNaturalTime = (text: string): string | null => {
+  const lower = text.toLowerCase();
+
+  // "noon"
+  if (/\bnoon\b/.test(lower)) return "12 PM";
+  // "midnight"
+  if (/\bmidnight\b/.test(lower)) return "12 AM";
+
+  // "at 7", "at 7pm", "at 7 pm", "at 7:30", "at 7:30pm" — "at" prefix makes it a time
+  const atMatch = lower.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/);
+  if (atMatch) {
+    return formatTimeMatch(parseInt(atMatch[1]), atMatch[2] || null, atMatch[3] as "am" | "pm" | undefined);
+  }
+
+  // "7pm", "7 pm", "7:30pm", "7:30 pm" — requires explicit am/pm (no false positives on dates)
+  const meridiemMatch = lower.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/);
+  if (meridiemMatch) {
+    return formatTimeMatch(parseInt(meridiemMatch[1]), meridiemMatch[2] || null, meridiemMatch[3] as "am" | "pm");
+  }
+
+  return null;
+};
+
+const formatTimeMatch = (rawHour: number, minutes: string | null, meridiem: "am" | "pm" | undefined): string | null => {
+  if (rawHour === 0 || rawHour > 12) return null;
+  const suffix = meridiem ? meridiem.toUpperCase() : "PM";
+  return minutes ? `${rawHour}:${minutes} ${suffix}` : `${rawHour} ${suffix}`;
+};
+
 /** Format a date as relative time ago (e.g., "2h", "5m", "now") */
 export const formatTimeAgo = (date: Date): string => {
   const now = new Date();

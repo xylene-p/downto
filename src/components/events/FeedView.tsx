@@ -479,20 +479,37 @@ export default function FeedView({
                                   </div>
                                 )}
                               </div>
-                              {check.eventDateLabel && (
-                                <span style={{
-                                  display: "inline-block",
-                                  marginTop: 6,
-                                  padding: "3px 8px",
-                                  background: "rgba(232,255,90,0.1)",
-                                  borderRadius: 6,
-                                  fontFamily: font.mono,
-                                  fontSize: 10,
-                                  color: color.accent,
-                                  fontWeight: 600,
-                                }}>
-                                  📅 {check.eventDateLabel}
-                                </span>
+                              {(check.eventDateLabel || check.eventTime) && (
+                                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                                  {check.eventDateLabel && (
+                                    <span style={{
+                                      display: "inline-block",
+                                      padding: "3px 8px",
+                                      background: "rgba(232,255,90,0.1)",
+                                      borderRadius: 6,
+                                      fontFamily: font.mono,
+                                      fontSize: 10,
+                                      color: color.accent,
+                                      fontWeight: 600,
+                                    }}>
+                                      📅 {check.eventDateLabel}
+                                    </span>
+                                  )}
+                                  {check.eventTime && (
+                                    <span style={{
+                                      display: "inline-block",
+                                      padding: "3px 8px",
+                                      background: "rgba(232,255,90,0.1)",
+                                      borderRadius: 6,
+                                      fontFamily: font.mono,
+                                      fontSize: 10,
+                                      color: color.accent,
+                                      fontWeight: 600,
+                                    }}>
+                                      🕐 {check.eventTime}
+                                    </span>
+                                  )}
+                                </div>
                               )}
                             </div>
                             {check.isYours && (check.squadId || check.squadId) && (

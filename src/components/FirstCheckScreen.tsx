@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { font, color } from "@/lib/styles";
-import { parseNaturalDate, sanitize } from "@/lib/utils";
+import { parseNaturalDate, parseNaturalTime, sanitize } from "@/lib/utils";
 import GlobalStyles from "./GlobalStyles";
 import Grain from "./Grain";
 
@@ -10,14 +10,16 @@ const FirstCheckScreen = ({
   onComplete,
   onSkip,
 }: {
-  onComplete: (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number) => void;
+  onComplete: (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number, eventTime?: string | null) => void;
   onSkip: () => void;
 }) => {
   const [idea, setIdea] = useState("");
   const [checkTimer, setCheckTimer] = useState<number | null>(24);
   const [checkSquadSize, setCheckSquadSize] = useState(5);
   const detectedDate = idea ? parseNaturalDate(idea) : null;
+  const detectedTime = idea ? parseNaturalTime(idea) : null;
   const [dateDismissed, setDateDismissed] = useState(false);
+  const [timeDismissed, setTimeDismissed] = useState(false);
   const ideaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -66,7 +68,7 @@ const FirstCheckScreen = ({
       <textarea
         ref={ideaRef}
         value={idea}
-        onChange={(e) => { setIdea(e.target.value.slice(0, 280)); setDateDismissed(false); }}
+        onChange={(e) => { setIdea(e.target.value.slice(0, 280)); setDateDismissed(false); setTimeDismissed(false); }}
         maxLength={280}
         placeholder="e.g., dinner at 7 tomorrow? rooftop picnic saturday? movie night?"
         style={{
@@ -87,36 +89,74 @@ const FirstCheckScreen = ({
         }}
       />
 
-      {/* Auto-detected date chip */}
-      {detectedDate && !dateDismissed && (
+      {/* Auto-detected date/time chips */}
+      {((detectedDate && !dateDismissed) || (detectedTime && !timeDismissed)) && (
         <div style={{
           display: "flex",
-          alignItems: "center",
-          gap: 8,
+          gap: 6,
+          flexWrap: "wrap",
           marginBottom: 12,
-          padding: "8px 12px",
-          background: "rgba(232,255,90,0.08)",
-          borderRadius: 10,
-          border: "1px solid rgba(232,255,90,0.2)",
         }}>
-          <span style={{ fontFamily: font.mono, fontSize: 12, color: color.accent, fontWeight: 600, flex: 1 }}>
-            {detectedDate.label}
-          </span>
-          <button
-            onClick={() => setDateDismissed(true)}
-            style={{
-              background: "none",
-              border: "none",
-              color: color.dim,
-              fontFamily: font.mono,
-              fontSize: 14,
-              cursor: "pointer",
-              padding: "0 4px",
-              lineHeight: 1,
-            }}
-          >
-            ×
-          </button>
+          {detectedDate && !dateDismissed && (
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 10px",
+              background: "rgba(232,255,90,0.08)",
+              borderRadius: 8,
+              border: "1px solid rgba(232,255,90,0.2)",
+            }}>
+              <span style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600 }}>
+                📅 {detectedDate.label}
+              </span>
+              <button
+                onClick={() => setDateDismissed(true)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: color.dim,
+                  fontFamily: font.mono,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  padding: "0 2px",
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+          )}
+          {detectedTime && !timeDismissed && (
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 10px",
+              background: "rgba(232,255,90,0.08)",
+              borderRadius: 8,
+              border: "1px solid rgba(232,255,90,0.2)",
+            }}>
+              <span style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600 }}>
+                🕐 {detectedTime}
+              </span>
+              <button
+                onClick={() => setTimeDismissed(true)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: color.dim,
+                  fontFamily: font.mono,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  padding: "0 2px",
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -191,7 +231,8 @@ const FirstCheckScreen = ({
         onClick={() => {
           if (idea.trim()) {
             const eventDate = (!dateDismissed && detectedDate) ? detectedDate.iso : null;
-            onComplete(sanitize(idea, 280), checkTimer, eventDate, checkSquadSize);
+            const eventTime = (!timeDismissed && detectedTime) ? detectedTime : null;
+            onComplete(sanitize(idea, 280), checkTimer, eventDate, checkSquadSize, eventTime);
           }
         }}
         disabled={!idea.trim()}

@@ -64,6 +64,7 @@ export interface InterestCheck {
   text: string;
   expires_at: string | null;
   event_date: string | null; // ISO date from natural language parsing
+  event_time: string | null; // display time like "7 PM"
   max_squad_size: number;
   letterboxd_url: string | null;
   movie_metadata: {
