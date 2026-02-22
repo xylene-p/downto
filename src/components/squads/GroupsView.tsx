@@ -201,13 +201,14 @@ const GroupsView = ({
               {(() => {
                 const expiryLabel = formatExpiryLabel(selectedSquad.expiresAt, selectedSquad.graceStartedAt);
                 if (!expiryLabel) return null;
-                const isGrace = !!selectedSquad.graceStartedAt;
+                const isUrgent = !!selectedSquad.graceStartedAt ||
+                  (selectedSquad.expiresAt && new Date(selectedSquad.expiresAt).getTime() - Date.now() < 24 * 60 * 60 * 1000);
                 return (
                   <p
                     style={{
                       fontFamily: font.mono,
                       fontSize: 10,
-                      color: isGrace ? color.accent : color.faint,
+                      color: isUrgent ? color.accent : color.faint,
                       margin: "2px 0 0",
                       display: "flex",
                       alignItems: "center",
@@ -215,7 +216,7 @@ const GroupsView = ({
                     }}
                   >
                     {expiryLabel}
-                    {isGrace && onSetSquadDate && (
+                    {onSetSquadDate && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
