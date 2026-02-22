@@ -52,6 +52,7 @@ const GroupsView = ({
   onSquadUpdateRef.current = onSquadUpdate;
   const [selectedSquad, setSelectedSquad] = useState<Squad | null>(null);
   const [newMsg, setNewMsg] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [fieldValue, setFieldValue] = useState("");
   const [logisticsOpen, setLogisticsOpen] = useState(false);
@@ -67,6 +68,13 @@ const GroupsView = ({
       if (squad) setSelectedSquad(squad);
     }
   }, [autoSelectSquadId]);
+
+  // Scroll to bottom when chat opens or messages change
+  useEffect(() => {
+    if (selectedSquad) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+    }
+  }, [selectedSquad?.id, selectedSquad?.messages.length]);
 
   // Subscribe to realtime messages for the selected squad
   useEffect(() => {
@@ -722,6 +730,7 @@ const GroupsView = ({
               </div>
             );
           })}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Input */}
