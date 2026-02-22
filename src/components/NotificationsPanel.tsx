@@ -324,9 +324,7 @@ const NotificationsPanel = ({
                         fontFamily: font.mono,
                         fontSize: 11,
                         color: color.dim,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
+                        lineHeight: 1.4,
                       }}
                     >
                       {n.body}
