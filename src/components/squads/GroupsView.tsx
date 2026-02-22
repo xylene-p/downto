@@ -919,9 +919,7 @@ const GroupsView = ({
           lineHeight: 1.8,
         }}
       >
-        squads auto-dissolve after the event
-        <br />
-        unless you choose to keep them ✶
+        squads dissolve after the event ✶
       </div>
     </div>
   );
