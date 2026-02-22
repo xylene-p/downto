@@ -33,6 +33,7 @@ const GroupsView = ({
   onSetSquadDate,
   userId,
   onViewProfile,
+  onChatInputFocus,
 }: {
   squads: Squad[];
   onSquadUpdate: (squadsOrUpdater: Squad[] | ((prev: Squad[]) => Squad[])) => void;
@@ -43,6 +44,7 @@ const GroupsView = ({
   onSetSquadDate?: (squadDbId: string, date: string) => Promise<void>;
   userId?: string | null;
   onViewProfile?: (userId: string) => void;
+  onChatInputFocus?: (focused: boolean) => void;
 }) => {
   const onSquadUpdateRef = useRef(onSquadUpdate);
   onSquadUpdateRef.current = onSquadUpdate;
@@ -734,6 +736,8 @@ const GroupsView = ({
             value={newMsg}
             onChange={(e) => setNewMsg(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            onFocus={() => onChatInputFocus?.(true)}
+            onBlur={() => onChatInputFocus?.(false)}
             enterKeyHint="send"
             placeholder="Message..."
             style={{
