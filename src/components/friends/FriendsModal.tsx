@@ -37,6 +37,46 @@ const FriendsModal = ({
   const [searching, setSearching] = useState(false);
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+  const touchStartY = useRef(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [closing, setClosing] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+
+  // Lock body scroll when open
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
+  const handleSwipeStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+    isDragging.current = false;
+  };
+  const handleSwipeMove = (e: React.TouchEvent) => {
+    const dy = e.touches[0].clientY - touchStartY.current;
+    if (dy > 0) { isDragging.current = true; setDragOffset(dy); }
+  };
+  const finishSwipe = () => {
+    if (dragOffset > 60) {
+      setClosing(true);
+      setTimeout(() => { setClosing(false); setDragOffset(0); onClose(); }, 250);
+    } else {
+      setDragOffset(0);
+    }
+    isDragging.current = false;
+  };
+  const handleScrollTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+    isDragging.current = false;
+  };
+  const handleScrollTouchMove = (e: React.TouchEvent) => {
+    const dy = e.touches[0].clientY - touchStartY.current;
+    const atTop = scrollRef.current ? scrollRef.current.scrollTop <= 0 : true;
+    if (atTop && dy > 0) { isDragging.current = true; e.preventDefault(); setDragOffset(dy); }
+  };
+  const handleScrollTouchEnd = () => { if (isDragging.current) finishSwipe(); };
 
   const incomingRequests = suggestions.filter((s) => s.status === "incoming");
   const filteredFriends = friends.filter(
@@ -117,21 +157,31 @@ const FriendsModal = ({
           borderRadius: "24px 24px 0 0",
           width: "100%",
           maxWidth: 420,
-          padding: "32px 24px 40px",
+          padding: "32px 24px 0",
           maxHeight: "85vh",
-          overflowY: "auto",
-          animation: "slideUp 0.3s ease-out",
+          display: "flex",
+          flexDirection: "column",
+          animation: closing ? undefined : "slideUp 0.3s ease-out",
+          transform: closing ? "translateY(100%)" : `translateY(${dragOffset}px)`,
+          transition: closing ? "transform 0.25s ease-in" : (dragOffset === 0 ? "transform 0.2s ease-out" : "none"),
         }}
       >
         <div
-          style={{
-            width: 40,
-            height: 4,
-            background: color.faint,
-            borderRadius: 2,
-            margin: "0 auto 24px",
-          }}
-        />
+          onTouchStart={handleSwipeStart}
+          onTouchMove={handleSwipeMove}
+          onTouchEnd={finishSwipe}
+          style={{ touchAction: "none" }}
+        >
+          <div
+            style={{
+              width: 40,
+              height: 4,
+              background: color.faint,
+              borderRadius: 2,
+              margin: "0 auto 24px",
+            }}
+          />
+        </div>
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
@@ -209,6 +259,17 @@ const FriendsModal = ({
           }}
         />
 
+        <div
+          ref={scrollRef}
+          onTouchStart={handleScrollTouchStart}
+          onTouchMove={handleScrollTouchMove}
+          onTouchEnd={handleScrollTouchEnd}
+          style={{
+            overflowY: "auto",
+            flex: 1,
+            paddingBottom: 40,
+          }}
+        >
         {tab === "friends" ? (
           <>
             {filteredFriends.length === 0 ? (
@@ -601,6 +662,7 @@ const FriendsModal = ({
             )}
           </>
         )}
+        </div>
       </div>
 
       {/* Friend Profile Detail */}
