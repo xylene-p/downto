@@ -87,6 +87,7 @@ export default function FeedView({
   onUnhideCheck,
 }: FeedViewProps) {
   const [showHidden, setShowHidden] = useState(false);
+  const [expandedCheckId, setExpandedCheckId] = useState<string | null>(null);
   const visibleChecks = checks.filter((c) => !hiddenCheckIds.has(c.id));
   const hiddenChecks = checks.filter((c) => hiddenCheckIds.has(c.id));
   return (
@@ -553,50 +554,91 @@ export default function FeedView({
                           }}
                         >
                           {check.responses.length > 0 ? (
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <div style={{ display: "flex" }}>
-                                {check.responses.map((r, i) => (
-                                  <div
-                                    key={r.name}
-                                    style={{
-                                      width: 24,
-                                      height: 24,
-                                      borderRadius: "50%",
-                                      background:
-                                        r.status === "down"
-                                          ? color.accent
-                                          : r.status === "maybe"
-                                          ? color.borderLight
-                                          : color.faint,
-                                      color: r.status === "down" ? "#000" : color.dim,
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      fontFamily: font.mono,
-                                      fontSize: 9,
-                                      fontWeight: 700,
-                                      marginLeft: i > 0 ? -6 : 0,
-                                      border: `2px solid ${color.card}`,
-                                    }}
-                                  >
-                                    {r.avatar}
-                                  </div>
-                                ))}
-                              </div>
-                              <span
-                                style={{
-                                  fontFamily: font.mono,
-                                  fontSize: 10,
-                                  color: color.accent,
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExpandedCheckId(expandedCheckId === check.id ? null : check.id);
                                 }}
+                                style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}
                               >
-                                <span style={{ whiteSpace: "nowrap" }}>{check.responses.filter((r) => r.status === "down").length} down</span>
-                                {check.responses.some((r) => r.status === "maybe") && (
-                                  <span style={{ color: color.dim, whiteSpace: "nowrap" }}>
-                                    {" "}{check.responses.filter((r) => r.status === "maybe").length} maybe
-                                  </span>
-                                )}
-                              </span>
+                                <div style={{ display: "flex" }}>
+                                  {check.responses.map((r, i) => (
+                                    <div
+                                      key={r.name}
+                                      style={{
+                                        width: 24,
+                                        height: 24,
+                                        borderRadius: "50%",
+                                        background:
+                                          r.status === "down"
+                                            ? color.accent
+                                            : r.status === "maybe"
+                                            ? color.borderLight
+                                            : color.faint,
+                                        color: r.status === "down" ? "#000" : color.dim,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontFamily: font.mono,
+                                        fontSize: 9,
+                                        fontWeight: 700,
+                                        marginLeft: i > 0 ? -6 : 0,
+                                        border: `2px solid ${color.card}`,
+                                      }}
+                                    >
+                                      {r.avatar}
+                                    </div>
+                                  ))}
+                                </div>
+                                <span
+                                  style={{
+                                    fontFamily: font.mono,
+                                    fontSize: 10,
+                                    color: color.accent,
+                                  }}
+                                >
+                                  <span style={{ whiteSpace: "nowrap" }}>{check.responses.filter((r) => r.status === "down").length} down</span>
+                                  {check.responses.some((r) => r.status === "maybe") && (
+                                    <span style={{ color: color.dim, whiteSpace: "nowrap" }}>
+                                      {" "}{check.responses.filter((r) => r.status === "maybe").length} maybe
+                                    </span>
+                                  )}
+                                </span>
+                                <span style={{ fontFamily: font.mono, fontSize: 10, color: color.faint }}>
+                                  {expandedCheckId === check.id ? "▴" : "▾"}
+                                </span>
+                              </div>
+                              {expandedCheckId === check.id && (
+                                <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                                  {check.responses.filter((r) => r.status === "down").length > 0 && (
+                                    <div>
+                                      <span style={{ fontFamily: font.mono, fontSize: 9, color: color.accent, textTransform: "uppercase", letterSpacing: "0.1em" }}>Down</span>
+                                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
+                                        {check.responses.filter((r) => r.status === "down").map((r) => (
+                                          <span key={r.name} style={{
+                                            fontFamily: font.mono, fontSize: 11, color: "#000", background: color.accent,
+                                            padding: "3px 8px", borderRadius: 6, fontWeight: 600,
+                                          }}>{r.name}</span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {check.responses.filter((r) => r.status === "maybe").length > 0 && (
+                                    <div>
+                                      <span style={{ fontFamily: font.mono, fontSize: 9, color: color.dim, textTransform: "uppercase", letterSpacing: "0.1em" }}>Maybe</span>
+                                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
+                                        {check.responses.filter((r) => r.status === "maybe").map((r) => (
+                                          <span key={r.name} style={{
+                                            fontFamily: font.mono, fontSize: 11, color: color.dim, background: color.borderLight,
+                                            padding: "3px 8px", borderRadius: 6,
+                                          }}>{r.name}</span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <span
