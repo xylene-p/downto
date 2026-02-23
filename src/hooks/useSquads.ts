@@ -114,7 +114,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         name: s.name,
         event: s.event ? `${s.event.title} — ${s.event.date_display}` : undefined,
         eventDate: s.event?.date_display ?? undefined,
-        eventIsoDate: s.event?.date ?? undefined,
+        eventIsoDate: s.locked_date ?? s.event?.date ?? undefined,
         members,
         messages,
         lastMsg: lastMessage ? `${lastMessage.sender}: ${lastMessage.text}` : "",

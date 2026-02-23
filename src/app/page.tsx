@@ -707,9 +707,6 @@ export default function Home() {
             onSendMessage={async (squadDbId, text) => {
               await db.sendMessage(squadDbId, text);
             }}
-            onUpdateLogistics={async (squadDbId, field, value) => {
-              await db.updateSquadLogistics(squadDbId, { [field]: value });
-            }}
             onLeaveSquad={async (squadDbId) => {
               await db.leaveSquad(squadDbId);
             }}
@@ -729,6 +726,7 @@ export default function Home() {
               const dateLabel = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
               squadsHook.setSquads((prev) => prev.map((s) => s.id === squadDbId ? {
                 ...s,
+                eventIsoDate: date,
                 expiresAt: expires_at,
                 graceStartedAt: undefined,
                 messages: [...s.messages, { sender: 'system', text: `${profile?.display_name ?? 'You'} locked in ${dateLabel}`, time: 'now' }],

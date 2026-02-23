@@ -103,6 +103,7 @@ export interface Squad {
   expires_at: string | null;
   grace_started_at: string | null;
   warned_at: string | null;
+  locked_date: string | null;
   // Joined data
   event?: Event;
   check?: InterestCheck;

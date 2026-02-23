@@ -28,7 +28,6 @@ const GroupsView = ({
   onSquadUpdate,
   autoSelectSquadId,
   onSendMessage,
-  onUpdateLogistics,
   onLeaveSquad,
   onSetSquadDate,
   userId,
@@ -39,7 +38,6 @@ const GroupsView = ({
   onSquadUpdate: (squadsOrUpdater: Squad[] | ((prev: Squad[]) => Squad[])) => void;
   autoSelectSquadId?: string | null;
   onSendMessage?: (squadDbId: string, text: string) => Promise<void>;
-  onUpdateLogistics?: (squadDbId: string, field: string, value: string) => Promise<void>;
   onLeaveSquad?: (squadDbId: string) => Promise<void>;
   onSetSquadDate?: (squadDbId: string, date: string) => Promise<void>;
   userId?: string | null;
@@ -51,14 +49,10 @@ const GroupsView = ({
   const [selectedSquad, setSelectedSquad] = useState<Squad | null>(null);
   const [newMsg, setNewMsg] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [editingField, setEditingField] = useState<string | null>(null);
-  const [fieldValue, setFieldValue] = useState("");
-  const [logisticsOpen, setLogisticsOpen] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerValue, setDatePickerValue] = useState("");
   const [settingDate, setSettingDate] = useState(false);
-  const logisticsInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (autoSelectSquadId != null) {
@@ -289,7 +283,10 @@ const GroupsView = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           setShowDatePicker(true);
-                          setDatePickerValue(new Date(Date.now() + 86400000).toISOString().split("T")[0]);
+                          setDatePickerValue(
+                            selectedSquad.eventIsoDate ||
+                            new Date(Date.now() + 86400000).toISOString().split("T")[0]
+                          );
                         }}
                         style={{
                           background: color.accent,
@@ -303,34 +300,38 @@ const GroupsView = ({
                           cursor: "pointer",
                         }}
                       >
-                        Set a date
+                        {selectedSquad.eventIsoDate
+                          ? new Date(selectedSquad.eventIsoDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+                          : "Set a date"}
                       </button>
                     )}
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        try {
-                          const newExpiry = await db.extendSquad(selectedSquad.id);
-                          onSquadUpdate((prev) => prev.map((s) =>
-                            s.id === selectedSquad.id ? { ...s, expiresAt: newExpiry } : s
-                          ));
-                          setSelectedSquad((prev) => prev ? { ...prev, expiresAt: newExpiry } : prev);
-                        } catch {}
-                      }}
-                      style={{
-                        background: "transparent",
-                        color: color.dim,
-                        border: `1px solid ${color.borderMid}`,
-                        borderRadius: 6,
-                        padding: "2px 8px",
-                        fontFamily: font.mono,
-                        fontSize: 9,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      +7 days
-                    </button>
+                    {!selectedSquad.eventIsoDate && (
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            const newExpiry = await db.extendSquad(selectedSquad.id);
+                            onSquadUpdate((prev) => prev.map((s) =>
+                              s.id === selectedSquad.id ? { ...s, expiresAt: newExpiry } : s
+                            ));
+                            setSelectedSquad((prev) => prev ? { ...prev, expiresAt: newExpiry } : prev);
+                          } catch {}
+                        }}
+                        style={{
+                          background: "transparent",
+                          color: color.dim,
+                          border: `1px solid ${color.borderMid}`,
+                          borderRadius: 6,
+                          padding: "2px 8px",
+                          fontFamily: font.mono,
+                          fontSize: 9,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        +7 days
+                      </button>
+                    )}
                   </p>
                 );
               })()}
@@ -523,6 +524,7 @@ const GroupsView = ({
                       const dateLabel = new Date(datePickerValue + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
                       setSelectedSquad((prev) => prev ? {
                         ...prev,
+                        eventIsoDate: datePickerValue,
                         graceStartedAt: undefined,
                         messages: [...prev.messages, { sender: "system", text: `You locked in ${dateLabel}`, time: "now" }],
                       } : prev);
@@ -552,150 +554,6 @@ const GroupsView = ({
             </div>
           </div>
         )}
-
-        {/* Logistics card — pinned between header and messages for active squads */}
-        {selectedSquad.id && (() => {
-          // Hide logistics for past events
-          if (selectedSquad.eventIsoDate) {
-            const eventDay = new Date(selectedSquad.eventIsoDate + "T23:59:59");
-            if (eventDay < new Date()) return null;
-          }
-
-          const saveField = async (field: string, value: string) => {
-            if (!selectedSquad.id || !onUpdateLogistics) return;
-            try {
-              await onUpdateLogistics(selectedSquad.id, field, value);
-              const key = field === "meeting_spot" ? "meetingSpot" : field === "arrival_time" ? "arrivalTime" : "transportNotes";
-              const updated = { ...selectedSquad, [key]: value };
-              setSelectedSquad(updated);
-              onSquadUpdate((prev) => prev.map((s) => s.id === updated.id ? updated : s));
-            } catch (err) {
-              logError("saveLogistics", err, { squadId: selectedSquad.id, field });
-            }
-            setEditingField(null);
-          };
-
-          const fields = [
-            { key: "meeting_spot", label: "Meeting spot", value: selectedSquad.meetingSpot, placeholder: "e.g. L train entrance" },
-            { key: "arrival_time", label: "Arrival time", value: selectedSquad.arrivalTime, placeholder: "e.g. 11:30 PM" },
-            { key: "transport_notes", label: "Getting there", value: selectedSquad.transportNotes, placeholder: "e.g. taking the G" },
-          ];
-
-          const filledCount = fields.filter((f) => f.value).length;
-
-          return (
-            <div
-              style={{
-                margin: "0 20px",
-                padding: "14px 16px",
-                background: color.deep,
-                border: `1px solid ${color.border}`,
-                borderRadius: 14,
-                marginTop: 12,
-              }}
-            >
-              <div
-                onClick={() => { if (!editingField) setLogisticsOpen((v) => !v); }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  cursor: "pointer",
-                  userSelect: "none",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span
-                    style={{
-                      fontFamily: font.mono,
-                      fontSize: 10,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.15em",
-                      color: color.accent,
-                    }}
-                  >
-                    Logistics
-                  </span>
-                  {!logisticsOpen && filledCount > 0 && (
-                    <span style={{ fontFamily: font.mono, fontSize: 10, color: color.dim }}>
-                      {filledCount}/{fields.length} set
-                    </span>
-                  )}
-                </div>
-                <span
-                  style={{
-                    color: color.dim,
-                    fontSize: 12,
-                    transition: "transform 0.2s ease",
-                    transform: logisticsOpen ? "rotate(180deg)" : "rotate(0deg)",
-                    display: "inline-block",
-                  }}
-                >
-                  ▾
-                </span>
-              </div>
-              {logisticsOpen && (
-                <div style={{ marginTop: 10 }}>
-                  {fields.map((f) => (
-                    <div key={f.key} style={{ marginBottom: 8 }}>
-                      <div style={{ fontFamily: font.mono, fontSize: 10, color: color.dim, marginBottom: 4 }}>
-                        {f.label}
-                      </div>
-                      {editingField === f.key ? (
-                        <input
-                          ref={logisticsInputRef}
-                          autoFocus
-                          type="text"
-                          value={fieldValue}
-                          onChange={(e) => setFieldValue(e.target.value)}
-                          onBlur={() => saveField(f.key, fieldValue)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") saveField(f.key, fieldValue);
-                            if (e.key === "Escape") setEditingField(null);
-                          }}
-                          placeholder={f.placeholder}
-                          style={{
-                            width: "100%",
-                            background: color.card,
-                            border: `1px solid ${color.accent}`,
-                            borderRadius: 8,
-                            padding: "8px 10px",
-                            color: color.text,
-                            fontFamily: font.mono,
-                            fontSize: 12,
-                            outline: "none",
-                          }}
-                        />
-                      ) : (
-                        <div
-                          onClick={() => {
-                            setEditingField(f.key);
-                            setFieldValue(f.value || "");
-                          }}
-                          style={{
-                            padding: "8px 10px",
-                            background: color.card,
-                            border: `1px solid ${color.border}`,
-                            borderRadius: 8,
-                            fontFamily: font.mono,
-                            fontSize: 12,
-                            color: f.value ? color.text : color.faint,
-                            cursor: "pointer",
-                            transition: "border-color 0.2s",
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.borderColor = color.borderMid)}
-                          onMouseLeave={(e) => (e.currentTarget.style.borderColor = color.border)}
-                        >
-                          {f.value || f.placeholder}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })()}
 
         {/* Messages */}
         <div

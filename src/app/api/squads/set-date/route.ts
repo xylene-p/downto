@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
   const { error: updateError } = await supabase
     .from('squads')
-    .update({ expires_at: expiresAt.toISOString() })
+    .update({ expires_at: expiresAt.toISOString(), locked_date: date })
     .eq('id', squadId);
 
   if (updateError) {
