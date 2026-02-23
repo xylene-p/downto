@@ -306,6 +306,31 @@ const GroupsView = ({
                         Set a date
                       </button>
                     )}
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          const newExpiry = await db.extendSquad(selectedSquad.id);
+                          onSquadUpdate((prev) => prev.map((s) =>
+                            s.id === selectedSquad.id ? { ...s, expiresAt: newExpiry } : s
+                          ));
+                          setSelectedSquad((prev) => prev ? { ...prev, expiresAt: newExpiry } : prev);
+                        } catch {}
+                      }}
+                      style={{
+                        background: "transparent",
+                        color: color.dim,
+                        border: `1px solid ${color.borderMid}`,
+                        borderRadius: 6,
+                        padding: "2px 8px",
+                        fontFamily: font.mono,
+                        fontSize: 9,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      +7 days
+                    </button>
                   </p>
                 );
               })()}

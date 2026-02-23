@@ -960,6 +960,28 @@ export async function updateSquadLogistics(
   if (error) throw error;
 }
 
+export async function extendSquad(squadId: string, days: number = 7): Promise<string> {
+  // Get current expires_at
+  const { data: squad, error: fetchError } = await supabase
+    .from('squads')
+    .select('expires_at')
+    .eq('id', squadId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  const base = squad?.expires_at ? new Date(squad.expires_at) : new Date();
+  const newExpiry = new Date(Math.max(base.getTime(), Date.now()) + days * 24 * 60 * 60 * 1000);
+
+  const { error } = await supabase
+    .from('squads')
+    .update({ expires_at: newExpiry.toISOString(), warned_at: null })
+    .eq('id', squadId);
+
+  if (error) throw error;
+  return newExpiry.toISOString();
+}
+
 // ============================================================================
 // CREW POOL
 // ============================================================================

@@ -1205,7 +1205,7 @@ export default function FeedView({
                     }}
                   >
                     <div style={{ display: "flex", gap: 14, padding: 14 }}>
-                      <img
+                      {e.image ? <img
                         src={e.image}
                         alt=""
                         style={{
@@ -1215,7 +1215,12 @@ export default function FeedView({
                           objectFit: "cover",
                           filter: "brightness(0.8)",
                         }}
-                      />
+                      /> : <div style={{
+                        width: 72,
+                        height: 72,
+                        borderRadius: 12,
+                        background: color.card,
+                      }} />}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div
                           style={{
