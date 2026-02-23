@@ -23,7 +23,7 @@ export const parseDateToISO = (display: string): string | null => {
   const lower = display.toLowerCase().trim();
   const today = new Date();
 
-  if (lower === "tonight" || lower === "today") {
+  if (lower === "tonight" || lower === "today" || lower === "tn") {
     return toLocalISODate(today);
   }
   if (lower === "tomorrow") {
@@ -67,8 +67,8 @@ export const parseNaturalDate = (text: string): { label: string; iso: string } |
   const fmt = toLocalISODate;
   const lbl = (d: Date) => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 
-  // "tonight" / "today"
-  if (/\btonight\b/.test(lower) || /\btoday\b/.test(lower)) {
+  // "tonight" / "today" / "tn"
+  if (/\b(tonight|today|tn)\b/.test(lower)) {
     return { label: "Today", iso: fmt(today) };
   }
   // "tomorrow" / "tmrw" / "tmr"
