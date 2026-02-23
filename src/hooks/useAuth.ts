@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import type { Session } from "@supabase/supabase-js";
 import type { Profile } from "@/lib/types";
 import { logError } from "@/lib/logger";
 
@@ -24,7 +25,7 @@ export function useAuth() {
     // Hard safety net: always clear loading after 3 seconds no matter what
     const safetyTimer = setTimeout(clearLoading, 3000);
 
-    const handleSession = async (session: typeof undefined extends never ? never : any) => {
+    const handleSession = async (session: Session | null) => {
       try {
         if (session?.user) {
           setIsLoggedIn(true);

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { font, color } from "@/lib/styles";
 import type { ScrapedEvent } from "@/lib/ui-types";
 import { parseNaturalDate, parseNaturalTime, sanitize } from "@/lib/utils";
+import { logWarn } from "@/lib/logger";
 import * as db from "@/lib/db";
 
 interface CheckMovie {
@@ -685,7 +686,7 @@ const AddModal = ({
                           setIdea((prev) => prev.replace(urlToReplace, "").trim());
                         }
                       })
-                      .catch(() => {})
+                      .catch((err) => logWarn("checkMovieFetch", "Failed", { error: err }))
                       .finally(() => { setCheckMovieLoading(false); checkMovieLoadingRef.current = false; });
                   } else if (!detectedUrl && !checkMovie) {
                     checkMovieUrlRef.current = null;

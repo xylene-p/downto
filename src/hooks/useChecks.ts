@@ -68,7 +68,7 @@ function mergeChecks(prev: InterestCheck[], transformed: InterestCheck[]): Inter
   return transformed.map((c) => {
     const existing = prevMap.get(c.id);
     if (existing) {
-      return { ...c, squadId: c.squadId ?? existing.squadId, inSquad: c.inSquad ?? existing.inSquad, viaFriendName: c.viaFriendName ?? existing.viaFriendName };
+      return { ...c, squadId: c.squadId ?? existing.squadId, viaFriendName: c.viaFriendName ?? existing.viaFriendName };
     }
     return c;
   });

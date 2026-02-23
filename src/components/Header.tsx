@@ -6,10 +6,12 @@ const Header = ({
   unreadCount,
   onOpenNotifications,
   onOpenAdd,
+  glowAdd,
 }: {
   unreadCount: number;
   onOpenNotifications: () => void;
   onOpenAdd: () => void;
+  glowAdd?: boolean;
 }) => (
   <div
     style={{
@@ -77,25 +79,44 @@ const Header = ({
         )}
       </button>
       {/* Add event button */}
-      <button
-        onClick={onOpenAdd}
-        style={{
-          background: color.accent,
-          color: "#000",
-          border: "none",
-          width: 40,
-          height: 40,
-          borderRadius: "50%",
-          fontSize: 22,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontWeight: 700,
-        }}
-      >
-        +
-      </button>
+      <div style={{ position: "relative" }}>
+        {glowAdd && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: -28,
+              right: 0,
+              whiteSpace: "nowrap",
+              fontFamily: font.mono,
+              fontSize: 10,
+              color: color.accent,
+              letterSpacing: "0.02em",
+            }}
+          >
+            drop your first idea
+          </div>
+        )}
+        <button
+          onClick={onOpenAdd}
+          style={{
+            background: color.accent,
+            color: "#000",
+            border: "none",
+            width: 40,
+            height: 40,
+            borderRadius: "50%",
+            fontSize: 22,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: 700,
+            animation: glowAdd ? "addButtonGlow 2s ease-in-out infinite" : undefined,
+          }}
+        >
+          +
+        </button>
+      </div>
     </div>
   </div>
 );

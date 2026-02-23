@@ -645,7 +645,7 @@ export default function FeedView({
                               <button
                                 onClick={() => {
                                   if (myCheckResponses[check.id] === "down") {
-                                    // Undo
+                                    // Undo — optimistically clear response + squad membership
                                     setMyCheckResponses((prev) => {
                                       const next = { ...prev };
                                       delete next[check.id];
@@ -654,12 +654,14 @@ export default function FeedView({
                                     setChecks((prev) =>
                                       prev.map((c) =>
                                         c.id === check.id
-                                          ? { ...c, responses: c.responses.filter((r) => r.name !== "You") }
+                                          ? { ...c, responses: c.responses.filter((r) => r.name !== "You"), inSquad: undefined }
                                           : c
                                       )
                                     );
                                     if (!isDemoMode && check.id) {
-                                      db.removeCheckResponse(check.id).catch((err) => logError("removeCheckResponse", err, { checkId: check.id }));
+                                      db.removeCheckResponse(check.id)
+                                        .then(() => loadRealData())
+                                        .catch((err) => logError("removeCheckResponse", err, { checkId: check.id }));
                                     }
                                   } else {
                                     respondToCheck(check.id, "down");
@@ -683,7 +685,7 @@ export default function FeedView({
                               <button
                                 onClick={() => {
                                   if (myCheckResponses[check.id] === "maybe") {
-                                    // Undo
+                                    // Undo — optimistically clear response + squad membership
                                     setMyCheckResponses((prev) => {
                                       const next = { ...prev };
                                       delete next[check.id];
@@ -692,12 +694,14 @@ export default function FeedView({
                                     setChecks((prev) =>
                                       prev.map((c) =>
                                         c.id === check.id
-                                          ? { ...c, responses: c.responses.filter((r) => r.name !== "You") }
+                                          ? { ...c, responses: c.responses.filter((r) => r.name !== "You"), inSquad: undefined }
                                           : c
                                       )
                                     );
                                     if (!isDemoMode && check.id) {
-                                      db.removeCheckResponse(check.id).catch((err) => logError("removeCheckResponse", err, { checkId: check.id }));
+                                      db.removeCheckResponse(check.id)
+                                        .then(() => loadRealData())
+                                        .catch((err) => logError("removeCheckResponse", err, { checkId: check.id }));
                                     }
                                   } else {
                                     respondToCheck(check.id, "maybe");
@@ -756,7 +760,7 @@ export default function FeedView({
                                         try {
                                           await db.joinSquad(check.squadId!);
                                           showToast("Joined the squad! 🚀");
-                                        } catch (err: any) {
+                                        } catch (err: unknown) {
                                           const code = err && typeof err === 'object' && 'code' in err ? err.code : '';
                                           if (code !== '23505') {
                                             logError("joinSquad", err, { squadId: check.squadId });

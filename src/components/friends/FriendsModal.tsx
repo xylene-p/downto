@@ -16,6 +16,7 @@ const FriendsModal = ({
   onSearchUsers,
   initialTab,
   onViewProfile,
+  preventClose,
 }: {
   open: boolean;
   onClose: () => void;
@@ -27,6 +28,7 @@ const FriendsModal = ({
   onSearchUsers?: (query: string) => Promise<Friend[]>;
   initialTab?: "friends" | "add";
   onViewProfile?: (userId: string) => void;
+  preventClose?: boolean;
 }) => {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"friends" | "add">(initialTab ?? "friends");
@@ -59,7 +61,7 @@ const FriendsModal = ({
     if (dy > 0) { isDragging.current = true; setDragOffset(dy); }
   };
   const finishSwipe = () => {
-    if (dragOffset > 60) {
+    if (dragOffset > 60 && !preventClose) {
       setClosing(true);
       setTimeout(() => { setClosing(false); setDragOffset(0); onClose(); }, 250);
     } else {
@@ -77,6 +79,8 @@ const FriendsModal = ({
     if (atTop && dy > 0) { isDragging.current = true; e.preventDefault(); setDragOffset(dy); }
   };
   const handleScrollTouchEnd = () => { if (isDragging.current) finishSwipe(); };
+
+  const hasAddedFriend = friends.length > 0 || suggestions.some((s) => s.status === "pending" || s.status === "incoming");
 
   const incomingRequests = suggestions.filter((s) => s.status === "incoming");
   const filteredFriends = friends.filter(
@@ -141,7 +145,7 @@ const FriendsModal = ({
       }}
     >
       <div
-        onClick={onClose}
+        onClick={preventClose ? undefined : onClose}
         style={{
           position: "absolute",
           inset: 0,
@@ -182,6 +186,20 @@ const FriendsModal = ({
             }}
           />
         </div>
+
+        {preventClose && (
+          <div
+            style={{
+              fontFamily: font.mono,
+              fontSize: 13,
+              color: color.text,
+              textAlign: "center",
+              marginBottom: 16,
+            }}
+          >
+            add a friend to get started
+          </div>
+        )}
 
         {/* Tabs */}
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
@@ -663,6 +681,29 @@ const FriendsModal = ({
           </>
         )}
         </div>
+
+        {preventClose && hasAddedFriend && (
+          <div style={{ padding: "12px 0 24px", flexShrink: 0 }}>
+            <button
+              onClick={onClose}
+              style={{
+                width: "100%",
+                background: color.accent,
+                color: "#000",
+                border: "none",
+                borderRadius: 12,
+                padding: "14px",
+                fontFamily: font.mono,
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+                letterSpacing: "0.02em",
+              }}
+            >
+              Continue →
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Friend Profile Detail */}

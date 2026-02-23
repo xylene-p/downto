@@ -13,7 +13,6 @@ import Grain from "@/components/Grain";
 import AuthScreen from "@/components/AuthScreen";
 import ProfileSetupScreen from "@/components/ProfileSetupScreen";
 import EnableNotificationsScreen from "@/components/EnableNotificationsScreen";
-import FirstCheckScreen from "@/components/FirstCheckScreen";
 import EditEventModal from "@/components/events/EditEventModal";
 import EventLobby from "@/components/events/EventLobby";
 import AddModal from "@/components/events/PasteModal";
@@ -68,9 +67,10 @@ export default function Home() {
   // ─── Misc page-level state ──────────────────────────────────────────────
   const [chatOpen, setChatOpen] = useState(false);
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
-  const [showFirstCheck, setShowFirstCheck] = useState(() => {
+  const [onboardingFriendGate, setOnboardingFriendGate] = useState(false);
+  const [showAddGlow, setShowAddGlow] = useState(() => {
     if (typeof window !== "undefined") {
-      return sessionStorage.getItem("showFirstCheck") === "true";
+      return localStorage.getItem("showAddGlow") === "true";
     }
     return false;
   });
@@ -92,7 +92,7 @@ export default function Home() {
     profile,
     friendCount: friendsHook.friends.length,
     showToast,
-    onCheckCreated: () => { setTab("feed"); setFeedMode("foryou"); },
+    onCheckCreated: () => { setTab("feed"); setFeedMode("foryou"); setShowAddGlow(false); localStorage.removeItem("showAddGlow"); },
   });
 
   const squadsHook = useSquads({
@@ -276,7 +276,7 @@ export default function Home() {
 
   // Process ?add= param after auth + onboarding complete
   useEffect(() => {
-    if (!isLoggedIn || !userId || !profile?.onboarded || showFirstCheck) return;
+    if (!isLoggedIn || !userId || !profile?.onboarded) return;
     const username = localStorage.getItem("pendingAddUsername");
     if (!username) return;
     localStorage.removeItem("pendingAddUsername");
@@ -290,7 +290,7 @@ export default function Home() {
         showToast("User not found");
       }
     })();
-  }, [isLoggedIn, userId, profile?.onboarded, showFirstCheck]);
+  }, [isLoggedIn, userId, profile?.onboarded]);
 
   // Trigger data load when logged in
   useEffect(() => {
@@ -378,7 +378,7 @@ export default function Home() {
                 }];
               });
             }
-          }).catch(() => {});
+          }).catch((err) => logWarn("fetchFriendProfile", "Failed", { error: err }));
           return prev;
         });
       }
@@ -482,6 +482,8 @@ export default function Home() {
           await db.saveEvent(event.id);
         }
         await db.toggleDown(event.id, newDown);
+        // Un-downing triggers DB auto-removal from squads — refresh to sync UI
+        if (!newDown) loadRealData();
       } catch (err: unknown) {
         const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : '';
         if (code !== '23505') {
@@ -538,44 +540,26 @@ export default function Home() {
     );
   }
 
-  if (profile && !profile.onboarded && !showFirstCheck) {
+  if (profile && !profile.onboarded) {
     return (
       <EnableNotificationsScreen
-        onComplete={() => {
+        onComplete={async () => {
           localStorage.setItem("pushAutoPrompted", "1");
-          setShowFirstCheck(true);
-          sessionStorage.setItem("showFirstCheck", "true");
+          if (!isDemoMode) {
+            try {
+              const updated = await db.updateProfile({ onboarded: true } as Partial<Profile>);
+              setProfile(updated);
+            } catch (err) {
+              logError("finishOnboarding", err);
+              setProfile((prev) => prev ? { ...prev, onboarded: true } : prev);
+            }
+          } else {
+            setProfile((prev) => prev ? { ...prev, onboarded: true } : prev);
+          }
+          friendsHook.setFriendsInitialTab("add");
+          friendsHook.setFriendsOpen(true);
+          setOnboardingFriendGate(true);
         }}
-      />
-    );
-  }
-
-  if (profile && !profile.onboarded && showFirstCheck) {
-    const finishOnboarding = async () => {
-      setShowFirstCheck(false);
-      sessionStorage.removeItem("showFirstCheck");
-      if (!isDemoMode) {
-        try {
-          const updated = await db.updateProfile({ onboarded: true } as Partial<Profile>);
-          setProfile(updated);
-        } catch (err) {
-          logError("finishOnboarding", err);
-          setProfile((prev) => prev ? { ...prev, onboarded: true } : prev);
-        }
-      } else {
-        setProfile((prev) => prev ? { ...prev, onboarded: true } : prev);
-      }
-      friendsHook.setFriendsInitialTab("add");
-      friendsHook.setFriendsOpen(true);
-    };
-
-    return (
-      <FirstCheckScreen
-        onComplete={async (idea, expiresInHours, eventDate, maxSquadSize, eventTime) => {
-          await checksHook.handleCreateCheck(idea, expiresInHours, eventDate, maxSquadSize, undefined, eventTime);
-          await finishOnboarding();
-        }}
-        onSkip={finishOnboarding}
       />
     );
   }
@@ -607,7 +591,8 @@ export default function Home() {
             notificationsHook.setUnreadCount(0);
           }
         }}
-        onOpenAdd={() => setAddModalOpen(true)}
+        onOpenAdd={() => { setAddModalOpen(true); setShowAddGlow(false); localStorage.removeItem("showAddGlow"); }}
+        glowAdd={showAddGlow}
       />
 
       {/* Content */}
@@ -956,7 +941,15 @@ export default function Home() {
       />
       <FriendsModal
         open={friendsHook.friendsOpen}
-        onClose={() => { friendsHook.setFriendsOpen(false); friendsHook.setFriendsInitialTab("friends"); }}
+        onClose={() => {
+          friendsHook.setFriendsOpen(false);
+          friendsHook.setFriendsInitialTab("friends");
+          if (onboardingFriendGate) {
+            setOnboardingFriendGate(false);
+            setShowAddGlow(true);
+            localStorage.setItem("showAddGlow", "true");
+          }
+        }}
         initialTab={friendsHook.friendsInitialTab}
         friends={friendsHook.friends}
         suggestions={friendsHook.suggestions}
@@ -965,6 +958,7 @@ export default function Home() {
         onRemoveFriend={friendsHook.removeFriend}
         onSearchUsers={friendsHook.searchUsers}
         onViewProfile={(uid) => setViewingUserId(uid)}
+        preventClose={onboardingFriendGate}
       />
       {viewingUserId && (
         <UserProfileOverlay

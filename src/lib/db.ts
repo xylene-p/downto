@@ -295,8 +295,7 @@ export async function getPeopleDownBatch(
   }
 
   const result: Record<string, { name: string; avatar: string; mutual: boolean; userId: string }[]> = {};
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const row of (data ?? []) as any[]) {
+  for (const row of (data ?? []) as unknown as { event_id: string; user: Profile }[]) {
     const eventId = row.event_id;
     if (!result[eventId]) result[eventId] = [];
     const profile = row.user;
@@ -333,10 +332,9 @@ export async function getFriends(): Promise<{ profile: Profile; friendshipId: st
   if (error) throw error;
 
   // Return the other person in each friendship along with friendship ID
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data ?? []).map((f: any) => ({
+  return ((data ?? []) as unknown as { id: string; requester: Profile | null; addressee: Profile | null }[]).map((f) => ({
     profile: (f.requester?.id === user.id ? f.addressee : f.requester) as Profile,
-    friendshipId: f.id as string,
+    friendshipId: f.id,
   })).filter(r => r.profile);
 }
 

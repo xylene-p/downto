@@ -5,6 +5,61 @@ import * as db from "@/lib/db";
 import type { Profile } from "@/lib/types";
 import type { Person, Event, InterestCheck, Squad } from "@/lib/ui-types";
 import { logError, logWarn } from "@/lib/logger";
+import { formatTimeAgo } from "@/lib/utils";
+
+const SQUAD_OPENERS = [
+  // unhinged commitment
+  "i cleared my schedule. i didn't have anything but still",
+  "i just told my mom i have plans",
+  "already mentally there tbh",
+  "i'm getting ready rn and idc if it's in 3 days",
+  "just cancelled plans i didn't have for this",
+  "i've been manifesting this exact hangout",
+  "i already know what i'm wearing",
+  "mentally i'm already there waiting for you guys",
+  // threatening (affectionately)
+  "if anyone flakes i'm airing it out",
+  "screenshot taken. evidence logged.",
+  "i have everyone's location shared don't even think about it",
+  "flaking is a federal offense btw",
+  "i will be checking in hourly until this happens",
+  "i'm setting reminders for all of you don't test me",
+  // dramatic
+  "the universe aligned for this exact moment",
+  "historians will write about this squad",
+  "main character energy activated",
+  "the prophecy has been fulfilled",
+  "we were put on this earth for this moment",
+  "this is our origin story",
+  // deadpan / dry
+  "cool. no turning back now",
+  "well that happened fast",
+  "anyway i'm already dressed",
+  "so this is really happening huh",
+  "ok bet",
+  "noted. see you there i guess",
+  // chaotic
+  "LETS GOOOOO",
+  "oh this is gonna be unhinged",
+  "everybody act normal",
+  "nobody tell my therapist about this one",
+  "this energy is immaculate",
+  "i blacked out and now i'm in a squad",
+];
+
+const pickOpener = (title?: string) => {
+  // ~25% chance to use the title in an unhinged way
+  if (title && Math.random() < 0.25) {
+    const titleOpeners = [
+      `I CANT WAIT TO ${title.toUpperCase()} WITH YALL`,
+      `we are about to ${title} SO HARD`,
+      `${title} isn't ready for us`,
+      `${title} will never be the same after we're done with it`,
+    ];
+    return titleOpeners[Math.floor(Math.random() * titleOpeners.length)];
+  }
+  return SQUAD_OPENERS[Math.floor(Math.random() * SQUAD_OPENERS.length)];
+};
 
 // ─── Hook ──────────────────────────────────────────────────────────────────
 
@@ -38,18 +93,6 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
   });
 
   const hydrateSquads = useCallback((squadsList: Awaited<ReturnType<typeof db.getSquads>>) => {
-    const now = new Date();
-    const fmtTime = (iso: string) => {
-      const d = new Date(iso);
-      const diffMs = now.getTime() - d.getTime();
-      const diffMins = Math.floor(diffMs / (1000 * 60));
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      if (diffDays > 0) return `${diffDays}d`;
-      if (diffHours > 0) return `${diffHours}h`;
-      if (diffMins > 0) return `${diffMins}m`;
-      return "now";
-    };
     const transformedSquads: Squad[] = squadsList.map((s) => {
       const members = (s.members ?? []).map((m) => ({
         name: m.user_id === userId ? "You" : (m.user?.display_name ?? "Unknown"),
@@ -61,7 +104,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         .map((msg) => ({
           sender: msg.is_system ? "system" : (msg.sender_id === userId ? "You" : (msg.sender?.display_name ?? "Unknown")),
           text: msg.text,
-          time: fmtTime(msg.created_at),
+          time: formatTimeAgo(new Date(msg.created_at)),
           isYou: msg.sender_id === userId,
         }));
       const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
@@ -74,7 +117,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         members,
         messages,
         lastMsg: lastMessage ? `${lastMessage.sender}: ${lastMessage.text}` : "",
-        time: lastMessage ? lastMessage.time : fmtTime(s.created_at),
+        time: lastMessage ? lastMessage.time : formatTimeAgo(new Date(s.created_at)),
         checkId: s.check_id ?? undefined,
         meetingSpot: s.meeting_spot ?? undefined,
         arrivalTime: s.arrival_time ?? undefined,
@@ -92,13 +135,13 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         checkToSquad.set(sq.checkId, { squadId: sq.id, inSquad: true });
       }
     }
-    if (checkToSquad.size > 0) {
-      setChecks((prev) => prev.map((c) => {
-        const sq = checkToSquad.get(c.id);
-        if (sq) return { ...c, squadId: sq.squadId, inSquad: sq.inSquad };
-        return c;
-      }));
-    }
+    setChecks((prev) => prev.map((c) => {
+      const sq = checkToSquad.get(c.id);
+      if (sq) return { ...c, squadId: sq.squadId, inSquad: true };
+      // Clear stale inSquad for checks no longer in user's squads
+      if (c.inSquad) return { ...c, inSquad: undefined };
+      return c;
+    }));
   }, [userId, setChecks]);
 
   const startSquadFromCheck = async (check: InterestCheck) => {
@@ -109,6 +152,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
     const downPeople = allDown.slice(0, maxSize - 1);
     const memberNames = downPeople.map((p) => p.name);
     const squadName = check.text.slice(0, 30) + (check.text.length > 30 ? "..." : "");
+    const opener = pickOpener(check.text);
 
     let squadDbId: string | undefined;
     if (!isDemoMode && check.id) {
@@ -118,11 +162,11 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
           ...(check.authorId ? [check.authorId] : []),
         ];
         const dbSquad = await db.createSquad(squadName, memberIds, undefined, check.id);
-        await db.sendMessage(dbSquad.id, "let's make this happen! \u{1F525}");
+        await db.sendMessage(dbSquad.id, opener);
         squadDbId = dbSquad.id;
-      } catch (err: any) {
+      } catch (err: unknown) {
         logError("createSquadFromCheck", err, { checkId: check.id });
-        showToast(`Failed to create squad: ${err?.message || err}`);
+        showToast(`Failed to create squad: ${err instanceof Error ? err.message : "Unknown error"}`);
         setCreatingSquad(false);
         return;
       }
@@ -140,9 +184,9 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
       messages: [
         { sender: "system", text: `\u2728 Squad formed for "${check.text}"`, time: "now" },
         { sender: "system", text: `\u{1F4A1} idea by ${check.author} \u00b7 \u{1F680} started by You`, time: "now" },
-        { sender: "You", text: `let's make this happen! \u{1F525}`, time: "now", isYou: true },
+        { sender: "You", text: opener, time: "now", isYou: true },
       ],
-      lastMsg: "You: let's make this happen! \u{1F525}",
+      lastMsg: `You: ${opener}`,
       time: "now",
     };
     setSquads((prev) => [newSquad, ...prev]);
@@ -165,16 +209,17 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
     if (creatingSquad) return;
     setCreatingSquad(true);
     const squadName = event.title.slice(0, 30) + (event.title.length > 30 ? "..." : "");
+    const opener = pickOpener(event.title);
 
     let squadDbId: string | undefined;
     if (!isDemoMode && event.id) {
       try {
         const dbSquad = await db.createSquad(squadName, selectedUserIds, event.id);
-        await db.sendMessage(dbSquad.id, `squad's up for ${event.title}! \u{1F525}`);
+        await db.sendMessage(dbSquad.id, opener);
         squadDbId = dbSquad.id;
-      } catch (err: any) {
+      } catch (err: unknown) {
         logError("createSquadFromEvent", err, { eventId: event.id });
-        showToast(`Failed to create squad: ${err?.message || err}`);
+        showToast(`Failed to create squad: ${err instanceof Error ? err.message : "Unknown error"}`);
         setCreatingSquad(false);
         return;
       }
@@ -188,7 +233,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
       .map((p) => p.userId!);
     if (poolSelectedIds.length > 0 && event.id) {
       const allToRemove = inSquadPool ? [userId!, ...poolSelectedIds] : poolSelectedIds;
-      db.removeFromCrewPool(event.id, allToRemove).catch(() => {});
+      db.removeFromCrewPool(event.id, allToRemove).catch((err) => logWarn("removeFromCrewPool", "Failed", { error: err }));
       setSquadPoolMembers((prev) => prev.filter((p) => !poolSelectedIds.includes(p.userId!)));
       if (inSquadPool) setInSquadPool(false);
     }
@@ -205,9 +250,9 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
       messages: [
         { sender: "system", text: `\u2728 Squad formed for "${event.title}"`, time: "now" },
         { sender: "system", text: `\u{1F4CD} ${event.venue} \u00b7 ${event.date} ${event.time}`, time: "now" },
-        { sender: "You", text: `squad's up for ${event.title}! \u{1F525}`, time: "now", isYou: true },
+        { sender: "You", text: opener, time: "now", isYou: true },
       ],
-      lastMsg: `You: squad's up for ${event.title}! \u{1F525}`,
+      lastMsg: `You: ${opener}`,
       time: "now",
     };
     setSquads((prev) => [newSquad, ...prev]);
@@ -252,7 +297,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
           userId: entry.user_id,
         }));
       setSquadPoolMembers(poolPeople);
-    } catch (err: any) {
+    } catch (err: unknown) {
       const code = err && typeof err === 'object' && 'code' in err ? err.code : '';
       if (code === '23505') {
         showToast("Already looking for a squad");
