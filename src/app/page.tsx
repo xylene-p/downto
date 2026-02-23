@@ -104,6 +104,14 @@ export default function Home() {
     setChecks: checksHook.setChecks,
     showToast,
     onSquadCreated: () => { setTab("groups"); },
+    onAutoDown: async (eventId: string) => {
+      await db.saveEvent(eventId).catch(() => {});
+      await db.toggleDown(eventId, true);
+      setEvents((prev) =>
+        prev.map((e) => e.id === eventId ? { ...e, isDown: true, saved: true } : e)
+      );
+      showToast("You're down! \u{1F919}");
+    },
   });
 
   const notificationsHook = useNotifications({
@@ -152,33 +160,62 @@ export default function Home() {
       const savedDownMap = new Map(savedEvents.map((se) => [se.event!.id, se.is_down]));
       const today = new Date().toISOString().split('T')[0];
 
-      setEvents([
-        ...savedEvents.map((se) => ({
-          id: se.event!.id,
-          createdBy: se.event!.created_by ?? undefined,
-          title: se.event!.title,
-          venue: se.event!.venue ?? "",
-          date: se.event!.date_display ?? "",
-          time: se.event!.time_display ?? "",
-          vibe: se.event!.vibes,
-          image: se.event!.image_url ?? "",
-          igHandle: se.event!.ig_handle ?? "",
-          igUrl: se.event!.ig_url ?? undefined,
-          diceUrl: se.event!.dice_url ?? undefined,
-          letterboxdUrl: se.event!.letterboxd_url ?? undefined,
-          saved: true,
-          isDown: se.is_down,
-          peopleDown: [] as Person[],
-          neighborhood: se.event!.neighborhood ?? undefined,
-        })),
-        ...friendsEvents
-          .filter((e) => !savedEventIdSet.has(e.id))
+      setEvents((prev) => {
+        const prevPeopleDown = new Map(prev.map((e) => [e.id, e.peopleDown]));
+        return [
+          ...savedEvents.map((se) => ({
+            id: se.event!.id,
+            createdBy: se.event!.created_by ?? undefined,
+            title: se.event!.title,
+            venue: se.event!.venue ?? "",
+            date: se.event!.date_display ?? "",
+            time: se.event!.time_display ?? "",
+            vibe: se.event!.vibes,
+            image: se.event!.image_url ?? "",
+            igHandle: se.event!.ig_handle ?? "",
+            igUrl: se.event!.ig_url ?? undefined,
+            diceUrl: se.event!.dice_url ?? undefined,
+            letterboxdUrl: se.event!.letterboxd_url ?? undefined,
+            saved: true,
+            isDown: se.is_down,
+            isPublic: se.event!.is_public ?? false,
+            peopleDown: prevPeopleDown.get(se.event!.id) ?? [],
+            neighborhood: se.event!.neighborhood ?? undefined,
+          })),
+          ...friendsEvents
+            .filter((e) => !savedEventIdSet.has(e.id))
+            .map((e) => ({
+              id: e.id,
+              createdBy: e.created_by ?? undefined,
+              title: e.title,
+              venue: e.venue ?? "",
+              date: e.date_display ?? "",
+              time: e.time_display ?? "",
+              vibe: e.vibes,
+              image: e.image_url ?? "",
+              igHandle: e.ig_handle ?? "",
+              igUrl: e.ig_url ?? undefined,
+              diceUrl: e.dice_url ?? undefined,
+              letterboxdUrl: e.letterboxd_url ?? undefined,
+              saved: false,
+              isDown: false,
+              peopleDown: prevPeopleDown.get(e.id) ?? [],
+              neighborhood: e.neighborhood ?? undefined,
+            })),
+        ];
+      });
+
+      setTonightEvents((prev) => {
+        const prevPeopleDown = new Map(prev.map((e) => [e.id, e.peopleDown]));
+        return publicEvents
+          .filter((e) => e.venue && e.date_display)
+          .filter((e) => !e.date || e.date === today)
           .map((e) => ({
             id: e.id,
             createdBy: e.created_by ?? undefined,
             title: e.title,
             venue: e.venue ?? "",
-            date: e.date_display ?? "",
+            date: e.date_display ?? "Tonight",
             time: e.time_display ?? "",
             vibe: e.vibes,
             image: e.image_url ?? "",
@@ -186,35 +223,13 @@ export default function Home() {
             igUrl: e.ig_url ?? undefined,
             diceUrl: e.dice_url ?? undefined,
             letterboxdUrl: e.letterboxd_url ?? undefined,
-            saved: false,
-            isDown: false,
-            peopleDown: [] as Person[],
+            saved: savedEventIdSet.has(e.id),
+            isDown: savedDownMap.get(e.id) ?? false,
+            isPublic: true,
+            peopleDown: prevPeopleDown.get(e.id) ?? [],
             neighborhood: e.neighborhood ?? undefined,
-          })),
-      ]);
-
-      setTonightEvents(publicEvents
-        .filter((e) => e.venue && e.date_display)
-        .filter((e) => !e.date || e.date === today)
-        .map((e) => ({
-          id: e.id,
-          createdBy: e.created_by ?? undefined,
-          title: e.title,
-          venue: e.venue ?? "",
-          date: e.date_display ?? "Tonight",
-          time: e.time_display ?? "",
-          vibe: e.vibes,
-          image: e.image_url ?? "",
-          igHandle: e.ig_handle ?? "",
-          igUrl: e.ig_url ?? undefined,
-          diceUrl: e.dice_url ?? undefined,
-          letterboxdUrl: e.letterboxd_url ?? undefined,
-          saved: savedEventIdSet.has(e.id),
-          isDown: savedDownMap.get(e.id) ?? false,
-          isPublic: true,
-          peopleDown: [] as Person[],
-          neighborhood: e.neighborhood ?? undefined,
-        })));
+          }));
+      });
 
       // Phase 3: Hydrate domain hooks
       friendsHook.hydrateFriends(friendsList, pendingRequests, suggestedUsers);

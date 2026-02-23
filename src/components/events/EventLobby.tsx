@@ -221,7 +221,7 @@ const EventLobby = ({
               Also down ({others.length})
             </div>
             {others.map((p) => (
-              <PersonRow key={p.name} p={p} isFriend={false} selectable={false} />
+              <PersonRow key={p.name} p={p} isFriend={false} selectable={selectingMembers} />
             ))}
           </>
         )}
@@ -250,8 +250,8 @@ const EventLobby = ({
 
         {/* CTAs */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
-          {/* Start a squad with friends — visible when friends are down */}
-          {friends.length > 0 && !isSelecting && (
+          {/* Start a squad — visible when anyone is down */}
+          {(friends.length > 0 || others.length > 0) && !isSelecting && (
             <button
               onClick={() => { setSelectingMembers(true); setSelectedIds(new Set()); }}
               style={{
@@ -269,7 +269,7 @@ const EventLobby = ({
                 letterSpacing: "0.1em",
               }}
             >
-              Start a Squad with Friends →
+              Start a Squad →
             </button>
           )}
 

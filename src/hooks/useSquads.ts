@@ -70,9 +70,10 @@ interface UseSquadsParams {
   setChecks: Dispatch<SetStateAction<InterestCheck[]>>;
   showToast: (msg: string) => void;
   onSquadCreated?: () => void;
+  onAutoDown?: (eventId: string) => Promise<void>;
 }
 
-export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, onSquadCreated }: UseSquadsParams) {
+export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, onSquadCreated, onAutoDown }: UseSquadsParams) {
   const [squads, setSquads] = useState<Squad[]>([]);
   const [socialEvent, setSocialEvent] = useState<Event | null>(null);
   const [squadPoolMembers, setSquadPoolMembers] = useState<Person[]>([]);
@@ -281,6 +282,12 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         setSquadPoolMembers((prev) => prev.filter((p) => p.userId !== userId));
         showToast("Left squad pool");
         return;
+      }
+
+      // Auto-mark as down if not already
+      if (!event.isDown && onAutoDown) {
+        await onAutoDown(event.id);
+        setSocialEvent({ ...event, isDown: true });
       }
 
       await db.joinCrewPool(event.id);

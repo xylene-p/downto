@@ -261,8 +261,8 @@ const EventCard = ({
           </div>
         </div>
 
-        {/* Social preview */}
-        <div
+        {/* Social preview — hidden when nobody else is down */}
+        {event.peopleDown.length > 0 && <div
           onClick={onOpenSocial}
           style={{
             background: color.deep,
@@ -328,14 +328,14 @@ const EventCard = ({
                   </>
                 ) : (
                   <span style={{ color: color.dim }}>
-                    {others.length} people down
+                    {others.length} {others.length === 1 ? "person" : "people"} down
                   </span>
                 )}
               </span>
             </div>
             <span style={{ color: color.faint, fontSize: 16 }}>→</span>
           </div>
-        </div>
+        </div>}
 
         {/* Action buttons */}
         <div style={{ display: "flex", gap: 8 }}>
