@@ -197,7 +197,7 @@ const FriendsModal = ({
               marginBottom: 16,
             }}
           >
-            add a friend to get started
+            add at least one friend to get started
           </div>
         )}
 

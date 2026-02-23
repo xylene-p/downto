@@ -28,6 +28,7 @@ import Toast from "@/components/Toast";
 import SquadNotificationBanner from "@/components/SquadNotificationBanner";
 import IOSInstallBanner from "@/components/IOSInstallBanner";
 import NotificationsPanel from "@/components/NotificationsPanel";
+import FirstCheckScreen from "@/components/FirstCheckScreen";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
@@ -68,6 +69,7 @@ export default function Home() {
   const [chatOpen, setChatOpen] = useState(false);
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [onboardingFriendGate, setOnboardingFriendGate] = useState(false);
+  const [showFirstCheck, setShowFirstCheck] = useState(false);
   const [showAddGlow, setShowAddGlow] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("showAddGlow") === "true";
@@ -564,6 +566,22 @@ export default function Home() {
     );
   }
 
+  if (showFirstCheck) {
+    return (
+      <FirstCheckScreen
+        onComplete={(idea, expiresInHours, eventDate, maxSquadSize, eventTime) => {
+          checksHook.handleCreateCheck(idea, expiresInHours, eventDate, maxSquadSize, undefined, eventTime);
+          setShowFirstCheck(false);
+        }}
+        onSkip={() => {
+          setShowFirstCheck(false);
+          setShowAddGlow(true);
+          localStorage.setItem("showAddGlow", "true");
+        }}
+      />
+    );
+  }
+
   return (
     <div
       style={{
@@ -946,8 +964,7 @@ export default function Home() {
           friendsHook.setFriendsInitialTab("friends");
           if (onboardingFriendGate) {
             setOnboardingFriendGate(false);
-            setShowAddGlow(true);
-            localStorage.setItem("showAddGlow", "true");
+            setShowFirstCheck(true);
           }
         }}
         initialTab={friendsHook.friendsInitialTab}

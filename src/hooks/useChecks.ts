@@ -215,7 +215,7 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
         };
         setChecks((prev) => [newCheck, ...prev]);
         setNewlyAddedCheckId(newCheck.id);
-        showToast(friendCount > 0 ? "Sent to friends! \u{1F4E3}" : "Check posted! Add friends to share it \u{1F4E3}");
+        showToast(friendCount > 0 ? "Sent to friends & their friends! \u{1F4E3}" : "Check posted! Add friends to share it \u{1F4E3}");
         onCheckCreated?.();
       } catch (err) {
         logError("createCheck", err);
@@ -239,7 +239,7 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
       };
       setChecks((prev) => [newCheck, ...prev]);
       setNewlyAddedCheckId(newCheck.id);
-      showToast(friendCount > 0 ? "Sent to friends! \u{1F4E3}" : "Check posted! Add friends to share it \u{1F4E3}");
+      showToast(friendCount > 0 ? "Sent to friends & their friends! \u{1F4E3}" : "Check posted! Add friends to share it \u{1F4E3}");
       onCheckCreated?.();
 
       setTimeout(() => {
