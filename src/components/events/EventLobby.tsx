@@ -340,9 +340,10 @@ const EventLobby = ({
                   cursor: selectedIds.size > 0 ? "pointer" : "default",
                   textTransform: "uppercase",
                   letterSpacing: "0.1em",
+                  whiteSpace: "nowrap",
                 }}
               >
-                Create Squad ({selectedIds.size} selected) →
+                Create Squad ({selectedIds.size}) →
               </button>
             </div>
           )}
