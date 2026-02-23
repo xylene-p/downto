@@ -55,9 +55,13 @@ const UserProfileOverlay = ({
       if (friendStatus === "accepted" && friendship) {
         await db.removeFriend(friendship.id);
         setFriendship(null);
+      } else if (friendStatus === "pending" && isRequester && friendship) {
+        await db.removeFriend(friendship.id);
+        setFriendship(null);
       } else if (friendStatus === "none") {
         await db.sendFriendRequest(targetUserId);
-        setFriendship({ id: "", status: "pending", isRequester: true });
+        const f = await db.getFriendshipWith(targetUserId);
+        setFriendship(f ?? { id: "", status: "pending", isRequester: true });
       } else if (friendStatus === "pending" && !isRequester && friendship) {
         await db.acceptFriendRequest(friendship.id);
         setFriendship({ ...friendship, status: "accepted" });
@@ -72,11 +76,11 @@ const UserProfileOverlay = ({
 
   const actionLabel =
     friendStatus === "accepted" ? "Remove Friend"
-    : friendStatus === "pending" && isRequester ? "Request Pending"
+    : friendStatus === "pending" && isRequester ? "Cancel Request"
     : friendStatus === "pending" && !isRequester ? "Accept Request"
     : "Add Friend";
 
-  const actionDisabled = acting || (friendStatus === "pending" && isRequester);
+  const actionDisabled = acting;
   const actionColor =
     friendStatus === "accepted" ? "#ff6b6b"
     : friendStatus === "pending" && isRequester ? color.dim
@@ -87,7 +91,7 @@ const UserProfileOverlay = ({
     : color.accent;
   const actionTextColor =
     friendStatus === "accepted" ? "#ff6b6b"
-    : friendStatus === "pending" && isRequester ? color.dim
+    : friendStatus === "pending" && isRequester ? color.faint
     : "#000";
 
   return (
