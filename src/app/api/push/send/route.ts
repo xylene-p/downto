@@ -4,15 +4,24 @@ import { getServiceClient } from '@/lib/supabase-admin';
 
 export const runtime = 'nodejs';
 
-const webhookSecret = process.env.PUSH_WEBHOOK_SECRET!;
+let vapidInitialized = false;
 
-webpush.setVapidDetails(
-  'mailto:push@downto.xyz',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
+function ensureVapid() {
+  if (vapidInitialized) return true;
+  const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const priv = process.env.VAPID_PRIVATE_KEY;
+  if (!pub || !priv) return false;
+  webpush.setVapidDetails('mailto:push@downto.xyz', pub, priv);
+  vapidInitialized = true;
+  return true;
+}
 
 export async function POST(request: NextRequest) {
+  if (!ensureVapid()) {
+    return NextResponse.json({ error: 'Push not configured' }, { status: 503 });
+  }
+
+  const webhookSecret = process.env.PUSH_WEBHOOK_SECRET;
   // Validate Supabase webhook secret (sent in x-supabase-webhook-secret header)
   const secret = request.headers.get('x-supabase-webhook-secret');
   if (secret !== webhookSecret) {

@@ -144,7 +144,7 @@ export interface Message {
 export interface Notification {
   id: string;
   user_id: string;
-  type: 'friend_request' | 'friend_accepted' | 'check_response' | 'squad_message' | 'squad_invite';
+  type: 'friend_request' | 'friend_accepted' | 'check_response' | 'squad_message' | 'squad_invite' | 'friend_check';
   title: string;
   body: string | null;
   related_user_id: string | null;
