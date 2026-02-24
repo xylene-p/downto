@@ -26,25 +26,22 @@ const EventLobby = ({
   onViewProfile?: (userId: string) => void;
 }) => {
   const [selectingMembers, setSelectingMembers] = useState(false);
-  const [selectingPool, setSelectingPool] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Reset selection state when drawer opens/closes
   useEffect(() => {
     if (!open) {
       setSelectingMembers(false);
-      setSelectingPool(false);
       setSelectedIds(new Set());
     }
   }, [open]);
 
   if (!open || !event) return null;
-  // People in the squad pool should only appear in that section, not in down lists
-  const poolUserIds = new Set(squadPoolMembers.map((p) => p.userId));
-  const friends = event.peopleDown.filter((p) => p.mutual && !poolUserIds.has(p.userId));
-  const others = event.peopleDown.filter((p) => !p.mutual && !poolUserIds.has(p.userId));
+  const friends = event.peopleDown.filter((p) => p.mutual);
+  const others = event.peopleDown.filter((p) => !p.mutual);
+  const poolCount = event.poolCount ?? squadPoolMembers.length + (inSquadPool ? 1 : 0);
   const maxSquadPick = 4; // max 4 others + you = 5 total
-  const isSelecting = selectingMembers || selectingPool;
+  const isSelecting = selectingMembers;
 
   const toggleSelect = (userId: string) => {
     setSelectedIds((prev) => {
@@ -88,6 +85,7 @@ const EventLobby = ({
             fontFamily: font.mono,
             fontSize: 14,
             fontWeight: 700,
+            ...(p.inPool ? { boxShadow: `0 0 0 2px ${color.pool}` } : {}),
           }}
         >
           {p.avatar}
@@ -177,11 +175,27 @@ const EventLobby = ({
             fontFamily: font.mono,
             fontSize: 11,
             color: color.dim,
-            marginBottom: 24,
+            marginBottom: poolCount > 0 ? 12 : 24,
           }}
         >
           {event.title}
         </p>
+
+        {poolCount > 0 && (
+          <div
+            style={{
+              fontFamily: font.mono,
+              fontSize: 11,
+              color: color.pool,
+              background: "rgba(0,212,255,0.08)",
+              borderRadius: 10,
+              padding: "8px 12px",
+              marginBottom: 20,
+            }}
+          >
+            {poolCount} looking for a squad
+          </div>
+        )}
 
         {/* Friends section */}
         {friends.length > 0 && (
@@ -226,28 +240,6 @@ const EventLobby = ({
           </>
         )}
 
-        {/* Looking for a squad section — visible when in pool and there are pool members */}
-        {inSquadPool && squadPoolMembers.length > 0 && (
-          <>
-            <div
-              style={{
-                fontFamily: font.mono,
-                fontSize: 10,
-                textTransform: "uppercase",
-                letterSpacing: "0.15em",
-                color: color.accent,
-                marginTop: 20,
-                marginBottom: 12,
-              }}
-            >
-              Looking for a squad ({squadPoolMembers.length})
-            </div>
-            {squadPoolMembers.map((p) => (
-              <PersonRow key={p.userId || p.name} p={p} isFriend={false} selectable={selectingPool} />
-            ))}
-          </>
-        )}
-
         {/* CTAs */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
           {/* Start a squad — visible when anyone is down */}
@@ -273,34 +265,11 @@ const EventLobby = ({
             </button>
           )}
 
-          {/* Start a squad from pool — visible when in pool and pool has people */}
-          {inSquadPool && squadPoolMembers.length > 0 && !isSelecting && (
-            <button
-              onClick={() => { setSelectingPool(true); setSelectedIds(new Set()); }}
-              style={{
-                width: "100%",
-                background: color.accent,
-                color: "#000",
-                border: "none",
-                borderRadius: 12,
-                padding: "14px",
-                fontFamily: font.mono,
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: "pointer",
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-              }}
-            >
-              Start a Squad from Pool →
-            </button>
-          )}
-
           {/* Confirm selection (shared by both friend and pool selection modes) */}
           {isSelecting && (
             <div style={{ display: "flex", gap: 8 }}>
               <button
-                onClick={() => { setSelectingMembers(false); setSelectingPool(false); setSelectedIds(new Set()); }}
+                onClick={() => { setSelectingMembers(false); setSelectedIds(new Set()); }}
                 style={{
                   flex: 1,
                   background: "transparent",
@@ -322,7 +291,6 @@ const EventLobby = ({
                   if (selectedIds.size > 0) {
                     onStartSquad(event, Array.from(selectedIds));
                     setSelectingMembers(false);
-                    setSelectingPool(false);
                     setSelectedIds(new Set());
                   }
                 }}

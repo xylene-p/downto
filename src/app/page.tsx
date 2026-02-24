@@ -238,13 +238,35 @@ export default function Home() {
 
       setFeedLoaded(true);
 
-      // Phase 4: Backfill social data (peopleDown)
+      // Phase 4: Backfill social data (peopleDown + crew pool)
       const allEventIds = [...new Set([...savedEventIds, ...publicEvents.map((e) => e.id), ...friendsEvents.map((e) => e.id)])];
       if (allEventIds.length > 0) {
         try {
-          const peopleDownMap = await db.getPeopleDownBatch(allEventIds);
-          setEvents((prev) => prev.map((e) => ({ ...e, peopleDown: peopleDownMap[e.id] ?? e.peopleDown })));
-          setTonightEvents((prev) => prev.map((e) => ({ ...e, peopleDown: peopleDownMap[e.id] ?? e.peopleDown })));
+          const [peopleDownMap, crewPoolMap, userPoolEventIds] = await Promise.all([
+            db.getPeopleDownBatch(allEventIds),
+            db.getCrewPoolBatch(allEventIds),
+            db.getUserPoolEventIds(allEventIds),
+          ]);
+
+          const enrichEvent = (e: Event): Event => {
+            const pd = peopleDownMap[e.id] ?? e.peopleDown;
+            const poolMembers = crewPoolMap[e.id] ?? [];
+            const poolUserIds = new Set(poolMembers.map((p) => p.userId));
+            const enrichedPd = pd.map((p) => ({
+              ...p,
+              inPool: p.userId ? poolUserIds.has(p.userId) : false,
+            }));
+            const poolCount = poolMembers.length + (userPoolEventIds.has(e.id) ? 1 : 0);
+            return {
+              ...e,
+              peopleDown: enrichedPd,
+              poolCount,
+              userInPool: userPoolEventIds.has(e.id),
+            };
+          };
+
+          setEvents((prev) => prev.map(enrichEvent));
+          setTonightEvents((prev) => prev.map(enrichEvent));
         } catch (err) {
           logWarn("loadPeopleDown", "Failed to load social data", { error: err });
         }

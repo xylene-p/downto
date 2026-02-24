@@ -1034,6 +1034,74 @@ export async function removeFromCrewPool(eventId: string, userIds: string[]): Pr
   if (error) throw error;
 }
 
+export async function getCrewPoolBatch(
+  eventIds: string[]
+): Promise<Record<string, { userId: string; name: string; avatar: string; mutual: boolean }[]>> {
+  if (eventIds.length === 0) return {};
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const currentUserId = user?.id;
+
+  const { data, error } = await supabase
+    .from('crew_pool')
+    .select('event_id, user_id, user:profiles(*)')
+    .in('event_id', eventIds);
+
+  if (error) throw error;
+
+  // Get friend IDs for mutual detection
+  let friendIds: Set<string> = new Set();
+  if (currentUserId) {
+    const { data: friendships } = await supabase
+      .from('friendships')
+      .select('requester_id, addressee_id')
+      .eq('status', 'accepted')
+      .or(`requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`);
+
+    if (friendships) {
+      friendIds = new Set(
+        friendships.map(f =>
+          f.requester_id === currentUserId ? f.addressee_id : f.requester_id
+        )
+      );
+    }
+  }
+
+  const result: Record<string, { userId: string; name: string; avatar: string; mutual: boolean }[]> = {};
+  for (const row of (data ?? []) as unknown as { event_id: string; user_id: string; user: Profile }[]) {
+    const eventId = row.event_id;
+    if (!result[eventId]) result[eventId] = [];
+    const profile = row.user;
+    if (profile && profile.id !== currentUserId) {
+      result[eventId].push({
+        userId: profile.id,
+        name: profile.display_name,
+        avatar: profile.avatar_letter,
+        mutual: friendIds.has(profile.id),
+      });
+    }
+  }
+  return result;
+}
+
+export async function getUserPoolEventIds(
+  eventIds: string[]
+): Promise<Set<string>> {
+  if (eventIds.length === 0) return new Set();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return new Set();
+
+  const { data, error } = await supabase
+    .from('crew_pool')
+    .select('event_id')
+    .in('event_id', eventIds)
+    .eq('user_id', user.id);
+
+  if (error) throw error;
+  return new Set((data ?? []).map(r => r.event_id));
+}
+
 export async function getEventSocialSignal(eventId: string): Promise<{ totalDown: number; friendsDown: number }> {
   const { data: { user } } = await supabase.auth.getUser();
   const currentUserId = user?.id;

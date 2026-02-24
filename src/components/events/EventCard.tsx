@@ -22,8 +22,13 @@ const EventCard = ({
   const [hovered, setHovered] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
+  const poolPeople = event.peopleDown.filter((p) => p.inPool);
+  const poolFriends = poolPeople.filter((p) => p.mutual);
+  const poolStrangerCount = poolPeople.length - poolFriends.length;
+  const nonPoolFriends = event.peopleDown.filter((p) => p.mutual && !p.inPool);
   const mutuals = event.peopleDown.filter((p) => p.mutual);
   const others = event.peopleDown.filter((p) => !p.mutual);
+  const hasPool = (event.poolCount ?? 0) > 0;
 
   const clearLongPress = () => {
     if (longPressTimer.current) {
@@ -280,16 +285,11 @@ const EventCard = ({
             (e.currentTarget.style.borderColor = color.border)
           }
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ display: "flex", marginRight: 4 }}>
-                {event.peopleDown.slice(0, 4).map((p, i) => (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+              <div style={{ display: "flex", marginRight: 4, flexShrink: 0 }}>
+                {/* Pool members first, then others */}
+                {[...poolPeople, ...event.peopleDown.filter((p) => !p.inPool)].slice(0, 4).map((p, i) => (
                   <div
                     key={p.name}
                     style={{
@@ -305,7 +305,7 @@ const EventCard = ({
                       fontSize: 10,
                       fontWeight: 700,
                       marginLeft: i > 0 ? -8 : 0,
-                      border: `2px solid ${color.deep}`,
+                      border: `2px solid ${p.inPool ? color.pool : color.deep}`,
                       position: "relative",
                       zIndex: 4 - i,
                     }}
@@ -314,26 +314,51 @@ const EventCard = ({
                   </div>
                 ))}
               </div>
-              <span style={{ fontFamily: font.mono, fontSize: 11 }}>
-                {mutuals.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                {hasPool ? (
                   <>
-                    <span style={{ color: color.accent }}>
-                      {mutuals.map((m) => m.name).join(", ")}
+                    <span style={{ fontFamily: font.mono, fontSize: 11 }}>
+                      <span style={{ color: color.pool }}>
+                        {poolFriends.length > 0
+                          ? poolFriends.map((p) => p.name).join(", ")
+                          : null}
+                        {poolFriends.length > 0 && poolStrangerCount > 0 ? " + " : null}
+                        {poolFriends.length === 0 && poolStrangerCount > 0
+                          ? `${event.poolCount} looking for a squad`
+                          : poolStrangerCount > 0
+                            ? `${poolStrangerCount} looking for a squad`
+                            : " looking for a squad"}
+                      </span>
                     </span>
-                    {others.length > 0 && (
-                      <span style={{ color: color.dim }}>
-                        {" "}+ {others.length} others
+                    {nonPoolFriends.length > 0 && (
+                      <span style={{ fontFamily: font.mono, fontSize: 10, color: color.dim }}>
+                        {nonPoolFriends.map((p) => p.name).join(", ")} {nonPoolFriends.length === 1 ? "is" : "are"} down
                       </span>
                     )}
                   </>
                 ) : (
-                  <span style={{ color: color.dim }}>
-                    {others.length} {others.length === 1 ? "person" : "people"} down
+                  <span style={{ fontFamily: font.mono, fontSize: 11 }}>
+                    {mutuals.length > 0 ? (
+                      <>
+                        <span style={{ color: color.accent }}>
+                          {mutuals.map((m) => m.name).join(", ")}
+                        </span>
+                        {others.length > 0 && (
+                          <span style={{ color: color.dim }}>
+                            {" "}+ {others.length} others
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span style={{ color: color.dim }}>
+                        {others.length} {others.length === 1 ? "person" : "people"} down
+                      </span>
+                    )}
                   </span>
                 )}
-              </span>
+              </div>
             </div>
-            <span style={{ color: color.faint, fontSize: 16 }}>→</span>
+            <span style={{ color: color.faint, fontSize: 16, flexShrink: 0 }}>→</span>
           </div>
         </div>}
 

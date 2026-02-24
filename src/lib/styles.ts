@@ -16,4 +16,5 @@ export const color = {
   border: "#1a1a1a",
   borderLight: "#2a2a2a",
   borderMid: "#333",
+  pool: "#00D4FF",
 };

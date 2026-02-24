@@ -3,6 +3,7 @@ export interface Person {
   avatar: string;
   mutual: boolean;
   userId?: string;
+  inPool?: boolean;
 }
 
 export interface Event {
@@ -23,6 +24,8 @@ export interface Event {
   peopleDown: Person[];
   isPublic?: boolean;
   neighborhood?: string;
+  poolCount?: number;
+  userInPool?: boolean;
 }
 
 export interface InterestCheck {

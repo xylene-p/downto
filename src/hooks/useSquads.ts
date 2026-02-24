@@ -280,6 +280,11 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         await db.leaveCrewPool(event.id);
         setInSquadPool(false);
         setSquadPoolMembers((prev) => prev.filter((p) => p.userId !== userId));
+        setSocialEvent((prev) => prev ? {
+          ...prev,
+          poolCount: Math.max(0, (prev.poolCount ?? 1) - 1),
+          userInPool: false,
+        } : prev);
         showToast("Left squad pool");
         return;
       }
@@ -292,6 +297,11 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
 
       await db.joinCrewPool(event.id);
       setInSquadPool(true);
+      setSocialEvent((prev) => prev ? {
+        ...prev,
+        poolCount: (prev.poolCount ?? 0) + 1,
+        userInPool: true,
+      } : prev);
       showToast("You're looking for a squad!");
 
       const pool = await db.getCrewPool(event.id);
@@ -315,7 +325,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
     }
   };
 
-  // Load squad pool members when EventLobby opens
+  // Load squad pool members when EventLobby opens and enrich peopleDown with inPool flags
   useEffect(() => {
     if (!socialEvent?.id || isDemoMode) {
       setSquadPoolMembers([]);
@@ -325,7 +335,9 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
     (async () => {
       try {
         const pool = await db.getCrewPool(socialEvent.id);
-        setInSquadPool(pool.some((entry) => entry.user_id === userId));
+        const userIsInPool = pool.some((entry) => entry.user_id === userId);
+        setInSquadPool(userIsInPool);
+        const poolUserIds = new Set(pool.map((entry) => entry.user_id));
         const poolPeople: Person[] = pool
           .filter((entry) => entry.user_id !== userId)
           .map((entry) => ({
@@ -335,6 +347,18 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
             userId: entry.user_id,
           }));
         setSquadPoolMembers(poolPeople);
+
+        // Enrich socialEvent.peopleDown with fresh inPool flags
+        const poolCount = pool.length;
+        setSocialEvent((prev) => prev ? {
+          ...prev,
+          poolCount,
+          userInPool: userIsInPool,
+          peopleDown: prev.peopleDown.map((p) => ({
+            ...p,
+            inPool: p.userId ? poolUserIds.has(p.userId) : false,
+          })),
+        } : prev);
       } catch (err) {
         logWarn("loadSquadPool", "Failed to load squad pool", { eventId: socialEvent?.id });
       }
