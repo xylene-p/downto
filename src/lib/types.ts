@@ -104,6 +104,7 @@ export interface Squad {
   grace_started_at: string | null;
   warned_at: string | null;
   locked_date: string | null;
+  archived_at: string | null;
   // Joined data
   event?: Event;
   check?: InterestCheck;

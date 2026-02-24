@@ -390,6 +390,9 @@ export default function Home() {
       } else if (newNotif.type === "squad_invite") {
         if (newNotif.body) showToastRef.current(newNotif.body);
         loadRealDataRef.current();
+      } else if (newNotif.type === "friend_check") {
+        if (newNotif.body) showToastRef.current(newNotif.body);
+        loadRealDataRef.current();
       } else if (newNotif.type === "friend_accepted" && newNotif.related_user_id) {
         if (newNotif.body) showToastRef.current(newNotif.body);
         loadRealDataRef.current();
@@ -438,7 +441,7 @@ export default function Home() {
         } else if (nType === 'squad_message' || nType === 'squad_invite') {
           if (event.data.relatedId) squadsHook.setAutoSelectSquadId(event.data.relatedId);
           setTab('groups');
-        } else if (nType === 'check_response') {
+        } else if (nType === 'check_response' || nType === 'friend_check') {
           setTab('feed');
         }
       }

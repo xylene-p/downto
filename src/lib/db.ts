@@ -696,6 +696,7 @@ export async function getSquads(): Promise<Squad[]> {
       messages(*, sender:profiles!sender_id(*))
     `)
     .in('id', squadIds)
+    .is('archived_at', null)
     .or(`expires_at.gt.${new Date().toISOString()},expires_at.is.null`)
     .order('created_at', { ascending: false })
     .order('created_at', { ascending: true, referencedTable: 'messages' });

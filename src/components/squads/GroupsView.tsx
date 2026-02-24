@@ -18,10 +18,10 @@ const formatExpiryLabel = (expiresAt?: string, graceStartedAt?: string): string 
   const mins = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
   if (hours > 24) {
     const days = Math.floor(hours / 24);
-    return `expires in ${days}d`;
+    return `chat expires in ${days}d`;
   }
-  if (hours > 0) return `expires in ${hours}h`;
-  return `expires in ${mins}m`;
+  if (hours > 0) return `chat expires in ${hours}h`;
+  return `chat expires in ${mins}m`;
 };
 
 const GroupsView = ({

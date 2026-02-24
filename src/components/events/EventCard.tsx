@@ -266,8 +266,8 @@ const EventCard = ({
           </div>
         </div>
 
-        {/* Social preview — hidden when nobody else is down */}
-        {event.peopleDown.length > 0 && <div
+        {/* Social preview — show when others are down, or prompt when you're the only one */}
+        {(event.peopleDown.length > 0 || event.isDown) && <div
           onClick={onOpenSocial}
           style={{
             background: color.deep,
@@ -287,35 +287,41 @@ const EventCard = ({
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-              <div style={{ display: "flex", marginRight: 4, flexShrink: 0 }}>
-                {/* Pool members first, then others */}
-                {[...poolPeople, ...event.peopleDown.filter((p) => !p.inPool)].slice(0, 4).map((p, i) => (
-                  <div
-                    key={p.name}
-                    style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: "50%",
-                      background: p.mutual ? color.accent : color.borderLight,
-                      color: p.mutual ? "#000" : color.dim,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontFamily: font.mono,
-                      fontSize: 10,
-                      fontWeight: 700,
-                      marginLeft: i > 0 ? -8 : 0,
-                      border: `2px solid ${p.inPool ? color.pool : color.deep}`,
-                      position: "relative",
-                      zIndex: 4 - i,
-                    }}
-                  >
-                    {p.avatar}
-                  </div>
-                ))}
-              </div>
+              {event.peopleDown.length > 0 && (
+                <div style={{ display: "flex", marginRight: 4, flexShrink: 0 }}>
+                  {/* Pool members first, then others */}
+                  {[...poolPeople, ...event.peopleDown.filter((p) => !p.inPool)].slice(0, 4).map((p, i) => (
+                    <div
+                      key={p.name}
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: "50%",
+                        background: p.mutual ? color.accent : color.borderLight,
+                        color: p.mutual ? "#000" : color.dim,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontFamily: font.mono,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        marginLeft: i > 0 ? -8 : 0,
+                        border: `2px solid ${p.inPool ? color.pool : color.deep}`,
+                        position: "relative",
+                        zIndex: 4 - i,
+                      }}
+                    >
+                      {p.avatar}
+                    </div>
+                  ))}
+                </div>
+              )}
               <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-                {hasPool ? (
+                {event.peopleDown.length === 0 ? (
+                  <span style={{ fontFamily: font.mono, fontSize: 11, color: color.pool }}>
+                    Looking for a squad?
+                  </span>
+                ) : hasPool ? (
                   <>
                     <span style={{ fontFamily: font.mono, fontSize: 11 }}>
                       <span style={{ color: color.pool }}>
