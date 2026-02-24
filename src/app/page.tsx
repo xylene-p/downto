@@ -745,13 +745,11 @@ export default function Home() {
               });
               if (!res.ok) throw new Error('Failed to set date');
               const { expires_at } = await res.json();
-              const dateLabel = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
               squadsHook.setSquads((prev) => prev.map((s) => s.id === squadDbId ? {
                 ...s,
                 eventIsoDate: date,
                 expiresAt: expires_at,
                 graceStartedAt: undefined,
-                messages: [...s.messages, { sender: 'system', text: `${profile?.display_name ?? 'You'} locked in ${dateLabel}`, time: 'now' }],
               } : s));
             }}
             userId={userId}

@@ -5,6 +5,7 @@ import * as db from "@/lib/db";
 import { font, color } from "@/lib/styles";
 import type { Squad } from "@/lib/ui-types";
 import { logError } from "@/lib/logger";
+import { parseDateToISO } from "@/lib/utils";
 
 const formatExpiryLabel = (expiresAt?: string, graceStartedAt?: string): string | null => {
   if (!expiresAt) return null;
@@ -284,8 +285,9 @@ const GroupsView = ({
                           e.stopPropagation();
                           setShowDatePicker(true);
                           setDatePickerValue(
-                            selectedSquad.eventIsoDate ||
-                            new Date(Date.now() + 86400000).toISOString().split("T")[0]
+                            selectedSquad.eventIsoDate
+                              ? new Date(selectedSquad.eventIsoDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+                              : ""
                           );
                         }}
                         style={{
@@ -446,114 +448,130 @@ const GroupsView = ({
         )}
 
         {/* Date picker modal */}
-        {showDatePicker && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0, left: 0, right: 0, bottom: 0,
-              background: "rgba(0,0,0,0.7)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 9999,
-            }}
-            onClick={() => setShowDatePicker(false)}
-          >
+        {showDatePicker && (() => {
+          const parsedISO = parseDateToISO(datePickerValue);
+          const parsedLabel = parsedISO
+            ? new Date(parsedISO + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+            : null;
+          const isValid = !!parsedISO;
+          return (
             <div
               style={{
-                background: color.deep,
-                border: `1px solid ${color.border}`,
-                borderRadius: 16,
-                padding: "24px 20px",
-                maxWidth: 300,
-                width: "90%",
-                textAlign: "center",
+                position: "fixed",
+                top: 0, left: 0, right: 0, bottom: 0,
+                background: "rgba(0,0,0,0.7)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 9999,
               }}
-              onClick={(e) => e.stopPropagation()}
+              onClick={() => setShowDatePicker(false)}
             >
-              <p style={{ fontFamily: font.serif, fontSize: 18, color: color.text, marginBottom: 6 }}>
-                Set a date
-              </p>
-              <p style={{ fontFamily: font.mono, fontSize: 11, color: color.dim, marginBottom: 16 }}>
-                Lock in when this is happening
-              </p>
-              <input
-                type="date"
-                value={datePickerValue}
-                onChange={(e) => setDatePickerValue(e.target.value)}
-                min={new Date().toISOString().split("T")[0]}
+              <div
                 style={{
-                  width: "100%",
-                  background: color.card,
+                  background: color.deep,
                   border: `1px solid ${color.border}`,
-                  borderRadius: 10,
-                  padding: "10px 12px",
-                  color: color.text,
-                  fontFamily: font.mono,
-                  fontSize: 13,
-                  outline: "none",
-                  marginBottom: 16,
-                  colorScheme: "dark",
+                  borderRadius: 16,
+                  padding: "24px 20px",
+                  maxWidth: 300,
+                  width: "90%",
+                  textAlign: "center",
                 }}
-              />
-              <div style={{ display: "flex", gap: 10 }}>
-                <button
-                  onClick={() => setShowDatePicker(false)}
-                  style={{
-                    flex: 1,
-                    padding: "10px 0",
-                    background: "none",
-                    border: `1px solid ${color.border}`,
-                    borderRadius: 10,
-                    color: color.text,
-                    fontFamily: font.mono,
-                    fontSize: 12,
-                    cursor: "pointer",
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  disabled={!datePickerValue || settingDate}
-                  onClick={async () => {
-                    if (!datePickerValue || !selectedSquad?.id || !onSetSquadDate) return;
-                    setSettingDate(true);
-                    try {
-                      await onSetSquadDate(selectedSquad.id, datePickerValue);
-                      // Update selectedSquad local state
-                      const dateLabel = new Date(datePickerValue + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-                      setSelectedSquad((prev) => prev ? {
-                        ...prev,
-                        eventIsoDate: datePickerValue,
-                        graceStartedAt: undefined,
-                        messages: [...prev.messages, { sender: "system", text: `You locked in ${dateLabel}`, time: "now" }],
-                      } : prev);
-                      setShowDatePicker(false);
-                    } catch {
-                      // Error handled by parent
-                    } finally {
-                      setSettingDate(false);
+                onClick={(e) => e.stopPropagation()}
+              >
+                <p style={{ fontFamily: font.serif, fontSize: 18, color: color.text, marginBottom: 6 }}>
+                  Set a date
+                </p>
+                <p style={{ fontFamily: font.mono, fontSize: 11, color: color.dim, marginBottom: 16 }}>
+                  Lock in when this is happening
+                </p>
+                <input
+                  type="text"
+                  value={datePickerValue}
+                  onChange={(e) => setDatePickerValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && isValid && !settingDate) {
+                      e.preventDefault();
+                      (e.target as HTMLInputElement).closest("div")?.querySelector<HTMLButtonElement>("button:last-child")?.click();
                     }
                   }}
+                  placeholder="e.g. friday, mar 7, tomorrow"
+                  autoFocus
                   style={{
-                    flex: 1,
-                    padding: "10px 0",
-                    background: datePickerValue && !settingDate ? color.accent : color.borderMid,
-                    border: "none",
+                    width: "100%",
+                    boxSizing: "border-box",
+                    background: color.card,
+                    border: `1px solid ${isValid ? color.accent : color.border}`,
                     borderRadius: 10,
-                    color: datePickerValue && !settingDate ? "#000" : color.dim,
+                    padding: "10px 12px",
+                    color: color.text,
                     fontFamily: font.mono,
-                    fontSize: 12,
-                    cursor: datePickerValue && !settingDate ? "pointer" : "default",
-                    fontWeight: 700,
+                    fontSize: 13,
+                    outline: "none",
+                    marginBottom: parsedLabel ? 4 : 16,
                   }}
-                >
-                  {settingDate ? "..." : "Lock it in"}
-                </button>
+                />
+                {parsedLabel && (
+                  <p style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, marginBottom: 12 }}>
+                    {parsedLabel}
+                  </p>
+                )}
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    onClick={() => setShowDatePicker(false)}
+                    style={{
+                      flex: 1,
+                      padding: "10px 0",
+                      background: "none",
+                      border: `1px solid ${color.border}`,
+                      borderRadius: 10,
+                      color: color.text,
+                      fontFamily: font.mono,
+                      fontSize: 12,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    disabled={!isValid || settingDate}
+                    onClick={async () => {
+                      if (!parsedISO || !selectedSquad?.id || !onSetSquadDate) return;
+                      setSettingDate(true);
+                      try {
+                        await onSetSquadDate(selectedSquad.id, parsedISO);
+                        setSelectedSquad((prev) => prev ? {
+                          ...prev,
+                          eventIsoDate: parsedISO,
+                          graceStartedAt: undefined,
+                        } : prev);
+                        setShowDatePicker(false);
+                      } catch {
+                        // Error handled by parent
+                      } finally {
+                        setSettingDate(false);
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "10px 0",
+                      background: isValid && !settingDate ? color.accent : color.borderMid,
+                      border: "none",
+                      borderRadius: 10,
+                      color: isValid && !settingDate ? "#000" : color.dim,
+                      fontFamily: font.mono,
+                      fontSize: 12,
+                      cursor: isValid && !settingDate ? "pointer" : "default",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {settingDate ? "..." : "Lock it in"}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Messages */}
         <div
