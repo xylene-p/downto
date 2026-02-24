@@ -42,7 +42,7 @@ self.addEventListener("notificationclick", (event) => {
     tab = "/?tab=profile";
   } else if (type === "squad_message" || type === "squad_invite") {
     tab = relatedId ? `/?tab=groups&squadId=${relatedId}` : "/?tab=groups";
-  } else if (type === "check_response") {
+  } else if (type === "check_response" || type === "friend_check") {
     tab = "/?tab=feed";
   }
 
