@@ -61,7 +61,7 @@ const FirstCheckScreen = ({
           marginBottom: 40,
         }}
       >
-        throw out an idea — we'll find who's in
+        throw out an idea — your friends & their friends will see it
       </p>
 
       {/* Idea textarea */}

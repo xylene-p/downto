@@ -1,20 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import webpush from 'web-push';
-import { getServiceClient } from '@/lib/supabase-admin';
+import { ensureVapid, sendPushToUser } from '@/lib/push';
 
 export const runtime = 'nodejs';
-
-let vapidInitialized = false;
-
-function ensureVapid() {
-  if (vapidInitialized) return true;
-  const pub = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-  const priv = process.env.VAPID_PRIVATE_KEY;
-  if (!pub || !priv) return false;
-  webpush.setVapidDetails('mailto:push@downto.xyz', pub, priv);
-  vapidInitialized = true;
-  return true;
-}
 
 export async function POST(request: NextRequest) {
   if (!ensureVapid()) {
@@ -35,56 +22,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
   }
 
-  const supabase = getServiceClient();
-
-  // Get all push subscriptions for this user
-  const { data: subscriptions, error } = await supabase
-    .from('push_subscriptions')
-    .select('*')
-    .eq('user_id', notification.user_id);
-
-  if (error || !subscriptions?.length) {
-    return NextResponse.json({ sent: 0 });
-  }
-
-  const payload = JSON.stringify({
-    title: notification.title,
-    body: notification.body || '',
-    type: notification.type,
-    relatedId: notification.related_squad_id || notification.related_check_id || notification.related_user_id,
-  });
-
-  const staleEndpoints: string[] = [];
-  let sent = 0;
-
-  await Promise.allSettled(
-    subscriptions.map(async (sub) => {
-      try {
-        await webpush.sendNotification(
-          {
-            endpoint: sub.endpoint,
-            keys: { p256dh: sub.p256dh, auth: sub.auth },
-          },
-          payload
-        );
-        sent++;
-      } catch (err: unknown) {
-        const statusCode = (err as { statusCode?: number }).statusCode;
-        if (statusCode === 404 || statusCode === 410) {
-          staleEndpoints.push(sub.endpoint);
-        }
-      }
-    })
-  );
-
-  // Clean up stale subscriptions
-  if (staleEndpoints.length > 0) {
-    await supabase
-      .from('push_subscriptions')
-      .delete()
-      .eq('user_id', notification.user_id)
-      .in('endpoint', staleEndpoints);
-  }
-
-  return NextResponse.json({ sent, cleaned: staleEndpoints.length });
+  const sent = await sendPushToUser(notification);
+  return NextResponse.json({ sent });
 }

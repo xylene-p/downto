@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logError } from "@/lib/logger";
+import { uploadEventImage } from "@/lib/supabase-admin";
 
 /** Strip HTML tags and trim */
 const strip = (s: string) => s.replace(/<[^>]*>/g, "").trim();
@@ -144,6 +145,9 @@ async function scrapeLetterboxd(url: string) {
     .slice(0, 3)
     .map(g => g.replace('/films/genre/', ''));
 
+  const movieSlug = url.match(/\/film\/([a-z0-9-]+)/i)?.[1] || 'movie';
+  const thumbnail = await uploadEventImage(ogImage, `letterboxd-${movieSlug}`);
+
   return {
     type: "movie" as const,
     title: strip(`${movieTitle} screening`).slice(0, 100),
@@ -154,7 +158,7 @@ async function scrapeLetterboxd(url: string) {
     date: "TBD",
     time: "TBD",
     vibe: genres.length > 0 ? genres.map(g => strip(g).slice(0, 30)) : ["film", "movie night"],
-    thumbnail: ogImage,
+    thumbnail,
     description: strip(ogDescription).slice(0, 500),
     letterboxdUrl: url,
   };
@@ -277,6 +281,9 @@ async function scrapeDice(url: string) {
     }
   }
 
+  const diceSlug = url.match(/dice\.fm\/event\/([^/?#]+)/i)?.[1] || 'dice-event';
+  const thumbnail = await uploadEventImage(image, `dice-${diceSlug}`);
+
   return {
     type: "event" as const,
     title: strip(title).slice(0, 100) || "Event",
@@ -285,7 +292,7 @@ async function scrapeDice(url: string) {
     time: strip(time).slice(0, 50),
     vibe: vibes.length > 0 ? vibes : ['event'],
     igHandle: "",
-    thumbnail: image,
+    thumbnail,
     isPublicPost: true,
     diceUrl: url,
   };
@@ -390,10 +397,12 @@ export async function POST(request: NextRequest) {
     // Parse event details from caption
     const eventDetails = parseEventDetails(caption, authorName);
 
+    const hostedThumbnail = await uploadEventImage(thumbnail, `ig-${igMatch[2]}`);
+
     return NextResponse.json({
       type: "event" as const,
       ...eventDetails,
-      thumbnail,
+      thumbnail: hostedThumbnail,
       authorUrl: `https://www.instagram.com/${authorName}/`,
       isPublicPost: true,
       rawCaption: caption,

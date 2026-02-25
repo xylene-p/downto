@@ -629,6 +629,51 @@ const AddModal = ({
             >
               {sharePublicly ? "Save & Share Publicly →" : "Save to Calendar →"}
             </button>
+            <button
+              onClick={() => {
+                const title = scraped.title || "Event";
+                const dateStr = scraped.date && scraped.date !== "TBD" ? scraped.date : null;
+                const parsedDate = dateStr ? parseNaturalDate(dateStr) : null;
+                const timeStr = scraped.time && scraped.time !== "TBD" ? scraped.time : null;
+                onInterestCheck(
+                  sanitize(title, 280),
+                  24,
+                  parsedDate?.iso ?? null,
+                  5,
+                  undefined,
+                  timeStr,
+                );
+                onClose();
+              }}
+              style={{
+                width: "100%",
+                background: "transparent",
+                color: color.accent,
+                border: `1px solid ${color.accent}`,
+                borderRadius: 12,
+                padding: "14px",
+                fontFamily: font.mono,
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                marginTop: 8,
+              }}
+            >
+              Send as Interest Check →
+            </button>
+            <p
+              style={{
+                fontFamily: font.mono,
+                fontSize: 10,
+                color: color.faint,
+                marginTop: 8,
+                textAlign: "center",
+              }}
+            >
+              sent to your friends & their friends
+            </p>
           </div>
         )}
           </>
@@ -990,7 +1035,7 @@ const AddModal = ({
                 textAlign: "center",
               }}
             >
-              your friends will be notified{checkTimer ? ` · expires in ${checkTimer}h` : ""}
+              sent to your friends & their friends{checkTimer ? ` · expires in ${checkTimer}h` : ""}
             </p>
           </>
         )}
