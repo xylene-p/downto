@@ -3,7 +3,7 @@
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS public.push_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   notification_id UUID REFERENCES public.notifications(id) ON DELETE SET NULL,
   user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   endpoint TEXT NOT NULL,
