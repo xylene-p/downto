@@ -88,6 +88,7 @@ export default function FeedView({
 }: FeedViewProps) {
   const [showHidden, setShowHidden] = useState(false);
   const [expandedCheckId, setExpandedCheckId] = useState<string | null>(null);
+  const [editingCheckMaxSquadSize, setEditingCheckMaxSquadSize] = useState<number>(5);
   const visibleChecks = checks.filter((c) => !hiddenCheckIds.has(c.id));
   const hiddenChecks = checks.filter((c) => hiddenCheckIds.has(c.id));
   return (
@@ -352,68 +353,116 @@ export default function FeedView({
                           </div>
                         </div>
                         {editingCheckId === check.id ? (
-                          <div style={{ marginBottom: 12, display: "flex", gap: 8, alignItems: "center" }}>
-                            <input
-                              autoFocus
-                              value={editingCheckText}
-                              onChange={(e) => setEditingCheckText(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" && editingCheckText.trim()) {
-                                  setChecks((prev) =>
-                                    prev.map((c) =>
-                                      c.id === check.id ? { ...c, text: editingCheckText.trim() } : c
-                                    )
-                                  );
-                                  setEditingCheckId(null);
-                                  showToast("Check updated!");
-                                  if (!isDemoMode && check.id) {
-                                    db.updateInterestCheck(check.id, editingCheckText.trim()).catch((err) => logError("updateCheck", err, { checkId: check.id }));
+                          <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                              <input
+                                autoFocus
+                                value={editingCheckText}
+                                onChange={(e) => setEditingCheckText(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && editingCheckText.trim()) {
+                                    setChecks((prev) =>
+                                      prev.map((c) =>
+                                        c.id === check.id ? { ...c, text: editingCheckText.trim(), maxSquadSize: editingCheckMaxSquadSize } : c
+                                      )
+                                    );
+                                    setEditingCheckId(null);
+                                    showToast("Check updated!");
+                                    if (!isDemoMode && check.id) {
+                                      db.updateInterestCheck(check.id, { text: editingCheckText.trim(), max_squad_size: editingCheckMaxSquadSize }).catch((err) => logError("updateCheck", err, { checkId: check.id }));
+                                    }
+                                  } else if (e.key === "Escape") {
+                                    setEditingCheckId(null);
                                   }
-                                } else if (e.key === "Escape") {
-                                  setEditingCheckId(null);
-                                }
-                              }}
-                              style={{
-                                flex: 1,
-                                background: color.deep,
-                                border: `1px solid ${color.accent}`,
-                                borderRadius: 10,
-                                padding: "10px 12px",
-                                color: color.text,
-                                fontFamily: font.serif,
-                                fontSize: 16,
-                                outline: "none",
-                              }}
-                            />
-                            <button
-                              onClick={() => {
-                                if (editingCheckText.trim()) {
-                                  setChecks((prev) =>
-                                    prev.map((c) =>
-                                      c.id === check.id ? { ...c, text: editingCheckText.trim() } : c
-                                    )
-                                  );
-                                  setEditingCheckId(null);
-                                  showToast("Check updated!");
-                                  if (!isDemoMode && check.id) {
-                                    db.updateInterestCheck(check.id, editingCheckText.trim()).catch((err) => logError("updateCheck", err, { checkId: check.id }));
+                                }}
+                                style={{
+                                  flex: 1,
+                                  background: color.deep,
+                                  border: `1px solid ${color.accent}`,
+                                  borderRadius: 10,
+                                  padding: "10px 12px",
+                                  color: color.text,
+                                  fontFamily: font.serif,
+                                  fontSize: 16,
+                                  outline: "none",
+                                }}
+                              />
+                              <button
+                                onClick={() => {
+                                  if (editingCheckText.trim()) {
+                                    setChecks((prev) =>
+                                      prev.map((c) =>
+                                        c.id === check.id ? { ...c, text: editingCheckText.trim(), maxSquadSize: editingCheckMaxSquadSize } : c
+                                      )
+                                    );
+                                    setEditingCheckId(null);
+                                    showToast("Check updated!");
+                                    if (!isDemoMode && check.id) {
+                                      db.updateInterestCheck(check.id, { text: editingCheckText.trim(), max_squad_size: editingCheckMaxSquadSize }).catch((err) => logError("updateCheck", err, { checkId: check.id }));
+                                    }
                                   }
-                                }
-                              }}
-                              style={{
-                                background: color.accent,
-                                color: "#000",
-                                border: "none",
-                                borderRadius: 8,
-                                padding: "8px 12px",
-                                fontFamily: font.mono,
-                                fontSize: 10,
-                                fontWeight: 700,
-                                cursor: "pointer",
-                              }}
-                            >
-                              Save
-                            </button>
+                                }}
+                                style={{
+                                  background: color.accent,
+                                  color: "#000",
+                                  border: "none",
+                                  borderRadius: 8,
+                                  padding: "8px 12px",
+                                  fontFamily: font.mono,
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Save
+                              </button>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{ fontFamily: font.mono, fontSize: 10, color: color.dim }}>Squad size</span>
+                              <button
+                                onClick={() => setEditingCheckMaxSquadSize((s) => Math.max(2, s - 1))}
+                                style={{
+                                  background: color.deep,
+                                  border: `1px solid ${color.borderMid}`,
+                                  borderRadius: 6,
+                                  color: color.text,
+                                  width: 28,
+                                  height: 28,
+                                  fontFamily: font.mono,
+                                  fontSize: 14,
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  padding: 0,
+                                }}
+                              >
+                                -
+                              </button>
+                              <span style={{ fontFamily: font.mono, fontSize: 14, color: color.text, minWidth: 20, textAlign: "center" }}>
+                                {editingCheckMaxSquadSize}
+                              </span>
+                              <button
+                                onClick={() => setEditingCheckMaxSquadSize((s) => Math.min(20, s + 1))}
+                                style={{
+                                  background: color.deep,
+                                  border: `1px solid ${color.borderMid}`,
+                                  borderRadius: 6,
+                                  color: color.text,
+                                  width: 28,
+                                  height: 28,
+                                  fontFamily: font.mono,
+                                  fontSize: 14,
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  padding: 0,
+                                }}
+                              >
+                                +
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 12 }}>
@@ -432,13 +481,14 @@ export default function FeedView({
                                 >
                                   {check.text}
                                 </p>
-                                {check.isYours && !check.squadId && (
+                                {check.isYours && (
                                   <div style={{ display: "flex", gap: 4, flexShrink: 0, marginTop: 2 }}>
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setEditingCheckId(check.id);
                                         setEditingCheckText(check.text);
+                                        setEditingCheckMaxSquadSize(check.maxSquadSize ?? 5);
                                       }}
                                       style={{
                                         background: "transparent",
@@ -454,33 +504,35 @@ export default function FeedView({
                                     >
                                       &#9998;
                                     </button>
-                                    <button
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        setChecks((prev) => prev.filter((c) => c.id !== check.id));
-                                        if (!isDemoMode) {
-                                          try {
-                                            await db.deleteInterestCheck(check.id);
-                                          } catch (err) {
-                                            logError("deleteCheck", err, { checkId: check.id });
+                                    {!check.squadId && (
+                                      <button
+                                        onClick={async (e) => {
+                                          e.stopPropagation();
+                                          setChecks((prev) => prev.filter((c) => c.id !== check.id));
+                                          if (!isDemoMode) {
+                                            try {
+                                              await db.deleteInterestCheck(check.id);
+                                            } catch (err) {
+                                              logError("deleteCheck", err, { checkId: check.id });
+                                            }
                                           }
-                                        }
-                                        showToast("Check removed");
-                                      }}
-                                      style={{
-                                        background: "transparent",
-                                        border: `1px solid ${color.border}`,
-                                        borderRadius: 8,
-                                        color: color.dim,
-                                        padding: "6px 10px",
-                                        fontFamily: font.mono,
-                                        fontSize: 13,
-                                        cursor: "pointer",
-                                        lineHeight: 1,
-                                      }}
-                                    >
-                                      &#10005;
-                                    </button>
+                                          showToast("Check removed");
+                                        }}
+                                        style={{
+                                          background: "transparent",
+                                          border: `1px solid ${color.border}`,
+                                          borderRadius: 8,
+                                          color: color.dim,
+                                          padding: "6px 10px",
+                                          fontFamily: font.mono,
+                                          fontSize: 13,
+                                          cursor: "pointer",
+                                          lineHeight: 1,
+                                        }}
+                                      >
+                                        &#10005;
+                                      </button>
+                                    )}
                                   </div>
                                 )}
                               </div>

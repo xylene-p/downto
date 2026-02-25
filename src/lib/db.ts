@@ -596,13 +596,16 @@ export async function deleteInterestCheck(checkId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function updateInterestCheck(checkId: string, text: string): Promise<void> {
+export async function updateInterestCheck(
+  checkId: string,
+  updates: { text?: string; max_squad_size?: number }
+): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
   const { error } = await supabase
     .from('interest_checks')
-    .update({ text })
+    .update(updates)
     .eq('id', checkId)
     .eq('author_id', user.id);
 
