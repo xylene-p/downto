@@ -775,6 +775,14 @@ const GroupsView = ({
               if (g.hasUnread) {
                 onSquadUpdate((prev) => prev.map((s) => s.id === g.id ? { ...s, hasUnread: false } : s));
               }
+              // Dismiss push notifications for this squad
+              if ("serviceWorker" in navigator) {
+                navigator.serviceWorker.getRegistration().then((reg) => {
+                  reg?.getNotifications({ tag: `squad_message-${g.id}` }).then((notifs) => {
+                    notifs.forEach((n) => n.close());
+                  });
+                });
+              }
             }}
             style={{
               background: color.card,
