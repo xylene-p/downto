@@ -770,7 +770,7 @@ export default function FeedView({
                                           // Already a member — proceed normally
                                         }
                                         await loadRealData();
-                                        onNavigateToGroups();
+                                        onNavigateToGroups(check.squadId!);
                                       }}
                                       style={{
                                         background: "transparent",
