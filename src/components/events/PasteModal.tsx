@@ -48,7 +48,7 @@ const AddModal = ({
     time: "",
     vibe: "",
   });
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const ideaRef = useRef<HTMLTextAreaElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef<number>(0);
@@ -279,13 +279,22 @@ const AddModal = ({
         {mode === "paste" && (
           <>
             <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-              <input
+              <textarea
                 ref={inputRef}
-                type="text"
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handlePull()}
-                placeholder="paste an IG or Dice link..."
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  e.target.style.height = "auto";
+                  e.target.style.height = Math.min(e.target.scrollHeight, 100) + "px";
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handlePull();
+                  }
+                }}
+                placeholder="paste link here..."
+                rows={1}
                 style={{
                   flex: 1,
                   minWidth: 0,
@@ -298,6 +307,10 @@ const AddModal = ({
                   fontSize: 13,
                   outline: "none",
                   transition: "border-color 0.2s",
+                  resize: "none",
+                  maxHeight: 100,
+                  overflowY: "auto",
+                  lineHeight: 1.4,
                 }}
               />
               <button

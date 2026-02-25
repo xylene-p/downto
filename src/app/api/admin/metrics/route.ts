@@ -29,8 +29,10 @@ export async function GET(request: NextRequest) {
 
   const admin = getServiceClient();
 
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
   // Run queries in parallel
-  const [totalRes, onboardedRes, notOnboardedRes, recentRes, signupsRes] = await Promise.all([
+  const [totalRes, onboardedRes, notOnboardedRes, recentRes, signupsRes, pushSentRes, pushFailedRes, pushStaleRes, pushRecentFailures] = await Promise.all([
     admin.from('profiles').select('*', { count: 'exact', head: true }),
     admin.from('profiles').select('*', { count: 'exact', head: true }).eq('onboarded', true),
     admin.from('profiles').select('*', { count: 'exact', head: true }).eq('onboarded', false),
@@ -42,6 +44,14 @@ export async function GET(request: NextRequest) {
       .select('created_at')
       .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
       .order('created_at', { ascending: true }),
+    admin.from('push_logs').select('*', { count: 'exact', head: true }).eq('status', 'sent').gte('created_at', since24h),
+    admin.from('push_logs').select('*', { count: 'exact', head: true }).eq('status', 'failed').gte('created_at', since24h),
+    admin.from('push_logs').select('*', { count: 'exact', head: true }).eq('status', 'stale').gte('created_at', since24h),
+    admin.from('push_logs')
+      .select('created_at, user_id, endpoint, status, error')
+      .neq('status', 'sent')
+      .order('created_at', { ascending: false })
+      .limit(20),
   ]);
 
   // Group signups by date
@@ -59,5 +69,11 @@ export async function GET(request: NextRequest) {
     notOnboarded: notOnboardedRes.count ?? 0,
     signupsByDate,
     recentSignups: recentRes.data ?? [],
+    push: {
+      sent24h: pushSentRes.count ?? 0,
+      failed24h: pushFailedRes.count ?? 0,
+      stale24h: pushStaleRes.count ?? 0,
+      recentFailures: pushRecentFailures.data ?? [],
+    },
   });
 }

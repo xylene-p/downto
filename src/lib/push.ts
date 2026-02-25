@@ -14,6 +14,7 @@ export function ensureVapid(): boolean {
 }
 
 interface NotificationPayload {
+  id?: string;
   user_id: string;
   title: string;
   body: string;
@@ -44,6 +45,8 @@ export async function sendPushToUser(notification: NotificationPayload): Promise
   const staleEndpoints: string[] = [];
   let sent = 0;
 
+  const logRows: { notification_id: string | null; user_id: string; endpoint: string; status: string; error: string | null }[] = [];
+
   await Promise.allSettled(
     subscriptions.map(async (sub) => {
       try {
@@ -52,14 +55,26 @@ export async function sendPushToUser(notification: NotificationPayload): Promise
           payload
         );
         sent++;
+        logRows.push({ notification_id: notification.id ?? null, user_id: notification.user_id, endpoint: sub.endpoint, status: 'sent', error: null });
       } catch (err: unknown) {
         const statusCode = (err as { statusCode?: number }).statusCode;
         if (statusCode === 404 || statusCode === 410) {
           staleEndpoints.push(sub.endpoint);
+          logRows.push({ notification_id: notification.id ?? null, user_id: notification.user_id, endpoint: sub.endpoint, status: 'stale', error: `endpoint returned ${statusCode}` });
+        } else {
+          const message = err instanceof Error ? err.message : String(err);
+          logRows.push({ notification_id: notification.id ?? null, user_id: notification.user_id, endpoint: sub.endpoint, status: 'failed', error: message });
         }
       }
     })
   );
+
+  // Log delivery attempts — never let logging break push delivery
+  try {
+    if (logRows.length > 0) {
+      await supabase.from('push_logs').insert(logRows);
+    }
+  } catch (_) { /* swallow */ }
 
   if (staleEndpoints.length > 0) {
     await supabase

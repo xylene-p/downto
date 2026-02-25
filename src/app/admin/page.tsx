@@ -6,6 +6,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { color, font } from "@/lib/styles";
 
+interface PushFailure {
+  created_at: string;
+  user_id: string;
+  endpoint: string;
+  status: string;
+  error: string | null;
+}
+
 interface Metrics {
   totalUsers: number;
   onboarded: number;
@@ -17,6 +25,12 @@ interface Metrics {
     created_at: string;
     onboarded: boolean;
   }[];
+  push: {
+    sent24h: number;
+    failed24h: number;
+    stale24h: number;
+    recentFailures: PushFailure[];
+  };
 }
 
 export default function AdminPage() {
@@ -175,11 +189,72 @@ export default function AdminPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Push delivery */}
+      <h2 style={{ ...sectionHeader, marginTop: 40 }}>Push Delivery (24h)</h2>
+      <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
+        <SummaryCard label="Sent" value={metrics.push.sent24h} />
+        <SummaryCard label="Failed" value={metrics.push.failed24h} accent="#ff4444" />
+        <SummaryCard label="Stale" value={metrics.push.stale24h} accent={color.muted} />
+      </div>
+
+      {metrics.push.recentFailures.length > 0 && (
+        <>
+          <h2 style={sectionHeader}>Recent Push Failures</h2>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: font.mono, fontSize: 12 }}>
+              <thead>
+                <tr>
+                  {["Time", "Status", "User ID", "Error"].map((h) => (
+                    <th
+                      key={h}
+                      style={{
+                        textAlign: "left",
+                        padding: "8px 12px",
+                        color: color.dim,
+                        borderBottom: `1px solid ${color.borderLight}`,
+                        fontWeight: 400,
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {metrics.push.recentFailures.map((f, i) => (
+                  <tr key={i}>
+                    <td style={{ ...cellStyle, whiteSpace: "nowrap" }}>
+                      {new Date(f.created_at).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </td>
+                    <td style={cellStyle}>
+                      <span style={{ color: f.status === "failed" ? "#ff4444" : color.muted }}>
+                        {f.status}
+                      </span>
+                    </td>
+                    <td style={{ ...cellStyle, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {f.user_id.slice(0, 8)}...
+                    </td>
+                    <td style={{ ...cellStyle, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", color: color.muted }}>
+                      {f.error || "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: number }) {
+function SummaryCard({ label, value, accent: accentOverride }: { label: string; value: number; accent?: string }) {
   return (
     <div
       style={{
@@ -193,7 +268,7 @@ function SummaryCard({ label, value }: { label: string; value: number }) {
       <div style={{ fontFamily: font.mono, fontSize: 11, color: color.dim, marginBottom: 4 }}>
         {label}
       </div>
-      <div style={{ fontFamily: font.mono, fontSize: 32, color: color.accent, fontWeight: 700 }}>
+      <div style={{ fontFamily: font.mono, fontSize: 32, color: accentOverride ?? color.accent, fontWeight: 700 }}>
         {value}
       </div>
     </div>
