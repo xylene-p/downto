@@ -952,6 +952,15 @@ export function subscribeToNotifications(
 // SQUAD LOGISTICS
 // ============================================================================
 
+export async function updateSquadName(squadId: string, name: string): Promise<void> {
+  const { error } = await supabase
+    .from('squads')
+    .update({ name })
+    .eq('id', squadId);
+
+  if (error) throw error;
+}
+
 export async function updateSquadLogistics(
   squadId: string,
   updates: { meeting_spot?: string; arrival_time?: string; transport_notes?: string }

@@ -164,16 +164,12 @@ export default function FeedView({
                         ref={check.id === newlyAddedCheckId ? (el) => {
                           if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
                         } : undefined}
-                        onClick={check.squadId ? () => {
-                          onNavigateToGroups(check.squadId!);
-                        } : undefined}
                         style={{
                           background: check.isYours ? "rgba(232,255,90,0.05)" : color.card,
                           borderRadius: 14,
                           overflow: "hidden",
                           marginBottom: 8,
                           border: `1px solid ${check.id === newlyAddedCheckId ? "rgba(90,200,255,0.5)" : check.isYours ? "rgba(232,255,90,0.2)" : color.border}`,
-                          cursor: check.squadId ? "pointer" : undefined,
                           ...(check.id === newlyAddedCheckId ? { animation: "checkGlow 2s ease-in-out infinite" } : {}),
                         }}
                       >
@@ -361,15 +357,20 @@ export default function FeedView({
                                 onChange={(e) => setEditingCheckText(e.target.value)}
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter" && editingCheckText.trim()) {
+                                    const trimmed = editingCheckText.trim();
                                     setChecks((prev) =>
                                       prev.map((c) =>
-                                        c.id === check.id ? { ...c, text: editingCheckText.trim(), maxSquadSize: editingCheckMaxSquadSize } : c
+                                        c.id === check.id ? { ...c, text: trimmed, maxSquadSize: editingCheckMaxSquadSize } : c
                                       )
                                     );
                                     setEditingCheckId(null);
                                     showToast("Check updated!");
                                     if (!isDemoMode && check.id) {
-                                      db.updateInterestCheck(check.id, { text: editingCheckText.trim(), max_squad_size: editingCheckMaxSquadSize }).catch((err) => logError("updateCheck", err, { checkId: check.id }));
+                                      db.updateInterestCheck(check.id, { text: trimmed, max_squad_size: editingCheckMaxSquadSize }).catch((err) => logError("updateCheck", err, { checkId: check.id }));
+                                      if (check.squadId) {
+                                        const squadName = trimmed.slice(0, 30) + (trimmed.length > 30 ? "..." : "");
+                                        db.updateSquadName(check.squadId, squadName).catch((err) => logError("updateSquadName", err, { squadId: check.squadId }));
+                                      }
                                     }
                                   } else if (e.key === "Escape") {
                                     setEditingCheckId(null);
@@ -390,15 +391,20 @@ export default function FeedView({
                               <button
                                 onClick={() => {
                                   if (editingCheckText.trim()) {
+                                    const trimmed = editingCheckText.trim();
                                     setChecks((prev) =>
                                       prev.map((c) =>
-                                        c.id === check.id ? { ...c, text: editingCheckText.trim(), maxSquadSize: editingCheckMaxSquadSize } : c
+                                        c.id === check.id ? { ...c, text: trimmed, maxSquadSize: editingCheckMaxSquadSize } : c
                                       )
                                     );
                                     setEditingCheckId(null);
                                     showToast("Check updated!");
                                     if (!isDemoMode && check.id) {
-                                      db.updateInterestCheck(check.id, { text: editingCheckText.trim(), max_squad_size: editingCheckMaxSquadSize }).catch((err) => logError("updateCheck", err, { checkId: check.id }));
+                                      db.updateInterestCheck(check.id, { text: trimmed, max_squad_size: editingCheckMaxSquadSize }).catch((err) => logError("updateCheck", err, { checkId: check.id }));
+                                      if (check.squadId) {
+                                        const squadName = trimmed.slice(0, 30) + (trimmed.length > 30 ? "..." : "");
+                                        db.updateSquadName(check.squadId, squadName).catch((err) => logError("updateSquadName", err, { squadId: check.squadId }));
+                                      }
                                     }
                                   }
                                 }}
