@@ -728,7 +728,17 @@ export default function Home() {
             onUnhideCheck={checksHook.unhideCheck}
           />
         )}
-        {feedLoaded && tab === "calendar" && <CalendarView events={events} />}
+        {feedLoaded && tab === "calendar" && (
+          <CalendarView
+            events={events}
+            onToggleSave={toggleSave}
+            onToggleDown={toggleDown}
+            onOpenSocial={(e) => squadsHook.setSocialEvent(e)}
+            onEditEvent={(e) => setEditingEvent(e)}
+            userId={userId ?? undefined}
+            isDemoMode={isDemoMode}
+          />
+        )}
         {feedLoaded && tab === "groups" && (
           <GroupsView
             squads={squadsHook.squads}

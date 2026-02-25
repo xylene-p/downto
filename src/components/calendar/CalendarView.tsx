@@ -1,9 +1,37 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { font, color } from "@/lib/styles";
 import type { Event } from "@/lib/ui-types";
+import EventCard from "@/components/events/EventCard";
 
-const CalendarView = ({ events }: { events: Event[] }) => {
+const CalendarView = ({
+  events,
+  onToggleSave,
+  onToggleDown,
+  onOpenSocial,
+  onEditEvent,
+  userId,
+  isDemoMode,
+}: {
+  events: Event[];
+  onToggleSave?: (id: string) => void;
+  onToggleDown?: (id: string) => void;
+  onOpenSocial?: (event: Event) => void;
+  onEditEvent?: (event: Event) => void;
+  userId?: string;
+  isDemoMode?: boolean;
+}) => {
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+
+  // Sync selectedEvent with latest events prop
+  useEffect(() => {
+    if (selectedEvent) {
+      const updated = events.find((e) => e.id === selectedEvent.id);
+      if (updated) setSelectedEvent(updated);
+      else setSelectedEvent(null);
+    }
+  }, [events]);
   const saved = events.filter((e) => e.saved);
 
   // Build a 2-week grid starting from Monday of the current week
@@ -155,6 +183,7 @@ const CalendarView = ({ events }: { events: Event[] }) => {
         saved.map((e) => (
           <div
             key={e.id}
+            onClick={() => setSelectedEvent(e)}
             style={{
               background: color.card,
               borderRadius: 14,
@@ -164,6 +193,7 @@ const CalendarView = ({ events }: { events: Event[] }) => {
               display: "flex",
               gap: 14,
               alignItems: "center",
+              cursor: "pointer",
             }}
           >
             <div style={{ minWidth: 44, textAlign: "center" }}>
@@ -199,6 +229,64 @@ const CalendarView = ({ events }: { events: Event[] }) => {
             </div>
           </div>
         ))
+      )}
+
+      {selectedEvent && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 100,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            onClick={() => setSelectedEvent(null)}
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(0,0,0,0.7)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+            }}
+          />
+          <div
+            style={{
+              position: "relative",
+              background: color.surface,
+              borderRadius: "24px 24px 0 0",
+              width: "100%",
+              maxWidth: 420,
+              padding: "16px 16px 40px",
+              maxHeight: "85vh",
+              overflowY: "auto",
+              animation: "slideUp 0.3s ease-out",
+            }}
+          >
+            <div
+              style={{
+                width: 40,
+                height: 4,
+                background: color.faint,
+                borderRadius: 2,
+                margin: "0 auto 12px",
+              }}
+            />
+            <EventCard
+              event={selectedEvent}
+              onToggleSave={() => onToggleSave?.(selectedEvent.id)}
+              onToggleDown={() => onToggleDown?.(selectedEvent.id)}
+              onOpenSocial={() => onOpenSocial?.(selectedEvent)}
+              onLongPress={
+                (selectedEvent.createdBy === userId || !selectedEvent.createdBy || isDemoMode)
+                  ? () => onEditEvent?.(selectedEvent)
+                  : undefined
+              }
+            />
+          </div>
+        </div>
       )}
     </div>
   );
