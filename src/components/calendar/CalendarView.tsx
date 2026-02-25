@@ -23,6 +23,7 @@ const CalendarView = ({
   isDemoMode?: boolean;
 }) => {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
 
   // Sync selectedEvent with latest events prop
   useEffect(() => {
@@ -68,10 +69,21 @@ const CalendarView = ({
     return {
       label: DAY_LABELS[i % 7],
       num: d.getDate(),
+      dateKey,
       today: d.getDate() === todayDate && d.getMonth() === todayMonth && d.getFullYear() === todayYear,
       event: savedDateKeys.has(dateKey),
     };
   });
+
+  const eventDateKey = (e: Event) => {
+    const match = e.date.match(/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d+)/);
+    if (!match) return "";
+    return `${MONTH_ABBREVS[match[1]]}-${parseInt(match[2])}`;
+  };
+
+  const displayedEvents = selectedDateKey
+    ? saved.filter((e) => eventDateKey(e) === selectedDateKey)
+    : saved;
 
   // Header: show month(s) covered by the 2-week span
   const startMonth = monday.getMonth();
@@ -106,14 +118,18 @@ const CalendarView = ({
           marginBottom: 28,
         }}
       >
-        {days.map((d, i) => (
+        {days.map((d, i) => {
+          const isSelected = selectedDateKey === d.dateKey;
+          return (
           <div
             key={i}
+            onClick={() => setSelectedDateKey(isSelected ? null : d.dateKey)}
             style={{
               textAlign: "center",
               padding: "8px 0",
               borderRadius: 10,
-              background: d.today ? "#222" : "transparent",
+              background: isSelected ? "#1C3A5E" : d.today ? "#222" : "transparent",
+              cursor: "pointer",
             }}
           >
             <div
@@ -130,8 +146,8 @@ const CalendarView = ({
               style={{
                 fontFamily: font.mono,
                 fontSize: 13,
-                color: d.event ? color.accent : color.dim,
-                fontWeight: d.event ? 700 : 400,
+                color: isSelected ? "#5B9CF6" : d.event ? color.accent : color.dim,
+                fontWeight: d.event || isSelected ? 700 : 400,
               }}
             >
               {d.num}
@@ -142,13 +158,14 @@ const CalendarView = ({
                   width: 4,
                   height: 4,
                   borderRadius: "50%",
-                  background: color.accent,
+                  background: isSelected ? "#5B9CF6" : color.accent,
                   margin: "4px auto 0",
                 }}
               />
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div
@@ -161,10 +178,10 @@ const CalendarView = ({
           marginBottom: 12,
         }}
       >
-        Upcoming ({saved.length} saved)
+        {selectedDateKey ? `${displayedEvents.length} event${displayedEvents.length !== 1 ? "s" : ""}` : `Upcoming (${saved.length} saved)`}
       </div>
 
-      {saved.length === 0 ? (
+      {displayedEvents.length === 0 ? (
         <div
           style={{
             textAlign: "center",
@@ -175,12 +192,10 @@ const CalendarView = ({
             lineHeight: 1.8,
           }}
         >
-          No events saved yet.
-          <br />
-          Hit + to save your first event.
+          {selectedDateKey ? "No events on this day." : (<>No events saved yet.<br />Hit + to save your first event.</>)}
         </div>
       ) : (
-        saved.map((e) => (
+        displayedEvents.map((e) => (
           <div
             key={e.id}
             onClick={() => setSelectedEvent(e)}
