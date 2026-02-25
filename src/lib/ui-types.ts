@@ -88,6 +88,7 @@ export interface Squad {
   transportNotes?: string;
   expiresAt?: string;
   graceStartedAt?: string;
+  hasUnread?: boolean;
 }
 
 export interface Friend {

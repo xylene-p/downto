@@ -770,7 +770,12 @@ const GroupsView = ({
         squads.map((g) => (
           <div
             key={g.id}
-            onClick={() => setSelectedSquad(g)}
+            onClick={() => {
+              setSelectedSquad(g);
+              if (g.hasUnread) {
+                onSquadUpdate((prev) => prev.map((s) => s.id === g.id ? { ...s, hasUnread: false } : s));
+              }
+            }}
             style={{
               background: color.card,
               borderRadius: 16,
@@ -788,8 +793,13 @@ const GroupsView = ({
                 marginBottom: 8,
               }}
             >
-              <div style={{ fontFamily: font.serif, fontSize: 17, color: color.text, fontWeight: 400 }}>
-                {g.name}
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontFamily: font.serif, fontSize: 17, color: color.text, fontWeight: 400 }}>
+                  {g.name}
+                </span>
+                {g.hasUnread && (
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ff3b30", flexShrink: 0 }} />
+                )}
               </div>
               <span style={{ fontFamily: font.mono, fontSize: 10, color: color.faint }}>
                 {g.time}

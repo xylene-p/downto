@@ -357,6 +357,11 @@ export default function Home() {
     const channel = db.subscribeToNotifications(userId, async (newNotif) => {
       if (newNotif.type === "squad_message") {
         notificationsHook.setHasUnreadSquadMessage(true);
+        if (newNotif.related_squad_id) {
+          squadsHook.setSquads((prev) => prev.map((s) =>
+            s.id === newNotif.related_squad_id ? { ...s, hasUnread: true } : s
+          ));
+        }
       } else {
         notificationsHook.setNotifications((prev) => [newNotif, ...prev]);
         notificationsHook.setUnreadCount((prev) => prev + 1);
