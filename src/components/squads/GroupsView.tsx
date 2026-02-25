@@ -50,6 +50,7 @@ const GroupsView = ({
   const [selectedSquad, setSelectedSquad] = useState<Squad | null>(null);
   const [newMsg, setNewMsg] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const msgInputRef = useRef<HTMLTextAreaElement>(null);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerValue, setDatePickerValue] = useState("");
@@ -126,6 +127,7 @@ const GroupsView = ({
     setSelectedSquad(updatedSquad);
     onSquadUpdate((prev) => prev.map((s) => (s.id === updatedSquad.id ? updatedSquad : s)));
     setNewMsg("");
+    if (msgInputRef.current) msgInputRef.current.style.height = "auto";
 
     // Persist to DB
     if (selectedSquad.id && onSendMessage) {
@@ -679,13 +681,23 @@ const GroupsView = ({
             gap: 8,
           }}
         >
-          <input
-            type="text"
+          <textarea
+            ref={msgInputRef}
             value={newMsg}
-            onChange={(e) => setNewMsg(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            onChange={(e) => {
+              setNewMsg(e.target.value);
+              e.target.style.height = "auto";
+              e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
             enterKeyHint="send"
             placeholder="Message..."
+            rows={1}
             style={{
               flex: 1,
               background: color.card,
@@ -696,6 +708,10 @@ const GroupsView = ({
               fontFamily: font.mono,
               fontSize: 16,
               outline: "none",
+              resize: "none",
+              maxHeight: 120,
+              lineHeight: 1.4,
+              overflowY: "auto",
             }}
           />
           <button
