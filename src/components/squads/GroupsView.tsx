@@ -830,7 +830,7 @@ const GroupsView = ({
             >
               {g.lastMsg}
             </div>
-            <div style={{ display: "flex", gap: 4 }}>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
               {g.members.map((m) => (
                 <span
                   key={m.name}
