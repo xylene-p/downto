@@ -7,6 +7,7 @@
   --color-content-primary: #fff; /* white */
   --color-content-secondary: #666; /* dim */
   --color-content-tertiary: #444; /* faint */
+  --color-content-highlight: #e8ff5a; 
   --color-border-primary: #1a1a1a;
   --color-border-secondary: #333;
   --color-border-tertiary: #2a2a2a;
@@ -27,6 +28,11 @@
   /* Font weight */
   --font-weight-regular: 400;
   --font-weight-bold: 700;
+
+  /* Border radius */
+  --border-radius-small: 0.5rem;
+  --border-radius-large: 0.75rem;
+  --border-radius-rounded: 50%;
 
   /* Whitespace */
   --spacing-050: 0.5rem;

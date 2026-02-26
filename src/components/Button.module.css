@@ -3,19 +3,39 @@
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-bold);
   border: none;
-  border-radius: 12;
-  padding: var(--spacing-100);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
   cursor: pointer;
 }
 
+/* Variants */
 .primary {
   background: var(--color-surface-highlight);
 }
 
 .outline {
+  color: var(--color-content-secondary);
+  border: solid 1px var(--color-border-secondary);
   background: transparent;
+  font-weight: var(--font-weight-regular);
+}
+
+.highlight {
+  color: var(--color-content-highlight);
+  border: solid 1px var(--color-border-highlight);
+  background: transparent;
+}
+
+/* Size */
+.small {
+  font-size: var(--font-size-xxs);
+  padding: 0.4rem 0.625rem;
+  border-radius: var(--border-radius-small);
+}
+
+.large {
+  text-transform: uppercase;
+  padding: var(--spacing-100);
+  border-radius: var(--border-radius-large);
+  letter-spacing: 0.1em;
 }
 
 .disabled {

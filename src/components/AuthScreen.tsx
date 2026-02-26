@@ -128,6 +128,7 @@ const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
           <Button
             onClick={handleSendCode}
             disabled={!email.includes("@") || loading}
+            size='large'
           >
             {loading ? "Sending..." : "Send Code"}
           </Button>

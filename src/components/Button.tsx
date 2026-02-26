@@ -1,27 +1,26 @@
 import React from "react";
 import clsx from "clsx";
 
-import styles from './Button.module.css';
-
+import styles from "./Button.module.css";
 
 interface ButtonProps {
   disabled?: boolean;
   onClick: () => void;
-  variant?: "primary" | "outline";
+  type?: "primary" | "outline" | "highlight";
+  size?: "small" | "large";
   children: React.ReactNode;
 }
 
 const Button: React.FC<ButtonProps> = ({
   onClick,
-  variant = "primary",
+  type = "primary",
+  size = "small",
   children,
   disabled = false,
 }) => {
   return (
     <button
-      className={clsx(styles.button, {
-        [styles.primary]: variant == 'primary',
-        [styles.outline]: variant == 'outline',
+      className={clsx(styles.button, styles[type], styles[size], {
         [styles.disabled]: disabled,
       })}
       onClick={onClick}
