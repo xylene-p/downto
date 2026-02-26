@@ -264,88 +264,6 @@ const GroupsView = ({
                   {selectedSquad.event}
                 </p>
               )}
-              {(() => {
-                const expiryLabel = formatExpiryLabel(selectedSquad.expiresAt, selectedSquad.graceStartedAt);
-                if (!expiryLabel) return null;
-                const isUrgent = !!selectedSquad.graceStartedAt ||
-                  (selectedSquad.expiresAt && new Date(selectedSquad.expiresAt).getTime() - Date.now() < 24 * 60 * 60 * 1000);
-                return (
-                  <p
-                    style={{
-                      fontFamily: font.mono,
-                      fontSize: 10,
-                      color: isUrgent ? color.accent : color.faint,
-                      margin: "2px 0 0",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                    }}
-                  >
-                    {expiryLabel}
-                    {onSetSquadDate && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowDatePicker(true);
-                          setDatePickerValue(
-                            selectedSquad.eventIsoDate
-                              ? new Date(selectedSquad.eventIsoDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
-                              : ""
-                          );
-                        }}
-                        style={{
-                          background: color.accent,
-                          color: "#000",
-                          border: "none",
-                          borderRadius: 6,
-                          padding: "2px 8px",
-                          fontFamily: font.mono,
-                          fontSize: 9,
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {selectedSquad.eventIsoDate
-                          ? new Date(selectedSquad.eventIsoDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
-                          : "Set a date"}
-                      </button>
-                    )}
-                    {(() => {
-                      // Show extend for undated squads, or dated squads on/after the event day
-                      const showExtend = !selectedSquad.eventIsoDate ||
-                        new Date(selectedSquad.eventIsoDate + "T00:00:00") <= new Date(new Date().toDateString());
-                      if (!showExtend) return null;
-                      return (
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            try {
-                              const newExpiry = await db.extendSquad(selectedSquad.id);
-                              onSquadUpdate((prev) => prev.map((s) =>
-                                s.id === selectedSquad.id ? { ...s, expiresAt: newExpiry } : s
-                              ));
-                              setSelectedSquad((prev) => prev ? { ...prev, expiresAt: newExpiry } : prev);
-                            } catch {}
-                          }}
-                          style={{
-                            background: "transparent",
-                            color: color.dim,
-                            border: `1px solid ${color.borderMid}`,
-                            borderRadius: 6,
-                            padding: "2px 8px",
-                            fontFamily: font.mono,
-                            fontSize: 9,
-                            fontWeight: 700,
-                            cursor: "pointer",
-                          }}
-                        >
-                          +7 days
-                        </button>
-                      );
-                    })()}
-                  </p>
-                );
-              })()}
             </div>
             <div style={{ display: "flex", gap: 4, marginLeft: 12, flexShrink: 0 }}>
               {selectedSquad.members.map((m) => (
@@ -372,6 +290,88 @@ const GroupsView = ({
               ))}
             </div>
           </div>
+          {(() => {
+            const expiryLabel = formatExpiryLabel(selectedSquad.expiresAt, selectedSquad.graceStartedAt);
+            if (!expiryLabel) return null;
+            const isUrgent = !!selectedSquad.graceStartedAt ||
+              (selectedSquad.expiresAt && new Date(selectedSquad.expiresAt).getTime() - Date.now() < 24 * 60 * 60 * 1000);
+            return (
+              <div
+                style={{
+                  fontFamily: font.mono,
+                  fontSize: 10,
+                  color: isUrgent ? color.accent : color.faint,
+                  margin: "4px 0 0",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                {expiryLabel}
+                {onSetSquadDate && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDatePicker(true);
+                      setDatePickerValue(
+                        selectedSquad.eventIsoDate
+                          ? new Date(selectedSquad.eventIsoDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+                          : ""
+                      );
+                    }}
+                    style={{
+                      background: color.accent,
+                      color: "#000",
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "2px 8px",
+                      fontFamily: font.mono,
+                      fontSize: 9,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {selectedSquad.eventIsoDate
+                      ? new Date(selectedSquad.eventIsoDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+                      : "Set a date"}
+                  </button>
+                )}
+                {(() => {
+                  // Show extend for undated squads, or dated squads on/after the event day
+                  const showExtend = !selectedSquad.eventIsoDate ||
+                    new Date(selectedSquad.eventIsoDate + "T00:00:00") <= new Date(new Date().toDateString());
+                  if (!showExtend) return null;
+                  return (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          const newExpiry = await db.extendSquad(selectedSquad.id);
+                          onSquadUpdate((prev) => prev.map((s) =>
+                            s.id === selectedSquad.id ? { ...s, expiresAt: newExpiry } : s
+                          ));
+                          setSelectedSquad((prev) => prev ? { ...prev, expiresAt: newExpiry } : prev);
+                        } catch {}
+                      }}
+                      style={{
+                        background: "transparent",
+                        color: color.dim,
+                        border: `1px solid ${color.borderMid}`,
+                        borderRadius: 6,
+                        padding: "2px 8px",
+                        fontFamily: font.mono,
+                        fontSize: 9,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      +7 days
+                    </button>
+                  );
+                })()}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Leave squad confirmation */}
