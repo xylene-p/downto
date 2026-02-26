@@ -383,9 +383,21 @@ export async function POST(request: NextRequest) {
     const authorMatch = html.match(/<meta property="og:url" content="https:\/\/www\.instagram\.com\/([^/]+)\//);
     const authorName = authorMatch ? authorMatch[1] : "";
 
-    // Extract thumbnail from og:image
+    // Extract image with multi-fallback: embedded JSON first, then og:image
+    const displayUrlMatch = html.match(/"display_url"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    const thumbnailSrcMatch = html.match(/"thumbnail_src"\s*:\s*"((?:[^"\\]|\\.)*)"/);
     const ogImageMatch = html.match(/<meta property="og:image" content="([^"]+)"/);
-    const thumbnail = ogImageMatch ? ogImageMatch[1].replace(/&amp;/g, '&') : "";
+
+    let thumbnail = "";
+    if (displayUrlMatch) {
+      try { thumbnail = JSON.parse(`"${displayUrlMatch[1]}"`); } catch { /* fall through */ }
+    }
+    if (!thumbnail && thumbnailSrcMatch) {
+      try { thumbnail = JSON.parse(`"${thumbnailSrcMatch[1]}"`); } catch { /* fall through */ }
+    }
+    if (!thumbnail && ogImageMatch) {
+      thumbnail = ogImageMatch[1].replace(/&amp;/g, '&');
+    }
 
     if (!caption && !thumbnail) {
       return NextResponse.json({
