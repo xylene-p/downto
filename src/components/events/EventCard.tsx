@@ -317,11 +317,11 @@ const EventCard = ({
                 </div>
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-                {event.peopleDown.length === 0 ? (
+                {event.peopleDown.length === 0 && !event.userInPool ? (
                   <span style={{ fontFamily: font.mono, fontSize: 11, color: color.pool }}>
                     Looking for a squad?
                   </span>
-                ) : hasPool ? (
+                ) : hasPool || event.userInPool ? (
                   <>
                     <span style={{ fontFamily: font.mono, fontSize: 11 }}>
                       <span style={{ color: color.pool }}>
