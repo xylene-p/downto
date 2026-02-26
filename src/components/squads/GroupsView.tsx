@@ -192,7 +192,7 @@ const GroupsView = ({
         style={{
           display: "flex",
           flexDirection: "column",
-          height: "100vh",
+          height: "100dvh",
           position: "fixed",
           top: 0,
           left: 0,
@@ -750,7 +750,7 @@ const GroupsView = ({
         {/* Input */}
         <div
           style={{
-            padding: "12px 20px",
+            padding: "12px 20px calc(12px + env(safe-area-inset-bottom, 0px))",
             borderTop: `1px solid ${color.border}`,
             display: "flex",
             gap: 8,
