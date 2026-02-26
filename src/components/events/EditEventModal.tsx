@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, CSSProperties } from "react";
+import { useState, useEffect, useRef, CSSProperties } from "react";
 import { font, color } from "@/lib/styles";
 import type { Event } from "@/lib/ui-types";
 
@@ -20,6 +20,11 @@ const EditEventModal = ({
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [vibeText, setVibeText] = useState("");
+  const touchStartY = useRef(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [closing, setClosing] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
 
   useEffect(() => {
     if (event && open) {
@@ -30,6 +35,33 @@ const EditEventModal = ({
       setVibeText(event.vibe.join(", "));
     }
   }, [event, open]);
+
+  // Lock body scroll when open
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
+  const finishSwipe = () => {
+    if (dragOffset > 60) {
+      setClosing(true);
+      setTimeout(() => { setClosing(false); setDragOffset(0); onClose(); }, 250);
+    } else {
+      setDragOffset(0);
+    }
+    isDragging.current = false;
+  };
+  const handleScrollTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+    isDragging.current = false;
+  };
+  const handleScrollTouchMove = (e: React.TouchEvent) => {
+    const dy = e.touches[0].clientY - touchStartY.current;
+    const atTop = scrollRef.current ? scrollRef.current.scrollTop <= 0 : true;
+    if (atTop && dy > 0) { isDragging.current = true; e.preventDefault(); setDragOffset(dy); }
+  };
+  const handleScrollTouchEnd = () => { if (isDragging.current) finishSwipe(); };
 
   if (!open || !event) return null;
 
@@ -77,6 +109,10 @@ const EditEventModal = ({
         }}
       />
       <div
+        ref={scrollRef}
+        onTouchStart={handleScrollTouchStart}
+        onTouchMove={handleScrollTouchMove}
+        onTouchEnd={handleScrollTouchEnd}
         style={{
           position: "relative",
           background: color.surface,
@@ -85,8 +121,11 @@ const EditEventModal = ({
           maxWidth: 420,
           padding: "32px 24px 40px",
           maxHeight: "80vh",
-          overflowY: "auto",
-          animation: "slideUp 0.3s ease-out",
+          overflowY: isDragging.current ? "hidden" : "auto",
+          overscrollBehavior: "contain",
+          animation: closing ? undefined : "slideUp 0.3s ease-out",
+          transform: closing ? "translateY(100%)" : `translateY(${dragOffset}px)`,
+          transition: isDragging.current ? "none" : "transform 0.25s ease-out",
         }}
       >
         <div

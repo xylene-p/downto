@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { font, color } from "@/lib/styles";
 import type { Event, Person } from "@/lib/ui-types";
 
@@ -27,6 +27,11 @@ const EventLobby = ({
 }) => {
   const [selectingMembers, setSelectingMembers] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const touchStartY = useRef(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [closing, setClosing] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
 
   // Reset selection state when drawer opens/closes
   useEffect(() => {
@@ -35,6 +40,33 @@ const EventLobby = ({
       setSelectedIds(new Set());
     }
   }, [open]);
+
+  // Lock body scroll when open
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
+  const finishSwipe = () => {
+    if (dragOffset > 60) {
+      setClosing(true);
+      setTimeout(() => { setClosing(false); setDragOffset(0); onClose(); }, 250);
+    } else {
+      setDragOffset(0);
+    }
+    isDragging.current = false;
+  };
+  const handleScrollTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+    isDragging.current = false;
+  };
+  const handleScrollTouchMove = (e: React.TouchEvent) => {
+    const dy = e.touches[0].clientY - touchStartY.current;
+    const atTop = scrollRef.current ? scrollRef.current.scrollTop <= 0 : true;
+    if (atTop && dy > 0) { isDragging.current = true; e.preventDefault(); setDragOffset(dy); }
+  };
+  const handleScrollTouchEnd = () => { if (isDragging.current) finishSwipe(); };
 
   if (!open || !event) return null;
   const friends = event.peopleDown.filter((p) => p.mutual);
@@ -138,6 +170,10 @@ const EventLobby = ({
         }}
       />
       <div
+        ref={scrollRef}
+        onTouchStart={handleScrollTouchStart}
+        onTouchMove={handleScrollTouchMove}
+        onTouchEnd={handleScrollTouchEnd}
         style={{
           position: "relative",
           background: color.surface,
@@ -146,8 +182,11 @@ const EventLobby = ({
           maxWidth: 420,
           padding: "32px 24px 40px",
           maxHeight: "70vh",
-          overflowY: "auto",
-          animation: "slideUp 0.3s ease-out",
+          overflowY: isDragging.current ? "hidden" : "auto",
+          overscrollBehavior: "contain",
+          animation: closing ? undefined : "slideUp 0.3s ease-out",
+          transform: closing ? "translateY(100%)" : `translateY(${dragOffset}px)`,
+          transition: isDragging.current ? "none" : "transform 0.25s ease-out",
         }}
       >
         <div

@@ -22,6 +22,12 @@ const UserProfileOverlay = ({
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
 
+  // Lock body scroll when open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
