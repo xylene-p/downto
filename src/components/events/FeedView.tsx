@@ -473,8 +473,7 @@ export default function FeedView({
                             </div>
                           </div>
                         ) : (
-                          <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 12 }}>
-                            <div style={{ flex: 1 }}>
+                          <div style={{ marginBottom: 12 }}>
                               <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
                                 <p
                                   style={{
@@ -576,14 +575,13 @@ export default function FeedView({
                                   )}
                                 </div>
                               )}
-                            </div>
-                            {check.isYours && (check.squadId || check.squadId) && (
+                            {check.isYours && check.squadId && (
                               <div
                                 style={{
                                   display: "flex",
                                   alignItems: "center",
                                   gap: 6,
-                                  marginTop: 2,
+                                  marginTop: 6,
                                   padding: "5px 10px",
                                   background: "rgba(175, 82, 222, 0.1)",
                                   borderRadius: 8,
@@ -617,8 +615,7 @@ export default function FeedView({
                                   fontSize: 10,
                                   fontWeight: 700,
                                   cursor: "pointer",
-                                  flexShrink: 0,
-                                  marginTop: 2,
+                                  marginTop: 6,
                                 }}
                               >
                                 Squad →
@@ -686,7 +683,7 @@ export default function FeedView({
                                     {" "}{check.responses.filter((r) => r.status === "maybe").length} maybe
                                   </span>
                                 )}
-                                {" "}<span style={{ color: color.faint, fontSize: 8 }}>{expandedCheckId === check.id ? "▴" : "▾"}</span>
+                                {" "}<span style={{ color: color.faint, fontSize: 8, paddingRight: 4 }}>{expandedCheckId === check.id ? "▴" : "▾"}</span>
                               </span>
                             </div>
                           ) : (
