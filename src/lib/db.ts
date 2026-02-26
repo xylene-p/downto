@@ -519,14 +519,14 @@ export async function getFofAnnotations(): Promise<{ check_id: string; via_frien
   return data ?? [];
 }
 
-export async function getActiveChecks(): Promise<(InterestCheck & { author: Profile; responses: (CheckResponse & { user: Profile })[]; squads: { id: string; members: { id: string }[] }[] })[]> {
+export async function getActiveChecks(): Promise<(InterestCheck & { author: Profile; responses: (CheckResponse & { user: Profile })[]; squads: { id: string; archived_at: string | null; members: { id: string }[] }[] })[]> {
   const { data, error } = await supabase
     .from('interest_checks')
     .select(`
       *,
       author:profiles!author_id(*),
       responses:check_responses(*, user:profiles!user_id(*)),
-      squads(id, members:squad_members(id))
+      squads(id, archived_at, members:squad_members(id))
     `)
     .or(`expires_at.gt.${new Date().toISOString()},expires_at.is.null`)
     .order('created_at', { ascending: false });
