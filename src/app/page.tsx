@@ -163,7 +163,7 @@ export default function Home() {
 
       setEvents((prev) => {
         const prevPeopleDown = new Map(prev.map((e) => [e.id, e.peopleDown]));
-        return [
+        const combined = [
           ...savedEvents.map((se) => ({
             id: se.event!.id,
             createdBy: se.event!.created_by ?? undefined,
@@ -182,6 +182,7 @@ export default function Home() {
             isPublic: se.event!.is_public ?? false,
             peopleDown: prevPeopleDown.get(se.event!.id) ?? [],
             neighborhood: se.event!.neighborhood ?? undefined,
+            rawDate: se.event!.date ?? undefined,
           })),
           ...friendsEvents
             .filter((e) => !savedEventIdSet.has(e.id))
@@ -202,8 +203,16 @@ export default function Home() {
               isDown: false,
               peopleDown: prevPeopleDown.get(e.id) ?? [],
               neighborhood: e.neighborhood ?? undefined,
+              rawDate: e.date ?? undefined,
             })),
         ];
+        combined.sort((a, b) => {
+          if (!a.rawDate && !b.rawDate) return 0;
+          if (!a.rawDate) return 1;
+          if (!b.rawDate) return -1;
+          return a.rawDate.localeCompare(b.rawDate);
+        });
+        return combined;
       });
 
       setTonightEvents((prev) => {
@@ -472,6 +481,7 @@ export default function Home() {
         await db.updateEvent(editingEvent.id, {
           title: updated.title,
           venue: updated.venue,
+          date: dateISO,
           date_display: dateDisplay,
           time_display: updated.time,
           vibes: updated.vibe,
@@ -486,7 +496,7 @@ export default function Home() {
     const updateList = (prev: Event[]) =>
       prev.map((e) =>
         e.id === editingEvent.id
-          ? { ...e, title: updated.title, venue: updated.venue, date: dateDisplay, time: updated.time, vibe: updated.vibe }
+          ? { ...e, title: updated.title, venue: updated.venue, date: dateDisplay, time: updated.time, vibe: updated.vibe, rawDate: dateISO ?? undefined }
           : e
       );
     setEvents(updateList);

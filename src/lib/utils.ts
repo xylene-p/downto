@@ -35,9 +35,12 @@ export const parseDateToISO = (display: string): string | null => {
   // Try "Feb 15", "February 15", "Sat, Feb 15", "2/15", "3/19", etc.
   const year = today.getFullYear();
 
+  // Strip ordinal suffixes (1st, 2nd, 3rd, 4th, etc.) so Date.parse works
+  const cleaned = display.replace(/(\d+)(st|nd|rd|th)\b/gi, "$1");
+
   // Handle "M/D" or "M/D/YY" formats — append year with slash so Date.parse works
-  const slashMatch = display.match(/^(\d{1,2})\/(\d{1,2})$/);
-  const withYear = slashMatch ? `${display}/${year}` : `${display} ${year}`;
+  const slashMatch = cleaned.match(/^(\d{1,2})\/(\d{1,2})$/);
+  const withYear = slashMatch ? `${cleaned}/${year}` : `${cleaned} ${year}`;
   const parsed = new Date(withYear);
   if (!isNaN(parsed.getTime())) {
     // If the date is more than 2 months in the past, assume next year

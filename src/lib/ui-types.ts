@@ -24,6 +24,7 @@ export interface Event {
   peopleDown: Person[];
   isPublic?: boolean;
   neighborhood?: string;
+  rawDate?: string;
   poolCount?: number;
   userInPool?: boolean;
 }
