@@ -6,6 +6,7 @@ import { font, color } from "@/lib/styles";
 import GlobalStyles from "./GlobalStyles";
 import Grain from "./Grain";
 import Button from "./Button";
+import LinkButton from "./LinkButton";
 
 const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
   const [pendingAddUser, setPendingAddUser] = useState<string | null>(null);
@@ -16,7 +17,7 @@ const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
   }, []);
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
-  const [step, setStep] = useState<"email" | "otp">("email");
+  const [step, setStep] = useState<"email" | "otp">("otp");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -128,7 +129,7 @@ const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
           <Button
             onClick={handleSendCode}
             disabled={!email.includes("@") || loading}
-            size='large'
+            size="large"
           >
             {loading ? "Sending..." : "Send Code"}
           </Button>
@@ -170,55 +171,39 @@ const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
               marginBottom: 16,
             }}
           />
+          <Button
+            onClick={handleVerifyCode}
+            disabled={otp.length !== 8 || loading}
+            size="large"
+          >
+            {loading ? "Verifying..." : "Verify"}
+          </Button>
           <div
             style={{
-              marginBottom: 12,
+              display: "flex",
+              justifyContent: "center",
+              gap: 16,
+              marginTop: 12,
             }}
           >
-            <Button
-              onClick={handleVerifyCode}
-              disabled={otp.length !== 8 || loading}
-            >
-              {loading ? "Verifying..." : "Verify"}
-            </Button>
-          </div>
-          <div style={{ display: "flex", justifyContent: "center", gap: 16 }}>
-            <button
+            <LinkButton
               onClick={() => {
                 setStep("email");
                 setOtp("");
                 setError(null);
               }}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: color.dim,
-                fontFamily: font.mono,
-                fontSize: 11,
-                cursor: "pointer",
-                textDecoration: "underline",
-              }}
             >
               Different email
-            </button>
-            <button
+            </LinkButton>
+            <LinkButton
               onClick={() => {
                 setOtp("");
                 setError(null);
                 handleSendCode();
               }}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: color.dim,
-                fontFamily: font.mono,
-                fontSize: 11,
-                cursor: "pointer",
-                textDecoration: "underline",
-              }}
             >
               Resend code
-            </button>
+            </LinkButton>
           </div>
         </>
       )}

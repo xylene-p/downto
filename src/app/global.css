@@ -19,7 +19,7 @@
 
   /* Font size */
   --font-size-xxs: 0.625rem; /* 10px */
-  --font-size-xs: 0.8rem; /* 12px */
+  --font-size-xs: 0.75rem; /* 12px */
   --font-size-base: 1rem; /* 16px */
   --font-size-md: 1.125rem; /* 18px */
   --font-size-lg: 1rem;
@@ -32,7 +32,7 @@
   /* Border radius */
   --border-radius-small: 0.5rem;
   --border-radius-large: 0.75rem;
-  --border-radius-rounded: 50%;
+  --border-radius-rounded: 1.25rem;
 
   /* Whitespace */
   --spacing-050: 0.5rem;
@@ -55,7 +55,7 @@ h1 {
 }
 
 h2 {
-  font-size: var(--font-size-xs);
+  font-size: 0.825rem;
   font-weight: var(--font-weight-regular);
 }
 
