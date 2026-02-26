@@ -306,12 +306,12 @@ const AddModal = ({
                   color: color.text,
                   fontFamily: font.mono,
                   fontSize: 13,
+                  lineHeight: "1.4",
                   outline: "none",
                   transition: "border-color 0.2s",
                   resize: "none",
+                  overflow: "hidden",
                   maxHeight: 100,
-                  overflowY: "auto",
-                  lineHeight: 1.4,
                 }}
               />
               <button
