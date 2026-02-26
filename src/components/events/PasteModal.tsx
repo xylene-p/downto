@@ -33,7 +33,7 @@ const AddModal = ({
   const [url, setUrl] = useState("");
   const [idea, setIdea] = useState("");
   const [checkTimer, setCheckTimer] = useState<number | null>(24);
-  const [checkSquadSize, setCheckSquadSize] = useState(5);
+
   const detectedDate = idea ? parseNaturalDate(idea) : null;
   const detectedTime = idea ? parseNaturalTime(idea) : null;
   const [dateDismissed, setDateDismissed] = useState(false);
@@ -983,41 +983,12 @@ const AddModal = ({
                 ))}
               </div>
             </div>
-            {/* Squad size picker */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontFamily: font.mono, fontSize: 10, color: color.dim, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.15em" }}>
-                Squad size
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {[2, 3, 4, 5].map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setCheckSquadSize(size)}
-                    style={{
-                      flex: 1,
-                      padding: "10px 0",
-                      background: checkSquadSize === size ? color.accent : "transparent",
-                      color: checkSquadSize === size ? "#000" : color.muted,
-                      border: `1px solid ${checkSquadSize === size ? color.accent : color.borderMid}`,
-                      borderRadius: 10,
-                      fontFamily: font.mono,
-                      fontSize: 12,
-                      fontWeight: checkSquadSize === size ? 700 : 400,
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
             <button
               onClick={() => {
                 if (idea.trim()) {
                   const eventDate = (!dateDismissed && detectedDate) ? detectedDate.iso : null;
                   const eventTime = (!timeDismissed && detectedTime) ? detectedTime : null;
-                  onInterestCheck(sanitize(idea, 280), checkTimer, eventDate, checkSquadSize, checkMovie ?? undefined, eventTime);
+                  onInterestCheck(sanitize(idea, 280), checkTimer, eventDate, 5, checkMovie ?? undefined, eventTime);
                   onClose();
                 }
               }}

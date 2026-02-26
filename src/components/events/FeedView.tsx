@@ -90,7 +90,7 @@ export default function FeedView({
 }: FeedViewProps) {
   const [showHidden, setShowHidden] = useState(false);
   const [expandedCheckId, setExpandedCheckId] = useState<string | null>(null);
-  const [editingCheckMaxSquadSize, setEditingCheckMaxSquadSize] = useState<number>(5);
+
   const visibleChecks = checks.filter((c) => !hiddenCheckIds.has(c.id));
   const hiddenChecks = checks.filter((c) => hiddenCheckIds.has(c.id));
   return (
@@ -362,13 +362,13 @@ export default function FeedView({
                                     const trimmed = editingCheckText.trim();
                                     setChecks((prev) =>
                                       prev.map((c) =>
-                                        c.id === check.id ? { ...c, text: trimmed, maxSquadSize: editingCheckMaxSquadSize } : c
+                                        c.id === check.id ? { ...c, text: trimmed } : c
                                       )
                                     );
                                     setEditingCheckId(null);
                                     showToast("Check updated!");
                                     if (!isDemoMode && check.id) {
-                                      db.updateInterestCheck(check.id, { text: trimmed, max_squad_size: editingCheckMaxSquadSize }).catch((err) => logError("updateCheck", err, { checkId: check.id }));
+                                      db.updateInterestCheck(check.id, { text: trimmed }).catch((err) => logError("updateCheck", err, { checkId: check.id }));
                                       if (check.squadId) {
                                         const squadName = trimmed.slice(0, 30) + (trimmed.length > 30 ? "..." : "");
                                         db.updateSquadName(check.squadId, squadName).catch((err) => logError("updateSquadName", err, { squadId: check.squadId }));
@@ -396,13 +396,13 @@ export default function FeedView({
                                     const trimmed = editingCheckText.trim();
                                     setChecks((prev) =>
                                       prev.map((c) =>
-                                        c.id === check.id ? { ...c, text: trimmed, maxSquadSize: editingCheckMaxSquadSize } : c
+                                        c.id === check.id ? { ...c, text: trimmed } : c
                                       )
                                     );
                                     setEditingCheckId(null);
                                     showToast("Check updated!");
                                     if (!isDemoMode && check.id) {
-                                      db.updateInterestCheck(check.id, { text: trimmed, max_squad_size: editingCheckMaxSquadSize }).catch((err) => logError("updateCheck", err, { checkId: check.id }));
+                                      db.updateInterestCheck(check.id, { text: trimmed }).catch((err) => logError("updateCheck", err, { checkId: check.id }));
                                       if (check.squadId) {
                                         const squadName = trimmed.slice(0, 30) + (trimmed.length > 30 ? "..." : "");
                                         db.updateSquadName(check.squadId, squadName).catch((err) => logError("updateSquadName", err, { squadId: check.squadId }));
@@ -423,52 +423,6 @@ export default function FeedView({
                                 }}
                               >
                                 Save
-                              </button>
-                            </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{ fontFamily: font.mono, fontSize: 10, color: color.dim }}>Squad size</span>
-                              <button
-                                onClick={() => setEditingCheckMaxSquadSize((s) => Math.max(2, s - 1))}
-                                style={{
-                                  background: color.deep,
-                                  border: `1px solid ${color.borderMid}`,
-                                  borderRadius: 6,
-                                  color: color.text,
-                                  width: 28,
-                                  height: 28,
-                                  fontFamily: font.mono,
-                                  fontSize: 14,
-                                  cursor: "pointer",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  padding: 0,
-                                }}
-                              >
-                                -
-                              </button>
-                              <span style={{ fontFamily: font.mono, fontSize: 14, color: color.text, minWidth: 20, textAlign: "center" }}>
-                                {editingCheckMaxSquadSize}
-                              </span>
-                              <button
-                                onClick={() => setEditingCheckMaxSquadSize((s) => Math.min(20, s + 1))}
-                                style={{
-                                  background: color.deep,
-                                  border: `1px solid ${color.borderMid}`,
-                                  borderRadius: 6,
-                                  color: color.text,
-                                  width: 28,
-                                  height: 28,
-                                  fontFamily: font.mono,
-                                  fontSize: 14,
-                                  cursor: "pointer",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  padding: 0,
-                                }}
-                              >
-                                +
                               </button>
                             </div>
                           </div>
@@ -495,7 +449,7 @@ export default function FeedView({
                                         e.stopPropagation();
                                         setEditingCheckId(check.id);
                                         setEditingCheckText(check.text);
-                                        setEditingCheckMaxSquadSize(check.maxSquadSize ?? 5);
+
                                       }}
                                       style={{
                                         background: "transparent",
