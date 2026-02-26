@@ -896,6 +896,10 @@ export default function Home() {
                 dbEvent = await db.findEventByLetterboxdUrl(letterboxdUrl);
               }
 
+              if (dbEvent && imageUrl && dbEvent.image_url !== imageUrl) {
+                dbEvent = await db.updateEvent(dbEvent.id, { image_url: imageUrl });
+              }
+
               if (!dbEvent) {
                 dbEvent = await db.createEvent({
                   title,
