@@ -91,7 +91,14 @@ export default function FeedView({
   const [showHidden, setShowHidden] = useState(false);
   const [expandedCheckId, setExpandedCheckId] = useState<string | null>(null);
 
-  const visibleChecks = checks.filter((c) => !hiddenCheckIds.has(c.id));
+  const visibleChecks = checks
+    .filter((c) => !hiddenCheckIds.has(c.id))
+    .sort((a, b) => {
+      // Expiring checks first (higher expiryPercent = closer to expiry), open checks last
+      const aExpiring = a.expiresIn !== "open" ? a.expiryPercent : -1;
+      const bExpiring = b.expiresIn !== "open" ? b.expiryPercent : -1;
+      return bExpiring - aExpiring;
+    });
   const hiddenChecks = checks.filter((c) => hiddenCheckIds.has(c.id));
   return (
           <div style={{ padding: "0 16px", animation: "fadeIn 0.3s ease" }}>
