@@ -5,6 +5,8 @@ import { supabase } from "@/lib/supabase";
 import { font, color } from "@/lib/styles";
 import GlobalStyles from "./GlobalStyles";
 import Grain from "./Grain";
+import Button from "./Button";
+import LinkButton from "./LinkButton";
 
 const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
   const [pendingAddUser, setPendingAddUser] = useState<string | null>(null);
@@ -59,7 +61,6 @@ const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
         maxWidth: 420,
         margin: "0 auto",
         minHeight: "100vh",
-        background: color.bg,
         padding: "60px 24px",
         display: "flex",
         flexDirection: "column",
@@ -70,30 +71,21 @@ const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
 
       <h1
         style={{
-          fontFamily: font.serif,
-          fontSize: 48,
-          color: color.text,
-          fontWeight: 400,
           marginBottom: 8,
         }}
       >
         down to
       </h1>
-      <p
+      <h2
         style={{
-          fontFamily: font.mono,
-          fontSize: 13,
-          color: color.dim,
           marginBottom: pendingAddUser ? 12 : 48,
         }}
       >
         from idea to squad in 10 seconds
-      </p>
+      </h2>
       {pendingAddUser && (
         <p
           style={{
-            fontFamily: font.mono,
-            fontSize: 12,
             color: color.accent,
             marginBottom: 36,
           }}
@@ -105,8 +97,6 @@ const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
       {error && (
         <p
           style={{
-            fontFamily: font.mono,
-            fontSize: 12,
             color: "#ff6b6b",
             marginBottom: 16,
           }}
@@ -117,18 +107,7 @@ const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
 
       {step === "email" ? (
         <>
-          <label
-            style={{
-              fontFamily: font.mono,
-              fontSize: 10,
-              textTransform: "uppercase",
-              letterSpacing: "0.15em",
-              color: color.dim,
-              marginBottom: 8,
-            }}
-          >
-            Email
-          </label>
+          <label>Email</label>
           <input
             type="email"
             value={email}
@@ -147,57 +126,34 @@ const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
               marginBottom: 16,
             }}
           />
-          <button
+          <Button
             onClick={handleSendCode}
             disabled={!email.includes("@") || loading}
-            style={{
-              background: email.includes("@") ? color.accent : color.borderMid,
-              color: email.includes("@") ? "#000" : color.dim,
-              border: "none",
-              borderRadius: 12,
-              padding: "16px",
-              fontFamily: font.mono,
-              fontSize: 14,
-              fontWeight: 700,
-              cursor: email.includes("@") ? "pointer" : "not-allowed",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-            }}
+            size="large"
           >
             {loading ? "Sending..." : "Send Code"}
-          </button>
+          </Button>
         </>
       ) : (
         <>
           <p
             style={{
-              fontFamily: font.mono,
-              fontSize: 12,
-              color: color.dim,
               marginBottom: 20,
             }}
           >
-            We sent a code to<br />
+            We sent a code to
+            <br />
             <span style={{ color: color.accent }}>{email}</span>
           </p>
-          <label
-            style={{
-              fontFamily: font.mono,
-              fontSize: 10,
-              textTransform: "uppercase",
-              letterSpacing: "0.15em",
-              color: color.dim,
-              marginBottom: 8,
-            }}
-          >
-            Code
-          </label>
+          <label>Code</label>
           <input
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
             value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 8))}
+            onChange={(e) =>
+              setOtp(e.target.value.replace(/\D/g, "").slice(0, 8))
+            }
             onKeyDown={(e) => e.key === "Enter" && handleVerifyCode()}
             placeholder="00000000"
             autoFocus
@@ -215,59 +171,42 @@ const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
               marginBottom: 16,
             }}
           />
-          <button
+          <Button
             onClick={handleVerifyCode}
             disabled={otp.length !== 8 || loading}
-            style={{
-              background: otp.length === 8 ? color.accent : color.borderMid,
-              color: otp.length === 8 ? "#000" : color.dim,
-              border: "none",
-              borderRadius: 12,
-              padding: "16px",
-              fontFamily: font.mono,
-              fontSize: 14,
-              fontWeight: 700,
-              cursor: otp.length === 8 ? "pointer" : "not-allowed",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              marginBottom: 12,
-            }}
+            size="large"
           >
             {loading ? "Verifying..." : "Verify"}
-          </button>
-          <div style={{ display: "flex", justifyContent: "center", gap: 16 }}>
-            <button
-              onClick={() => { setStep("email"); setOtp(""); setError(null); }}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: color.dim,
-                fontFamily: font.mono,
-                fontSize: 11,
-                cursor: "pointer",
-                textDecoration: "underline",
+          </Button>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              gap: 16,
+              marginTop: 12,
+            }}
+          >
+            <LinkButton
+              onClick={() => {
+                setStep("email");
+                setOtp("");
+                setError(null);
               }}
             >
               Different email
-            </button>
-            <button
-              onClick={() => { setOtp(""); setError(null); handleSendCode(); }}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: color.dim,
-                fontFamily: font.mono,
-                fontSize: 11,
-                cursor: "pointer",
-                textDecoration: "underline",
+            </LinkButton>
+            <LinkButton
+              onClick={() => {
+                setOtp("");
+                setError(null);
+                handleSendCode();
               }}
             >
               Resend code
-            </button>
+            </LinkButton>
           </div>
         </>
       )}
-
     </div>
   );
 };
