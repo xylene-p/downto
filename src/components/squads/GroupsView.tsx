@@ -89,12 +89,13 @@ const GroupsView = ({
         time: "now",
         isYou: false,
       };
+      const lastMsgPreview = isSystem ? newMessage.text : `${senderName}: ${newMessage.text}`;
       setSelectedSquad((prev) => {
         if (!prev || prev.id !== newMessage.squad_id) return prev;
         return {
           ...prev,
           messages: [...prev.messages, msg],
-          lastMsg: `${senderName}: ${newMessage.text}`,
+          lastMsg: lastMsgPreview,
           time: "now",
         };
       });
@@ -102,7 +103,7 @@ const GroupsView = ({
       onSquadUpdateRef.current((prev) =>
         prev.map((s) =>
           s.id === newMessage.squad_id
-            ? { ...s, messages: [...s.messages, msg], lastMsg: `${senderName}: ${newMessage.text}`, time: "now" }
+            ? { ...s, messages: [...s.messages, msg], lastMsg: lastMsgPreview, time: "now" }
             : s
         )
       );

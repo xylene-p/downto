@@ -117,7 +117,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         eventIsoDate: s.locked_date ?? s.event?.date ?? undefined,
         members,
         messages,
-        lastMsg: lastMessage ? `${lastMessage.sender}: ${lastMessage.text}` : "",
+        lastMsg: lastMessage ? (lastMessage.sender === "system" ? lastMessage.text : `${lastMessage.sender}: ${lastMessage.text}`) : "",
         time: lastMessage ? lastMessage.time : formatTimeAgo(new Date(s.created_at)),
         checkId: s.check_id ?? undefined,
         meetingSpot: s.meeting_spot ?? undefined,
