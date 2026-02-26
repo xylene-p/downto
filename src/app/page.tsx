@@ -756,6 +756,7 @@ export default function Home() {
             squads={squadsHook.squads}
             onSquadUpdate={squadsHook.setSquads}
             autoSelectSquadId={squadsHook.autoSelectSquadId}
+            clearAutoSelectSquadId={() => squadsHook.setAutoSelectSquadId(null)}
             onSendMessage={async (squadDbId, text) => {
               const before = new Date().toISOString();
               await db.sendMessage(squadDbId, text);

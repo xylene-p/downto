@@ -28,6 +28,7 @@ const GroupsView = ({
   squads,
   onSquadUpdate,
   autoSelectSquadId,
+  clearAutoSelectSquadId,
   onSendMessage,
   onLeaveSquad,
   onSetSquadDate,
@@ -39,6 +40,7 @@ const GroupsView = ({
   squads: Squad[];
   onSquadUpdate: (squadsOrUpdater: Squad[] | ((prev: Squad[]) => Squad[])) => void;
   autoSelectSquadId?: string | null;
+  clearAutoSelectSquadId?: () => void;
   onSendMessage?: (squadDbId: string, text: string) => Promise<void>;
   onLeaveSquad?: (squadDbId: string) => Promise<void>;
   onSetSquadDate?: (squadDbId: string, date: string, time?: string | null) => Promise<void>;
@@ -62,6 +64,7 @@ const GroupsView = ({
     if (autoSelectSquadId != null) {
       const squad = squads.find((s) => s.id === autoSelectSquadId);
       if (squad) setSelectedSquad(squad);
+      clearAutoSelectSquadId?.();
     }
   }, [autoSelectSquadId]);
 
