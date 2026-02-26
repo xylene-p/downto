@@ -77,6 +77,12 @@ export default function Home() {
     return false;
   });
 
+  // ─── Pull-to-refresh state ──────────────────────────────────────────────
+  const [refreshing, setRefreshing] = useState(false);
+  const [pullOffset, setPullOffset] = useState(0);
+  const touchStartY = useRef(0);
+  const isPulling = useRef(false);
+
   // ─── loadRealData ref (declared early so hooks can receive it) ──────────
   const loadRealDataRef = useRef<() => Promise<void>>(async () => {});
 
@@ -291,6 +297,48 @@ export default function Home() {
   }, [isDemoMode, userId, checksHook.hydrateChecks, squadsHook.hydrateSquads, friendsHook.hydrateFriends]);
 
   loadRealDataRef.current = loadRealData;
+
+  // ─── Pull-to-refresh handlers ──────────────────────────────────────────
+
+  const handlePullStart = useCallback((e: React.TouchEvent) => {
+    if (refreshing) return;
+    touchStartY.current = e.touches[0].clientY;
+    isPulling.current = false;
+  }, [refreshing]);
+
+  const handlePullMove = useCallback((e: React.TouchEvent) => {
+    if (refreshing) return;
+    if (window.scrollY > 0) {
+      // Not at top of page — don't intercept
+      isPulling.current = false;
+      setPullOffset(0);
+      return;
+    }
+    const dy = e.touches[0].clientY - touchStartY.current;
+    if (dy > 0) {
+      isPulling.current = true;
+      // Dampen the pull (feels more natural)
+      setPullOffset(Math.min(dy * 0.4, 100));
+    } else {
+      isPulling.current = false;
+      setPullOffset(0);
+    }
+  }, [refreshing]);
+
+  const handlePullEnd = useCallback(async () => {
+    if (!isPulling.current && !refreshing) {
+      setPullOffset(0);
+      return;
+    }
+    isPulling.current = false;
+    if (pullOffset > 60) {
+      setRefreshing(true);
+      setPullOffset(60); // Hold at threshold while loading
+      await loadRealData();
+      setRefreshing(false);
+    }
+    setPullOffset(0);
+  }, [pullOffset, refreshing, loadRealData]);
 
   // ─── Effects ────────────────────────────────────────────────────────────
 
@@ -648,6 +696,7 @@ export default function Home() {
         position: "relative",
         fontFamily: font.mono,
         overflowX: "hidden",
+        overscrollBehavior: "none",
       }}
     >
       <GlobalStyles />
@@ -669,8 +718,46 @@ export default function Home() {
         glowAdd={showAddGlow}
       />
 
+      {/* Pull-to-refresh indicator */}
+      {(pullOffset > 0 || refreshing) && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: 0,
+            overflow: "visible",
+            position: "relative",
+            zIndex: 10,
+          }}
+        >
+          <div
+            style={{
+              width: 22,
+              height: 22,
+              border: `2px solid ${color.borderMid}`,
+              borderTopColor: color.accent,
+              borderRadius: "50%",
+              animation: refreshing || pullOffset > 60 ? "spin 0.8s linear infinite" : "none",
+              transform: `translateY(${pullOffset}px) rotate(${pullOffset * 4}deg)`,
+              transition: pullOffset === 0 ? "transform 0.2s ease, opacity 0.2s ease" : "none",
+              opacity: Math.min(pullOffset / 60, 1),
+            }}
+          />
+        </div>
+      )}
+
       {/* Content */}
-      <div style={{ paddingBottom: 90 }}>
+      <div
+        style={{
+          paddingBottom: 90,
+          transform: pullOffset > 0 || refreshing ? `translateY(${pullOffset}px)` : "none",
+          transition: pullOffset === 0 && !refreshing ? "transform 0.2s ease" : "none",
+        }}
+        onTouchStart={handlePullStart}
+        onTouchMove={handlePullMove}
+        onTouchEnd={handlePullEnd}
+      >
         {!feedLoaded && !isDemoMode && (
           <div style={{
             display: "flex",
