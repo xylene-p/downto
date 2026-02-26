@@ -231,20 +231,6 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
         setNewlyAddedCheckId(newCheck.id);
         showToast(friendCount > 0 ? "Sent to friends & their friends! \u{1F4E3}" : "Check posted! Add friends to share it \u{1F4E3}");
         onCheckCreated?.();
-
-        // Fire push notifications to friends (fire-and-forget)
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (session) {
-            fetch('/api/push/notify', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({ checkId: dbCheck.id }),
-            }).catch(() => {});
-          }
-        });
       } catch (err) {
         logError("createCheck", err);
         showToast("Failed to send - try again");

@@ -758,20 +758,7 @@ export default function Home() {
             autoSelectSquadId={squadsHook.autoSelectSquadId}
             clearAutoSelectSquadId={() => squadsHook.setAutoSelectSquadId(null)}
             onSendMessage={async (squadDbId, text) => {
-              const before = new Date().toISOString();
               await db.sendMessage(squadDbId, text);
-              // Fire push notifications to squad members (fire-and-forget)
-              const session = (await supabase.auth.getSession()).data.session;
-              if (session) {
-                fetch('/api/push/notify', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${session.access_token}`,
-                  },
-                  body: JSON.stringify({ squadId: squadDbId, messageTimestamp: before }),
-                }).catch(() => {});
-              }
             }}
             onLeaveSquad={async (squadDbId) => {
               await db.leaveSquad(squadDbId);
