@@ -831,7 +831,11 @@ export default function Home() {
           tab={tab}
           onTabChange={(t) => {
             setTab(t);
-            if (t === "groups") notificationsHook.setHasUnreadSquadMessage(false);
+            if (t === "groups") {
+              notificationsHook.setHasUnreadSquadMessage(false);
+              if (!isDemoMode && userId) loadRealData();
+            }
+            if (t === "feed" && !isDemoMode && userId) loadRealData();
             if (t !== "feed") checksHook.setNewlyAddedCheckId(null);
           }}
           hasGroupsUnread={notificationsHook.hasUnreadSquadMessage || notificationsHook.notifications.some((n) => n.type === "squad_invite" && !n.is_read)}
