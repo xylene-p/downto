@@ -94,10 +94,16 @@ export default function FeedView({
   const visibleChecks = checks
     .filter((c) => !hiddenCheckIds.has(c.id))
     .sort((a, b) => {
-      // Expiring checks first (higher expiryPercent = closer to expiry), open checks last
-      const aExpiring = a.expiresIn !== "open" ? a.expiryPercent : -1;
-      const bExpiring = b.expiresIn !== "open" ? b.expiryPercent : -1;
-      return bExpiring - aExpiring;
+      const tierOf = (c: InterestCheck) =>
+        c.expiresIn !== "open" ? 0 : c.eventDate ? 1 : 2;
+      const ta = tierOf(a), tb = tierOf(b);
+      if (ta !== tb) return ta - tb;
+      // Tier 0: most urgent first
+      if (ta === 0) return b.expiryPercent - a.expiryPercent;
+      // Tier 1: soonest date first
+      if (ta === 1) return (a.eventDate ?? "").localeCompare(b.eventDate ?? "");
+      // Tier 2: no further ordering needed
+      return 0;
     });
   const hiddenChecks = checks.filter((c) => hiddenCheckIds.has(c.id));
   return (
