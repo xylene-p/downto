@@ -986,7 +986,16 @@ export default function Home() {
       <EventLobby
         event={squadsHook.socialEvent}
         open={!!squadsHook.socialEvent}
-        onClose={() => squadsHook.setSocialEvent(null)}
+        onClose={() => {
+          const ev = squadsHook.socialEvent;
+          if (ev?.id) {
+            const patch = { poolCount: ev.poolCount, userInPool: ev.userInPool, isDown: ev.isDown };
+            const apply = (e: Event) => e.id === ev.id ? { ...e, ...patch } : e;
+            setEvents((prev) => prev.map(apply));
+            setTonightEvents((prev) => prev.map(apply));
+          }
+          squadsHook.setSocialEvent(null);
+        }}
         onStartSquad={squadsHook.startSquadFromEvent}
         onJoinSquadPool={squadsHook.handleJoinSquadPool}
         squadPoolMembers={squadsHook.squadPoolMembers}
