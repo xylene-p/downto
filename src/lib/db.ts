@@ -529,6 +529,7 @@ export async function getActiveChecks(): Promise<(InterestCheck & { author: Prof
       squads(id, archived_at, members:squad_members(id))
     `)
     .or(`expires_at.gt.${new Date().toISOString()},expires_at.is.null`)
+    .or(`event_date.gte.${new Date().toISOString().slice(0, 10)},event_date.is.null`)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
