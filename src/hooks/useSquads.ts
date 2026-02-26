@@ -133,7 +133,12 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
     transformedSquads.sort((a, b) =>
       new Date(b.lastActivityAt!).getTime() - new Date(a.lastActivityAt!).getTime()
     );
-    setSquads(transformedSquads);
+    // Preserve hasUnread flags from previous state
+    setSquads((prev) => {
+      const unreadMap = new Map(prev.filter((s) => s.hasUnread).map((s) => [s.id, true]));
+      if (unreadMap.size === 0) return transformedSquads;
+      return transformedSquads.map((s) => unreadMap.has(s.id) ? { ...s, hasUnread: true } : s);
+    });
 
     // Link checks to their squads
     const checkToSquad = new Map<string, { squadId: string; inSquad: boolean }>();
