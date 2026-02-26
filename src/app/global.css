@@ -28,7 +28,9 @@
   --font-weight-regular: 400;
   --font-weight-bold: 700;
 
-  --spacing-1: 1rem;
+  /* Whitespace */
+  --spacing-050: 0.5rem;
+  --spacing-100: 1rem;
 }
 
 body {
@@ -59,7 +61,7 @@ p.label, label {
   font-size: var(--font-size-xxs);
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--spacing-050);
 }
 
 /* input {

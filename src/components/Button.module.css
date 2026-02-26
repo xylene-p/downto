@@ -4,7 +4,7 @@
   font-weight: var(--font-weight-bold);
   border: none;
   border-radius: 12;
-  padding: var(--spacing-1);
+  padding: var(--spacing-100);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   cursor: pointer;

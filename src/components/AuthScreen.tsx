@@ -169,26 +169,18 @@ const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
               marginBottom: 16,
             }}
           />
-          <button
-            onClick={handleVerifyCode}
-            disabled={otp.length !== 8 || loading}
+          <div
             style={{
-              background: otp.length === 8 ? color.accent : color.borderMid,
-              color: otp.length === 8 ? "#000" : color.dim,
-              border: "none",
-              borderRadius: 12,
-              padding: "16px",
-              fontFamily: font.mono,
-              fontSize: 14,
-              fontWeight: 700,
-              cursor: otp.length === 8 ? "pointer" : "not-allowed",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
               marginBottom: 12,
             }}
           >
-            {loading ? "Verifying..." : "Verify"}
-          </button>
+            <Button
+              onClick={handleVerifyCode}
+              disabled={otp.length !== 8 || loading}
+            >
+              {loading ? "Verifying..." : "Verify"}
+            </Button>
+          </div>
           <div style={{ display: "flex", justifyContent: "center", gap: 16 }}>
             <button
               onClick={() => {
