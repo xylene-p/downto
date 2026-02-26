@@ -127,8 +127,15 @@ const GroupsView = ({
       lastMsg: `You: ${text}`,
       time: "now",
     };
-    setSelectedSquad(updatedSquad);
-    onSquadUpdate((prev) => prev.map((s) => (s.id === updatedSquad.id ? updatedSquad : s)));
+    const withActivity = { ...updatedSquad, lastActivityAt: new Date().toISOString() };
+    setSelectedSquad(withActivity);
+    onSquadUpdate((prev) => {
+      const updated = prev.map((s) => (s.id === withActivity.id ? withActivity : s));
+      updated.sort((a, b) =>
+        new Date(b.lastActivityAt!).getTime() - new Date(a.lastActivityAt!).getTime()
+      );
+      return updated;
+    });
     setNewMsg("");
     if (msgInputRef.current) msgInputRef.current.style.height = "auto";
 
