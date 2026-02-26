@@ -15,6 +15,7 @@ const FirstCheckScreen = ({
 }) => {
   const [idea, setIdea] = useState("");
   const [checkTimer, setCheckTimer] = useState<number | null>(24);
+  const [squadSize, setSquadSize] = useState(5);
 
   const detectedDate = idea ? parseNaturalDate(idea) : null;
   const detectedTime = idea ? parseNaturalTime(idea) : null;
@@ -196,13 +197,43 @@ const FirstCheckScreen = ({
         </div>
       </div>
 
+      {/* Squad size picker */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontFamily: font.mono, fontSize: 10, color: color.dim, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.15em" }}>
+          Squad size
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {[3, 4, 5, 6, 8].map((n) => (
+            <button
+              key={n}
+              onClick={() => setSquadSize(n)}
+              style={{
+                flex: 1,
+                padding: "10px 0",
+                background: squadSize === n ? color.accent : "transparent",
+                color: squadSize === n ? "#000" : color.muted,
+                border: `1px solid ${squadSize === n ? color.accent : color.borderMid}`,
+                borderRadius: 10,
+                fontFamily: font.mono,
+                fontSize: 12,
+                fontWeight: squadSize === n ? 700 : 400,
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Send it button */}
       <button
         onClick={() => {
           if (idea.trim()) {
             const eventDate = (!dateDismissed && detectedDate) ? detectedDate.iso : null;
             const eventTime = (!timeDismissed && detectedTime) ? detectedTime : null;
-            onComplete(sanitize(idea, 280), checkTimer, eventDate, 5, eventTime);
+            onComplete(sanitize(idea, 280), checkTimer, eventDate, squadSize, eventTime);
           }
         }}
         disabled={!idea.trim()}
