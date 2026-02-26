@@ -89,6 +89,7 @@ export interface Squad {
   expiresAt?: string;
   graceStartedAt?: string;
   hasUnread?: boolean;
+  lastActivityAt?: string;
 }
 
 export interface Friend {

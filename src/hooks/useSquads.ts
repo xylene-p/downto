@@ -100,9 +100,10 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         avatar: m.user?.avatar_letter ?? m.user?.display_name?.charAt(0)?.toUpperCase() ?? "?",
         userId: m.user_id,
       }));
-      const messages = (s.messages ?? [])
-        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-        .map((msg) => ({
+      const sortedRawMessages = (s.messages ?? [])
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      const lastRawMessage = sortedRawMessages.length > 0 ? sortedRawMessages[sortedRawMessages.length - 1] : null;
+      const messages = sortedRawMessages.map((msg) => ({
           sender: msg.is_system ? "system" : (msg.sender_id === userId ? "You" : (msg.sender?.display_name ?? "Unknown")),
           text: msg.text,
           time: formatTimeAgo(new Date(msg.created_at)),
@@ -125,8 +126,12 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         transportNotes: s.transport_notes ?? undefined,
         expiresAt: s.expires_at ?? undefined,
         graceStartedAt: s.grace_started_at ?? undefined,
+        lastActivityAt: lastRawMessage?.created_at ?? s.created_at,
       };
     });
+    transformedSquads.sort((a, b) =>
+      new Date(b.lastActivityAt!).getTime() - new Date(a.lastActivityAt!).getTime()
+    );
     setSquads(transformedSquads);
 
     // Link checks to their squads
