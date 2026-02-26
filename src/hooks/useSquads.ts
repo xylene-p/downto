@@ -121,6 +121,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         lastMsg: lastMessage ? (lastMessage.sender === "system" ? lastMessage.text : `${lastMessage.sender}: ${lastMessage.text}`) : "",
         time: lastMessage ? lastMessage.time : formatTimeAgo(new Date(s.created_at)),
         checkId: s.check_id ?? undefined,
+        checkAuthorId: s.check?.author_id ?? undefined,
         meetingSpot: s.meeting_spot ?? undefined,
         arrivalTime: s.arrival_time ?? undefined,
         transportNotes: s.transport_notes ?? undefined,

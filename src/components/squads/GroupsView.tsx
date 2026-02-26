@@ -5,7 +5,7 @@ import * as db from "@/lib/db";
 import { font, color } from "@/lib/styles";
 import type { Squad } from "@/lib/ui-types";
 import { logError } from "@/lib/logger";
-import { parseDateToISO } from "@/lib/utils";
+import { parseNaturalDate, parseNaturalTime, parseDateToISO } from "@/lib/utils";
 
 const formatExpiryLabel = (expiresAt?: string, graceStartedAt?: string): string | null => {
   if (!expiresAt) return null;
@@ -31,6 +31,7 @@ const GroupsView = ({
   onSendMessage,
   onLeaveSquad,
   onSetSquadDate,
+  onClearSquadDate,
   userId,
   onViewProfile,
   onChatOpen,
@@ -40,7 +41,8 @@ const GroupsView = ({
   autoSelectSquadId?: string | null;
   onSendMessage?: (squadDbId: string, text: string) => Promise<void>;
   onLeaveSquad?: (squadDbId: string) => Promise<void>;
-  onSetSquadDate?: (squadDbId: string, date: string) => Promise<void>;
+  onSetSquadDate?: (squadDbId: string, date: string, time?: string | null) => Promise<void>;
+  onClearSquadDate?: (squadDbId: string) => Promise<void>;
   userId?: string | null;
   onViewProfile?: (userId: string) => void;
   onChatOpen?: (open: boolean) => void;
@@ -336,6 +338,31 @@ const GroupsView = ({
                       : "Set a date"}
                   </button>
                 )}
+                {selectedSquad.eventIsoDate && onClearSquadDate && selectedSquad.checkAuthorId === userId && (
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        await onClearSquadDate(selectedSquad.id);
+                        setSelectedSquad((prev) => prev ? { ...prev, eventIsoDate: undefined } : prev);
+                      } catch {
+                        // Error handled by parent
+                      }
+                    }}
+                    style={{
+                      background: "none",
+                      color: color.faint,
+                      border: `1px solid ${color.border}`,
+                      borderRadius: 6,
+                      padding: "2px 8px",
+                      fontFamily: font.mono,
+                      fontSize: 9,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Clear date
+                  </button>
+                )}
                 {(() => {
                   // Show extend for undated squads, or dated squads on/after the event day
                   const showExtend = !selectedSquad.eventIsoDate ||
@@ -458,10 +485,12 @@ const GroupsView = ({
 
         {/* Date picker modal */}
         {showDatePicker && (() => {
-          const parsedISO = parseDateToISO(datePickerValue);
-          const parsedLabel = parsedISO
+          const natural = parseNaturalDate(datePickerValue);
+          const parsedISO = natural?.iso ?? parseDateToISO(datePickerValue);
+          const parsedLabel = natural?.label ?? (parsedISO
             ? new Date(parsedISO + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
-            : null;
+            : null);
+          const detectedTime = parseNaturalTime(datePickerValue);
           const isValid = !!parsedISO;
           return (
             <div
@@ -504,7 +533,7 @@ const GroupsView = ({
                       (e.target as HTMLInputElement).closest("div")?.querySelector<HTMLButtonElement>("button:last-child")?.click();
                     }
                   }}
-                  placeholder="e.g. friday, mar 7, tomorrow"
+                  placeholder="e.g. friday at 7pm, mar 7, tomorrow"
                   autoFocus
                   style={{
                     width: "100%",
@@ -517,13 +546,42 @@ const GroupsView = ({
                     fontFamily: font.mono,
                     fontSize: 13,
                     outline: "none",
-                    marginBottom: parsedLabel ? 4 : 16,
+                    marginBottom: (parsedLabel || detectedTime) ? 4 : 16,
                   }}
                 />
-                {parsedLabel && (
-                  <p style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, marginBottom: 12 }}>
-                    {parsedLabel}
-                  </p>
+                {(parsedLabel || detectedTime) && (
+                  <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap", marginBottom: 12 }}>
+                    {parsedLabel && (
+                      <span style={{
+                        display: "inline-block",
+                        padding: "3px 8px",
+                        background: "rgba(232,255,90,0.08)",
+                        borderRadius: 8,
+                        border: "1px solid rgba(232,255,90,0.2)",
+                        fontFamily: font.mono,
+                        fontSize: 11,
+                        color: color.accent,
+                        fontWeight: 600,
+                      }}>
+                        📅 {parsedLabel}
+                      </span>
+                    )}
+                    {detectedTime && (
+                      <span style={{
+                        display: "inline-block",
+                        padding: "3px 8px",
+                        background: "rgba(232,255,90,0.08)",
+                        borderRadius: 8,
+                        border: "1px solid rgba(232,255,90,0.2)",
+                        fontFamily: font.mono,
+                        fontSize: 11,
+                        color: color.accent,
+                        fontWeight: 600,
+                      }}>
+                        🕐 {detectedTime}
+                      </span>
+                    )}
+                  </div>
                 )}
                 <div style={{ display: "flex", gap: 10 }}>
                   <button
@@ -548,7 +606,7 @@ const GroupsView = ({
                       if (!parsedISO || !selectedSquad?.id || !onSetSquadDate) return;
                       setSettingDate(true);
                       try {
-                        await onSetSquadDate(selectedSquad.id, parsedISO);
+                        await onSetSquadDate(selectedSquad.id, parsedISO, detectedTime);
                         setSelectedSquad((prev) => prev ? {
                           ...prev,
                           eventIsoDate: parsedISO,

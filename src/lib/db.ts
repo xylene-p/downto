@@ -695,6 +695,7 @@ export async function getSquads(): Promise<Squad[]> {
     .select(`
       *,
       event:events(*),
+      check:interest_checks(author_id),
       members:squad_members(*, user:profiles!user_id(*)),
       messages(*, sender:profiles!sender_id(*))
     `)

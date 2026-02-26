@@ -775,7 +775,7 @@ export default function Home() {
             onLeaveSquad={async (squadDbId) => {
               await db.leaveSquad(squadDbId);
             }}
-            onSetSquadDate={async (squadDbId, date) => {
+            onSetSquadDate={async (squadDbId, date, time) => {
               const token = (await supabase.auth.getSession()).data.session?.access_token;
               if (!token) return;
               const res = await fetch('/api/squads/set-date', {
@@ -784,7 +784,7 @@ export default function Home() {
                   'Content-Type': 'application/json',
                   Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ squadId: squadDbId, date }),
+                body: JSON.stringify({ squadId: squadDbId, date, time: time ?? null }),
               });
               if (!res.ok) throw new Error('Failed to set date');
               const { expires_at } = await res.json();
@@ -793,6 +793,23 @@ export default function Home() {
                 eventIsoDate: date,
                 expiresAt: expires_at,
                 graceStartedAt: undefined,
+              } : s));
+            }}
+            onClearSquadDate={async (squadDbId) => {
+              const token = (await supabase.auth.getSession()).data.session?.access_token;
+              if (!token) return;
+              const res = await fetch('/api/squads/set-date', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ squadId: squadDbId, clear: true }),
+              });
+              if (!res.ok) throw new Error('Failed to clear date');
+              squadsHook.setSquads((prev) => prev.map((s) => s.id === squadDbId ? {
+                ...s,
+                eventIsoDate: undefined,
               } : s));
             }}
             userId={userId}

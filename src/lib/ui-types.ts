@@ -76,6 +76,7 @@ export interface ScrapedEvent {
 export interface Squad {
   id: string;
   checkId?: string;
+  checkAuthorId?: string;
   name: string;
   event?: string;
   eventDate?: string;
