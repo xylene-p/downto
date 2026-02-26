@@ -1,5 +1,19 @@
 import type { Metadata } from "next";
+import { Instrument_Serif, Space_Mono } from "next/font/google";
 import DevProdBanner from "@/components/DevProdBanner";
+
+import "./global.css";
+
+const instrumentSerif = Instrument_Serif({
+  weight: "400",
+  variable: "--font-instrument-serif",
+  subsets: ["latin"],
+});
+const spaceMono = Space_Mono({
+  weight: ['400', '700'],
+  variable: "--font-space-mono",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
   title: "down to",
@@ -23,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${instrumentSerif.variable} ${spaceMono.variable}`}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -35,7 +49,10 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap"
           rel="stylesheet"
         />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+        />
         <meta name="theme-color" content="#0a0a0a" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <style>{`

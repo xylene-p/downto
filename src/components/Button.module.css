@@ -1,0 +1,25 @@
+.button {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  border: none;
+  border-radius: 12;
+  padding: var(--spacing-1);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+.primary {
+  background: var(--color-surface-highlight);
+}
+
+.outline {
+  background: transparent;
+}
+
+.disabled {
+  background: var(--color-surface-tertiary);
+  color: var(--color-content-secondary);
+  cursor: not-allowed;
+}

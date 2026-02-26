@@ -1,0 +1,83 @@
+:root {
+  /* Colors */
+  --color-surface-primary: #0a0a0a;
+  --color-surface-secondary: #111;
+  --color-surface-tertiary: #333;
+  --color-surface-highlight: #e8ff5a; 
+  --color-content-primary: #fff; /* white */
+  --color-content-secondary: #666; /* dim */
+  --color-content-tertiary: #444; /* faint */
+  --color-border-primary: #1a1a1a;
+  --color-border-secondary: #333;
+  --color-border-tertiary: #2a2a2a;
+  --color-border-highlight: #e8ff5a;
+
+  /* Font family */
+  --font-family-serif: var(--font-instrument-serif), serif;
+  --font-family-mono: var(--font-space-mono), monospace;
+
+  /* Font size */
+  --font-size-xxs: 0.625rem; /* 10px */
+  --font-size-xs: 0.8rem; /* 12px */
+  --font-size-base: 1rem; /* 16px */
+  --font-size-md: 1.125rem; /* 18px */
+  --font-size-lg: 1rem;
+  --font-size-xxl: 3rem;
+
+  /* Font weight */
+  --font-weight-regular: 400;
+  --font-weight-bold: 700;
+
+  --spacing-1: 1rem;
+}
+
+body {
+  background-color: var(--color-surface-primary);
+  color: var(--color-content-secondary);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 {
+  color: var(--color-content-primary);
+  font-family: var(--font-family-serif);
+  font-size: var(--font-size-xxl);
+  font-weight: var(--font-weight-regular);
+}
+
+h2 {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+}
+
+p {
+  font-size: var(--font-size-xs);
+}
+
+p.label, label {
+  font-size: var(--font-size-xxs);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 0.5rem;
+}
+
+/* input {
+  background: var(--color-surface-secondary);
+  border: solid 1px var(--color-border-secondary);
+  border-radius: 12;
+  color: var(--color-content-primary);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-regular);
+  padding: var(--spacing-1);
+}
+
+input::placeholder {
+  color: var(--color-content-tertiary);
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--color-border-highlight);
+} */
