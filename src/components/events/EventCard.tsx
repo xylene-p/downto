@@ -325,15 +325,25 @@ const EventCard = ({
                   <>
                     <span style={{ fontFamily: font.mono, fontSize: 11 }}>
                       <span style={{ color: color.pool }}>
-                        {poolFriends.length > 0
-                          ? poolFriends.map((p) => p.name).join(", ")
-                          : null}
-                        {poolFriends.length > 0 && poolStrangerCount > 0 ? " + " : null}
-                        {poolFriends.length === 0 && poolStrangerCount > 0
-                          ? `${event.poolCount} looking for a squad`
-                          : poolStrangerCount > 0
-                            ? `${poolStrangerCount} looking for a squad`
-                            : " looking for a squad"}
+                        {event.userInPool ? (
+                          poolFriends.length > 0
+                            ? `You, ${poolFriends.map((p) => p.name).join(", ")}${poolStrangerCount > 0 ? ` + ${poolStrangerCount}` : ""} looking for a squad`
+                            : (event.poolCount ?? 0) > 1
+                              ? `You + ${(event.poolCount ?? 0) - 1} looking for a squad`
+                              : "You're looking for a squad"
+                        ) : (
+                          <>
+                            {poolFriends.length > 0
+                              ? poolFriends.map((p) => p.name).join(", ")
+                              : null}
+                            {poolFriends.length > 0 && poolStrangerCount > 0 ? " + " : null}
+                            {poolFriends.length === 0 && poolStrangerCount > 0
+                              ? `${event.poolCount} looking for a squad`
+                              : poolStrangerCount > 0
+                                ? `${poolStrangerCount} looking for a squad`
+                                : " looking for a squad"}
+                          </>
+                        )}
                       </span>
                     </span>
                     {nonPoolFriends.length > 0 && (
