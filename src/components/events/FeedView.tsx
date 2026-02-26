@@ -44,6 +44,7 @@ export interface FeedViewProps {
   onOpenFriends: (tab?: "friends" | "add") => void;
   onNavigateToGroups: (squadId?: string) => void;
   hiddenCheckIds: Set<string>;
+  pendingDownCheckIds: Set<string>;
   onHideCheck: (checkId: string) => void;
   onUnhideCheck: (checkId: string) => void;
 }
@@ -83,6 +84,7 @@ export default function FeedView({
   onOpenFriends,
   onNavigateToGroups,
   hiddenCheckIds,
+  pendingDownCheckIds,
   onHideCheck,
   onUnhideCheck,
 }: FeedViewProps) {
@@ -780,7 +782,7 @@ export default function FeedView({
                                 {myCheckResponses[check.id] === "maybe" ? "✓ Maybe" : "Maybe"}
                               </button>
                               {myCheckResponses[check.id] === "down" && (
-                                check.squadId ? (
+                                check.inSquad ? (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -846,6 +848,15 @@ export default function FeedView({
                                       Join Squad →
                                     </button>
                                   )
+                                ) : pendingDownCheckIds.has(check.id) ? (
+                                  <span style={{
+                                    fontFamily: font.mono,
+                                    fontSize: 10,
+                                    color: color.dim,
+                                    padding: "6px 8px",
+                                  }}>
+                                    ...
+                                  </span>
                                 ) : (
                                   <button
                                     onClick={(e) => {

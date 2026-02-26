@@ -84,12 +84,14 @@ interface UseChecksParams {
   friendCount: number;
   showToast: (msg: string) => void;
   onCheckCreated?: () => void;
+  onDownResponse?: () => Promise<void> | void;
 }
 
-export function useChecks({ userId, isDemoMode, profile, friendCount, showToast, onCheckCreated }: UseChecksParams) {
+export function useChecks({ userId, isDemoMode, profile, friendCount, showToast, onCheckCreated, onDownResponse }: UseChecksParams) {
   const [checks, setChecks] = useState<InterestCheck[]>([]);
   const [myCheckResponses, setMyCheckResponses] = useState<Record<string, "down" | "maybe">>({});
   const [hiddenCheckIds, setHiddenCheckIds] = useState<Set<string>>(new Set());
+  const [pendingDownCheckIds, setPendingDownCheckIds] = useState<Set<string>>(new Set());
   const [editingCheckId, setEditingCheckId] = useState<string | null>(null);
   const [editingCheckText, setEditingCheckText] = useState("");
   const [newlyAddedCheckId, setNewlyAddedCheckId] = useState<string | null>(null);
@@ -169,11 +171,22 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
     );
     showToast(status === "down" ? "You're down! \u{1F919}" : "Marked as maybe");
     if (!isDemoMode && check?.id) {
+      if (status === "down") {
+        setPendingDownCheckIds((prev) => new Set(prev).add(checkId));
+      }
       db.respondToCheck(check.id, status)
-        .then(() => {
-          if (status === "down") loadChecks();
+        .then(async () => {
+          if (status === "down") {
+            // Full reload: DB trigger may have auto-joined user to a squad
+            if (onDownResponse) await onDownResponse();
+            else await loadChecks();
+            setPendingDownCheckIds((prev) => { const next = new Set(prev); next.delete(checkId); return next; });
+          }
         })
-        .catch((err) => logError("respondToCheck", err, { checkId: check?.id, status }));
+        .catch((err) => {
+          setPendingDownCheckIds((prev) => { const next = new Set(prev); next.delete(checkId); return next; });
+          logError("respondToCheck", err, { checkId: check?.id, status });
+        });
     }
   };
 
@@ -315,6 +328,7 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
     myCheckResponses,
     setMyCheckResponses,
     hiddenCheckIds,
+    pendingDownCheckIds,
     editingCheckId,
     setEditingCheckId,
     editingCheckText,

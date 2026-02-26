@@ -95,6 +95,7 @@ export default function Home() {
     friendCount: friendsHook.friends.length,
     showToast,
     onCheckCreated: () => { setTab("feed"); setFeedMode("foryou"); setShowAddGlow(false); localStorage.removeItem("showAddGlow"); },
+    onDownResponse: () => { loadRealDataRef.current(); },
   });
 
   const squadsHook = useSquads({
@@ -724,6 +725,7 @@ export default function Home() {
               setTab("groups");
             }}
             hiddenCheckIds={checksHook.hiddenCheckIds}
+            pendingDownCheckIds={checksHook.pendingDownCheckIds}
             onHideCheck={checksHook.hideCheck}
             onUnhideCheck={checksHook.unhideCheck}
           />
