@@ -753,21 +753,7 @@ export default function Home() {
   }
 
   return (
-    <div
-      style={{
-        maxWidth: 420,
-        margin: "0 auto",
-        minHeight: "100vh",
-        background: color.bg,
-        position: "relative",
-        fontFamily: font.mono,
-        overflowX: "hidden",
-        overscrollBehavior: "none",
-      }}
-    >
-      <GlobalStyles />
-      <Grain />
-
+    <div>
       <Header
         unreadCount={notificationsHook.unreadCount}
         onOpenNotifications={() => {
