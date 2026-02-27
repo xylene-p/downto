@@ -21,7 +21,7 @@ test.describe("Notification click routing", () => {
       navigator.serviceWorker?.controller?.postMessage?.({
         type: "NOTIFICATION_CLICK",
         notificationType: "squad_message",
-        relatedId: "s1111111-1111-1111-1111-111111111111",
+        relatedId: "d1111111-1111-1111-1111-111111111111",
       });
       // Fallback: dispatch directly on the window message event
       // (service worker may not be registered in test)
@@ -30,7 +30,7 @@ test.describe("Notification click routing", () => {
           data: {
             type: "NOTIFICATION_CLICK",
             notificationType: "squad_message",
-            relatedId: "s1111111-1111-1111-1111-111111111111",
+            relatedId: "d1111111-1111-1111-1111-111111111111",
           },
         })
       );
@@ -89,7 +89,7 @@ test.describe("Notification click routing", () => {
           data: {
             type: "NOTIFICATION_CLICK",
             notificationType: "squad_invite",
-            relatedId: "s1111111-1111-1111-1111-111111111111",
+            relatedId: "d1111111-1111-1111-1111-111111111111",
           },
         })
       );
