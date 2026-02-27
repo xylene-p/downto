@@ -6,8 +6,34 @@ const navButton = (page: import("@playwright/test").Page, label: string) =>
 
 /**
  * Tests the NOTIFICATION_CLICK postMessage handler in page.tsx.
- * Dispatches window message events and verifies correct tab activation.
+ * The handler listens on navigator.serviceWorker for 'message' events.
+ * We dispatch directly on that EventTarget.
  */
+
+function dispatchNotificationClick(
+  page: import("@playwright/test").Page,
+  notificationType: string,
+  relatedId?: string
+) {
+  return page.evaluate(
+    ({ nType, rId }) => {
+      // The handler listens on navigator.serviceWorker
+      if (navigator.serviceWorker) {
+        navigator.serviceWorker.dispatchEvent(
+          new MessageEvent("message", {
+            data: {
+              type: "NOTIFICATION_CLICK",
+              notificationType: nType,
+              ...(rId ? { relatedId: rId } : {}),
+            },
+          })
+        );
+      }
+    },
+    { nType: notificationType, rId: relatedId }
+  );
+}
+
 test.describe("Notification click routing", () => {
   test.beforeEach(async ({ page }) => {
     await loginAsTestUser(page);
@@ -15,38 +41,17 @@ test.describe("Notification click routing", () => {
   });
 
   test("squad_message routes to Squads tab", async ({ page }) => {
-    await page.evaluate(() => {
-      window.dispatchEvent(
-        new MessageEvent("message", {
-          data: {
-            type: "NOTIFICATION_CLICK",
-            notificationType: "squad_message",
-            relatedId: "d1111111-1111-1111-1111-111111111111",
-          },
-        })
-      );
-    });
-
-    // Should switch to Squads tab and show the squad
+    await dispatchNotificationClick(
+      page,
+      "squad_message",
+      "d1111111-1111-1111-1111-111111111111"
+    );
     await expect(page.getByText("Drinks Crew")).toBeVisible({ timeout: 5_000 });
   });
 
   test("friend_request routes to You tab", async ({ page }) => {
-    await page.evaluate(() => {
-      window.dispatchEvent(
-        new MessageEvent("message", {
-          data: {
-            type: "NOTIFICATION_CLICK",
-            notificationType: "friend_request",
-          },
-        })
-      );
-    });
-
-    // Profile tab should be active — check for profile-specific UI
-    // The "⚙ You" button should still be visible, and we should see profile content
+    await dispatchNotificationClick(page, "friend_request");
     await page.waitForTimeout(1_000);
-    // Verify we navigated away from feed by checking the nav state
     await expect(navButton(page, "⚙ You")).toBeVisible();
   });
 
@@ -55,35 +60,16 @@ test.describe("Notification click routing", () => {
     await navButton(page, "👥 Squads").click();
     await expect(page.getByText("Drinks Crew")).toBeVisible({ timeout: 5_000 });
 
-    // Now simulate notification click
-    await page.evaluate(() => {
-      window.dispatchEvent(
-        new MessageEvent("message", {
-          data: {
-            type: "NOTIFICATION_CLICK",
-            notificationType: "check_response",
-          },
-        })
-      );
-    });
-
-    // Should switch back to Feed tab — look for feed sub-tabs
+    await dispatchNotificationClick(page, "check_response");
     await expect(page.getByText("For You")).toBeVisible({ timeout: 5_000 });
   });
 
   test("squad_invite routes to Squads tab", async ({ page }) => {
-    await page.evaluate(() => {
-      window.dispatchEvent(
-        new MessageEvent("message", {
-          data: {
-            type: "NOTIFICATION_CLICK",
-            notificationType: "squad_invite",
-            relatedId: "d1111111-1111-1111-1111-111111111111",
-          },
-        })
-      );
-    });
-
+    await dispatchNotificationClick(
+      page,
+      "squad_invite",
+      "d1111111-1111-1111-1111-111111111111"
+    );
     await expect(page.getByText("Drinks Crew")).toBeVisible({ timeout: 5_000 });
   });
 });
