@@ -41,15 +41,17 @@ test.describe("Notification click routing", () => {
       "squad_message",
       "d1111111-1111-1111-1111-111111111111"
     );
-    await page.waitForTimeout(2_000);
-    // Check if dispatch routed us to squads (may show list or chat)
-    const hasDrinksCrew = await page.getByText("Drinks Crew").isVisible().catch(() => false);
-    const hasChat = await page.getByPlaceholder(/message/i).isVisible().catch(() => false);
-    if (!hasDrinksCrew && !hasChat) {
-      // Dispatch didn't reach handler (no SW in test env) — navigate manually
+
+    // Dispatch may: (a) open squad chat (hides nav bar), (b) switch to squads tab, or (c) do nothing.
+    // Wait for any squad-related content — squad list OR chat input.
+    const squadContent = page.getByText("Drinks Crew").or(page.getByPlaceholder(/message/i));
+    try {
+      await expect(squadContent).toBeVisible({ timeout: 5_000 });
+    } catch {
+      // Dispatch didn't fire — navigate manually
       await navButton(page, "Squads").click();
+      await expect(page.getByText("Drinks Crew")).toBeVisible({ timeout: 10_000 });
     }
-    await expect(page.getByText("Drinks Crew")).toBeVisible({ timeout: 10_000 });
   });
 
   test("friend_request routes to You tab", async ({ page }) => {
