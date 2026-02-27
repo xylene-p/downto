@@ -310,7 +310,6 @@ export default function Home() {
       contentRef.current.style.transform = offset > 0 ? `translateY(${offset}px)` : "none";
     }
     if (spinnerWrapRef.current) {
-      spinnerWrapRef.current.style.display = offset > 0 ? "flex" : "none";
       spinnerWrapRef.current.style.transform = `translateY(${offset}px)`;
       spinnerWrapRef.current.style.opacity = String(Math.min(offset / 60, 1));
     }
@@ -335,7 +334,7 @@ export default function Home() {
     }
     setTimeout(() => {
       if (content) content.style.transition = "none";
-      if (wrap) { wrap.style.transition = "none"; wrap.style.display = "none"; }
+      if (wrap) wrap.style.transition = "none";
       pullOffsetRef.current = 0;
       isAnimatingRef.current = false;
     }, 260);
@@ -776,29 +775,28 @@ export default function Home() {
       />
 
       {/* Pull-to-refresh indicator — outer div handles translateY, inner handles rotation */}
-      <div
-        ref={spinnerWrapRef}
-        style={{
-          justifyContent: "center",
-          alignItems: "center",
-          height: 0,
-          overflow: "visible",
-          position: "relative",
-          zIndex: 10,
-          willChange: "transform",
-        }}
-      >
+      <div style={{ height: 0, overflow: "hidden", position: "relative", zIndex: 10 }}>
         <div
-          ref={spinnerRef}
+          ref={spinnerWrapRef}
           style={{
-            width: 22,
-            height: 22,
-            border: `2px solid ${color.borderMid}`,
-            borderTopColor: color.accent,
-            borderRadius: "50%",
+            display: "flex",
+            justifyContent: "center",
+            paddingTop: 16,
             willChange: "transform",
           }}
-        />
+        >
+          <div
+            ref={spinnerRef}
+            style={{
+              width: 22,
+              height: 22,
+              border: `2px solid ${color.borderMid}`,
+              borderTopColor: color.accent,
+              borderRadius: "50%",
+              willChange: "transform",
+            }}
+          />
+        </div>
       </div>
 
       {/* Content */}
