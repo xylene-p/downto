@@ -782,7 +782,6 @@ export default function Home() {
         style={{
           position: "relative",
           paddingBottom: 90,
-          willChange: "transform",
         }}
         onTouchStart={handlePullStart}
         onTouchMove={handlePullMove}
