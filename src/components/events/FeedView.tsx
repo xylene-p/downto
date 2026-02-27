@@ -384,7 +384,7 @@ export default function FeedView({
                                 color: check.expiresIn === "open" ? color.dim : check.expiryPercent > 75 ? "#ff6b6b" : color.faint,
                               }}
                             >
-                              {check.expiresIn === "open" ? "open" : `${check.expiresIn} left`}
+                              {check.expiresIn === "open" ? "open" : check.expiresIn === "expired" ? "expired" : `${check.expiresIn} left`}
                             </span>
                             {!check.isYours && (
                               <button
