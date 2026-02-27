@@ -78,10 +78,11 @@ const GroupsView = ({
   }, [selectedSquad?.id, selectedSquad?.messages.length]);
 
   // Notify parent when chat is open/closed (or component unmounts)
+  const chatVisible = !!selectedSquad;
   useEffect(() => {
-    onChatOpen?.(!!selectedSquad);
+    onChatOpen?.(chatVisible);
     return () => { onChatOpen?.(false); };
-  }, [selectedSquad, onChatOpen]);
+  }, [chatVisible, onChatOpen]);
 
   // Subscribe to realtime messages for the selected squad
   useEffect(() => {
