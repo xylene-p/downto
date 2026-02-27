@@ -8,6 +8,52 @@ import type { Event, InterestCheck, Friend } from "@/lib/ui-types";
 import EventCard from "@/components/events/EventCard";
 import { logError } from "@/lib/logger";
 
+/** Render text with inline URLs as clickable links */
+function Linkify({ children, dimmed }: { children: string; dimmed?: boolean }) {
+  const urlRe = /(https?:\/\/[^\s),]+)/g;
+  const parts = children.split(urlRe);
+  if (parts.length === 1) return <>{children}</>;
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (/^https?:\/\//.test(part)) {
+          return (
+            <a
+              key={i}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                color: dimmed ? color.dim : color.accent,
+                textDecoration: "underline",
+                textUnderlineOffset: 3,
+                wordBreak: "break-all",
+              }}
+            >
+              {prettifyUrl(part)}
+            </a>
+          );
+        }
+        return <React.Fragment key={i}>{part}</React.Fragment>;
+      })}
+    </>
+  );
+}
+
+function prettifyUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    // Show host + path, drop trailing slash
+    let display = u.host.replace(/^www\./, "") + u.pathname.replace(/\/$/, "");
+    // Truncate long paths
+    if (display.length > 40) display = display.slice(0, 37) + "…";
+    return display;
+  } catch {
+    return url;
+  }
+}
+
 export interface FeedViewProps {
   feedMode: "foryou" | "tonight";
   setFeedMode: (mode: "foryou" | "tonight") => void;
@@ -453,7 +499,7 @@ export default function FeedView({
                                     flex: 1,
                                   }}
                                 >
-                                  {check.text}
+                                  <Linkify>{check.text}</Linkify>
                                 </p>
                                 {check.isYours && (
                                   <div style={{ display: "flex", gap: 4, flexShrink: 0, marginTop: 2 }}>
@@ -943,7 +989,7 @@ export default function FeedView({
                                   </span>
                                 </div>
                                 <p style={{ fontFamily: font.serif, fontSize: 16, color: color.dim, margin: 0, lineHeight: 1.4 }}>
-                                  {check.text}
+                                  <Linkify dimmed>{check.text}</Linkify>
                                 </p>
                               </div>
                               <button
