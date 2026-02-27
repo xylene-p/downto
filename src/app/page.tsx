@@ -79,10 +79,12 @@ export default function Home() {
   });
 
   // ─── Pull-to-refresh state ──────────────────────────────────────────────
-  const [refreshing, setRefreshing] = useState(false);
-  const [pullOffset, setPullOffset] = useState(0);
+  const pullOffsetRef = useRef(0);
   const touchStartY = useRef(0);
   const isPulling = useRef(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const spinnerWrapRef = useRef<HTMLDivElement>(null);
+  const spinnerRef = useRef<HTMLDivElement>(null);
 
   // ─── loadRealData ref (declared early so hooks can receive it) ──────────
   const loadRealDataRef = useRef<() => Promise<void>>(async () => {});
@@ -299,47 +301,121 @@ export default function Home() {
 
   loadRealDataRef.current = loadRealData;
 
-  // ─── Pull-to-refresh handlers ──────────────────────────────────────────
+  // ─── Pull-to-refresh helpers ───────────────────────────────────────────
 
-  const handlePullStart = useCallback((e: React.TouchEvent) => {
-    if (refreshing) return;
-    touchStartY.current = e.touches[0].clientY;
-    isPulling.current = false;
-  }, [refreshing]);
-
-  const handlePullMove = useCallback((e: React.TouchEvent) => {
-    if (refreshing) return;
-    if (window.scrollY > 0) {
-      // Not at top of page — don't intercept
-      isPulling.current = false;
-      setPullOffset(0);
-      return;
+  const applyPullOffset = useCallback((offset: number) => {
+    pullOffsetRef.current = offset;
+    if (contentRef.current) {
+      contentRef.current.style.transform = offset > 0 ? `translateY(${offset}px)` : "none";
     }
-    const dy = e.touches[0].clientY - touchStartY.current;
-    if (dy > 0) {
-      isPulling.current = true;
-      // Dampen the pull (feels more natural)
-      setPullOffset(Math.min(dy * 0.4, 100));
+    if (spinnerWrapRef.current) {
+      spinnerWrapRef.current.style.display = offset > 0 ? "flex" : "none";
+      spinnerWrapRef.current.style.transform = `translateY(${offset}px)`;
+      spinnerWrapRef.current.style.opacity = String(Math.min(offset / 60, 1));
+    }
+    if (spinnerRef.current) {
+      spinnerRef.current.style.transform = `rotate(${offset * 4}deg)`;
+      spinnerRef.current.style.animation = offset > 60 ? "spin 0.8s linear infinite" : "none";
+    }
+  }, []);
+
+  const snapBack = useCallback(() => {
+    const content = contentRef.current;
+    const wrap = spinnerWrapRef.current;
+    if (content) {
+      content.style.transition = "transform 0.25s ease";
+      content.style.transform = "none";
+    }
+    if (wrap) {
+      wrap.style.transition = "transform 0.25s ease, opacity 0.25s ease";
+      wrap.style.transform = "translateY(0)";
+      wrap.style.opacity = "0";
+    }
+    const cleanup = () => {
+      if (content) content.style.transition = "none";
+      if (wrap) {
+        wrap.style.transition = "none";
+        wrap.style.display = "none";
+      }
+      pullOffsetRef.current = 0;
+    };
+    if (content) {
+      content.addEventListener("transitionend", cleanup, { once: true });
     } else {
-      isPulling.current = false;
-      setPullOffset(0);
+      cleanup();
     }
-  }, [refreshing]);
+  }, []);
 
-  const handlePullEnd = useCallback(async () => {
-    if (!isPulling.current && !refreshing) {
-      setPullOffset(0);
-      return;
-    }
-    isPulling.current = false;
-    if (pullOffset > 60) {
-      setRefreshing(true);
-      setPullOffset(60); // Hold at threshold while loading
-      await loadRealData();
-      setRefreshing(false);
-    }
-    setPullOffset(0);
-  }, [pullOffset, refreshing, loadRealData]);
+  // Native touch listeners with { passive: false }
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+
+    let refreshingLocal = false;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (refreshingLocal) return;
+      touchStartY.current = e.touches[0].clientY;
+      isPulling.current = false;
+      // Remove any leftover transition from previous snap-back
+      el.style.transition = "none";
+      if (spinnerWrapRef.current) spinnerWrapRef.current.style.transition = "none";
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (refreshingLocal) return;
+      if (window.scrollY > 0) {
+        isPulling.current = false;
+        if (pullOffsetRef.current > 0) applyPullOffset(0);
+        return;
+      }
+      const dy = e.touches[0].clientY - touchStartY.current;
+      if (dy > 0) {
+        isPulling.current = true;
+        e.preventDefault(); // prevent browser scroll / bounce
+        applyPullOffset(Math.min(dy * 0.4, 100));
+      } else {
+        isPulling.current = false;
+        if (pullOffsetRef.current > 0) applyPullOffset(0);
+      }
+    };
+
+    const onTouchEnd = async () => {
+      if (!isPulling.current && !refreshingLocal) {
+        if (pullOffsetRef.current > 0) snapBack();
+        return;
+      }
+      isPulling.current = false;
+      if (pullOffsetRef.current > 60) {
+        refreshingLocal = true;
+
+        applyPullOffset(60); // hold at threshold
+        // Start spin animation while loading
+        if (spinnerRef.current) {
+          spinnerRef.current.style.transform = "";
+          spinnerRef.current.style.animation = "spin 0.8s linear infinite";
+        }
+        await loadRealData();
+        // Stop spin, snap back
+        if (spinnerRef.current) spinnerRef.current.style.animation = "none";
+        refreshingLocal = false;
+
+        snapBack();
+      } else {
+        snapBack();
+      }
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [applyPullOffset, snapBack, loadRealData]);
 
   // ─── Effects ────────────────────────────────────────────────────────────
 
@@ -719,45 +795,41 @@ export default function Home() {
         glowAdd={showAddGlow}
       />
 
-      {/* Pull-to-refresh indicator */}
-      {(pullOffset > 0 || refreshing) && (
+      {/* Pull-to-refresh indicator — outer div handles translateY, inner handles rotation */}
+      <div
+        ref={spinnerWrapRef}
+        style={{
+          display: "none",
+          justifyContent: "center",
+          alignItems: "center",
+          height: 0,
+          overflow: "visible",
+          position: "relative",
+          zIndex: 10,
+          willChange: "transform",
+          opacity: 0,
+        }}
+      >
         <div
+          ref={spinnerRef}
           style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            height: 0,
-            overflow: "visible",
-            position: "relative",
-            zIndex: 10,
+            width: 22,
+            height: 22,
+            border: `2px solid ${color.borderMid}`,
+            borderTopColor: color.accent,
+            borderRadius: "50%",
+            willChange: "transform",
           }}
-        >
-          <div
-            style={{
-              width: 22,
-              height: 22,
-              border: `2px solid ${color.borderMid}`,
-              borderTopColor: color.accent,
-              borderRadius: "50%",
-              animation: refreshing || pullOffset > 60 ? "spin 0.8s linear infinite" : "none",
-              transform: `translateY(${pullOffset}px) rotate(${pullOffset * 4}deg)`,
-              transition: pullOffset === 0 ? "transform 0.2s ease, opacity 0.2s ease" : "none",
-              opacity: Math.min(pullOffset / 60, 1),
-            }}
-          />
-        </div>
-      )}
+        />
+      </div>
 
       {/* Content */}
       <div
+        ref={contentRef}
         style={{
           paddingBottom: 90,
-          transform: pullOffset > 0 || refreshing ? `translateY(${pullOffset}px)` : "none",
-          transition: pullOffset === 0 && !refreshing ? "transform 0.2s ease" : "none",
+          willChange: "transform",
         }}
-        onTouchStart={handlePullStart}
-        onTouchMove={handlePullMove}
-        onTouchEnd={handlePullEnd}
       >
         {!feedLoaded && !isDemoMode && (
           <div style={{
