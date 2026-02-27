@@ -310,7 +310,6 @@ export default function Home() {
       contentRef.current.style.transform = offset > 0 ? `translateY(${offset}px)` : "none";
     }
     if (spinnerWrapRef.current) {
-      spinnerWrapRef.current.style.transform = `translateY(${offset}px)`;
       spinnerWrapRef.current.style.opacity = String(Math.min(offset / 60, 1));
     }
     if (spinnerRef.current) {
@@ -328,8 +327,7 @@ export default function Home() {
       content.style.transform = "none";
     }
     if (wrap) {
-      wrap.style.transition = "transform 0.25s ease, opacity 0.25s ease";
-      wrap.style.transform = "translateY(0)";
+      wrap.style.transition = "opacity 0.25s ease";
       wrap.style.opacity = "0";
     }
     setTimeout(() => {
@@ -775,14 +773,29 @@ export default function Home() {
       />
 
       {/* Pull-to-refresh indicator — outer div handles translateY, inner handles rotation */}
-      <div style={{ height: 0, overflow: "hidden", position: "relative", zIndex: 10 }}>
+      {/* Content */}
+      <div
+        ref={contentRef}
+        style={{
+          position: "relative",
+          paddingBottom: 90,
+          willChange: "transform",
+        }}
+        onTouchStart={handlePullStart}
+        onTouchMove={handlePullMove}
+        onTouchEnd={handlePullEnd}
+      >
+        {/* Pull-to-refresh spinner — sits above content, moves with it */}
         <div
           ref={spinnerWrapRef}
           style={{
+            position: "absolute",
+            top: -38,
+            left: 0,
+            right: 0,
             display: "flex",
             justifyContent: "center",
-            paddingTop: 16,
-            willChange: "transform",
+            willChange: "transform, opacity",
           }}
         >
           <div
@@ -797,19 +810,6 @@ export default function Home() {
             }}
           />
         </div>
-      </div>
-
-      {/* Content */}
-      <div
-        ref={contentRef}
-        style={{
-          paddingBottom: 90,
-          willChange: "transform",
-        }}
-        onTouchStart={handlePullStart}
-        onTouchMove={handlePullMove}
-        onTouchEnd={handlePullEnd}
-      >
         {!feedLoaded && !isDemoMode && (
           <div style={{
             display: "flex",
