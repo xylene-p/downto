@@ -1,17 +1,18 @@
 import { test, expect } from "@playwright/test";
 import { loginAsTestUser } from "./helpers/auth";
 
+const navButton = (page: import("@playwright/test").Page, label: string) =>
+  page.getByRole("button", { name: label, exact: true });
+
 test.describe("Tonight feed", () => {
   test.beforeEach(async ({ page }) => {
     await loginAsTestUser(page);
-    await expect(page.getByText("Feed", { exact: false })).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(navButton(page, "⚡ Feed")).toBeVisible({ timeout: 10_000 });
   });
 
   test("Tonight tab shows today's events only", async ({ page }) => {
-    // Switch to "Tonight ✶" sub-tab
-    const tonightTab = page.getByText("Tonight", { exact: false });
+    // Click the "Tonight ✶" sub-tab button
+    const tonightTab = page.getByRole("button", { name: /Tonight ✶/ });
     await expect(tonightTab).toBeVisible({ timeout: 5_000 });
     await tonightTab.click();
 
