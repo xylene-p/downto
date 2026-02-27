@@ -41,11 +41,13 @@ jobs:
           version: latest
       - run: supabase start
 
-      - name: Set env vars from Supabase
+      - name: Write env file from Supabase
         run: |
-          echo "NEXT_PUBLIC_SUPABASE_URL=$(supabase status -o env | grep API_URL | cut -d= -f2-)" >> $GITHUB_ENV
-          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(supabase status -o env | grep ANON_KEY | cut -d= -f2-)" >> $GITHUB_ENV
-          echo "SUPABASE_SERVICE_ROLE_KEY=$(supabase status -o env | grep SERVICE_ROLE_KEY | cut -d= -f2-)" >> $GITHUB_ENV
+          eval $(supabase status -o env)
+          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> .env.development.local
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> .env.development.local
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> .env.development.local
+          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> $GITHUB_ENV
 
       - name: Run E2E tests
         run: npx playwright test
