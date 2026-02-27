@@ -8,7 +8,7 @@ import type { Page, Locator } from "@playwright/test";
 export function navButton(page: Page, label: string): Locator {
   // Target the specific span inside the button that contains the nav label
   // The span text is like "⚡ Feed", "📅 Cal", "👥 Squads", "⚙ You"
-  return page.locator(`button`).filter({ hasText: new RegExp(`^.\\s${label}$`) });
+  return page.locator(`button`).filter({ hasText: new RegExp(`^.+\\s${label}$`) });
 }
 
 /**
