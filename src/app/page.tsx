@@ -1007,7 +1007,7 @@ export default function Home() {
             if (t === "feed" && !isDemoMode && userId) loadRealData();
             if (t !== "feed") checksHook.setNewlyAddedCheckId(null);
           }}
-          hasGroupsUnread={squadsHook.squads.some((s) => s.hasUnread) || notificationsHook.hasUnreadSquadMessage || notificationsHook.notifications.some((n) => n.type === "squad_invite" && !n.is_read)}
+          hasGroupsUnread={squadsHook.squads.some((s) => s.hasUnread) || notificationsHook.notifications.some((n) => n.type === "squad_invite" && !n.is_read)}
         />
       )}
 
