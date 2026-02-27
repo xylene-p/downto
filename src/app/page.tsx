@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import * as db from "@/lib/db";
 import { font, color } from "@/lib/styles";
@@ -339,11 +339,8 @@ export default function Home() {
       }
       pullOffsetRef.current = 0;
     };
-    if (content) {
-      content.addEventListener("transitionend", cleanup, { once: true });
-    } else {
-      cleanup();
-    }
+    // Use timeout matching transition duration (avoid transitionend bubbling from children)
+    setTimeout(cleanup, 260);
   }, []);
 
   // Native touch listeners with { passive: false }
@@ -416,6 +413,14 @@ export default function Home() {
       el.removeEventListener("touchend", onTouchEnd);
     };
   }, [applyPullOffset, snapBack, loadRealData]);
+
+  // Hide spinner wrapper before first paint (ref-only, so React won't reset it)
+  useLayoutEffect(() => {
+    if (spinnerWrapRef.current) {
+      spinnerWrapRef.current.style.display = "none";
+      spinnerWrapRef.current.style.opacity = "0";
+    }
+  }, []);
 
   // ─── Effects ────────────────────────────────────────────────────────────
 
@@ -799,7 +804,6 @@ export default function Home() {
       <div
         ref={spinnerWrapRef}
         style={{
-          display: "none",
           justifyContent: "center",
           alignItems: "center",
           height: 0,
@@ -807,7 +811,6 @@ export default function Home() {
           position: "relative",
           zIndex: 10,
           willChange: "transform",
-          opacity: 0,
         }}
       >
         <div
