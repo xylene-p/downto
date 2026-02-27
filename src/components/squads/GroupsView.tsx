@@ -857,6 +857,7 @@ const GroupsView = ({
               setSelectedSquad(g);
               if (g.hasUnread) {
                 onSquadUpdate((prev) => prev.map((s) => s.id === g.id ? { ...s, hasUnread: false } : s));
+                db.markSquadNotificationsRead(g.id).catch(() => {});
               }
               // Dismiss push notifications for this squad
               if ("serviceWorker" in navigator) {
