@@ -36,6 +36,7 @@ const GroupsView = ({
   userId,
   onViewProfile,
   onChatOpen,
+  onBack,
 }: {
   squads: Squad[];
   onSquadUpdate: (squadsOrUpdater: Squad[] | ((prev: Squad[]) => Squad[])) => void;
@@ -48,6 +49,7 @@ const GroupsView = ({
   userId?: string | null;
   onViewProfile?: (userId: string) => void;
   onChatOpen?: (open: boolean) => void;
+  onBack?: () => void;
 }) => {
   const onSquadUpdateRef = useRef(onSquadUpdate);
   onSquadUpdateRef.current = onSquadUpdate;
@@ -177,6 +179,7 @@ const GroupsView = ({
       setClosing(true);
       setTimeout(() => {
         setSelectedSquad(null);
+        onBack?.();
         setClosing(false);
         setDragX(0);
       }, 250);
@@ -215,7 +218,10 @@ const GroupsView = ({
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
             <button
-              onClick={() => setSelectedSquad(null)}
+              onClick={() => {
+                setSelectedSquad(null);
+                onBack?.();
+              }}
               style={{
                 background: "none",
                 border: "none",

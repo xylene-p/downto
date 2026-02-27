@@ -66,6 +66,7 @@ export default function Home() {
   const [addModalDefaultMode, setAddModalDefaultMode] = useState<"paste" | "idea" | "manual" | null>(null);
 
   // ─── Misc page-level state ──────────────────────────────────────────────
+  const [squadChatOrigin, setSquadChatOrigin] = useState<Tab | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [onboardingFriendGate, setOnboardingFriendGate] = useState(false);
@@ -110,7 +111,7 @@ export default function Home() {
     profile,
     setChecks: checksHook.setChecks,
     showToast,
-    onSquadCreated: () => { setTab("groups"); },
+    onSquadCreated: () => { setSquadChatOrigin(tab); setTab("groups"); },
     onAutoDown: async (eventId: string) => {
       await db.saveEvent(eventId).catch(() => {});
       await db.toggleDown(eventId, true);
@@ -818,6 +819,7 @@ export default function Home() {
               friendsHook.setFriendsOpen(true);
             }}
             onNavigateToGroups={(squadId) => {
+              setSquadChatOrigin(tab);
               if (squadId) squadsHook.setAutoSelectSquadId(squadId);
               setTab("groups");
             }}
@@ -890,6 +892,10 @@ export default function Home() {
             userId={userId}
             onViewProfile={(uid) => setViewingUserId(uid)}
             onChatOpen={setChatOpen}
+            onBack={squadChatOrigin ? () => {
+              setTab(squadChatOrigin);
+              setSquadChatOrigin(null);
+            } : undefined}
           />
         )}
         {feedLoaded && tab === "profile" && (
@@ -956,6 +962,7 @@ export default function Home() {
         <SquadNotificationBanner
           notification={squadsHook.squadNotification}
           onOpen={(squadId) => {
+            setSquadChatOrigin(tab);
             squadsHook.setAutoSelectSquadId(squadId);
             setTab("groups");
             squadsHook.setSquadNotification(null);
@@ -1123,6 +1130,7 @@ export default function Home() {
             friendsHook.setFriendsInitialTab(action.tab);
             friendsHook.setFriendsOpen(true);
           } else if (action.type === "groups") {
+            setSquadChatOrigin(tab);
             if (action.squadId) squadsHook.setAutoSelectSquadId(action.squadId);
             setTab("groups");
           } else if (action.type === "feed") {
