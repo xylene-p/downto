@@ -333,95 +333,67 @@ export default function Home() {
       wrap.style.transform = "translateY(0)";
       wrap.style.opacity = "0";
     }
-    const cleanup = () => {
+    setTimeout(() => {
       if (content) content.style.transition = "none";
-      if (wrap) {
-        wrap.style.transition = "none";
-        wrap.style.display = "none";
-      }
+      if (wrap) { wrap.style.transition = "none"; wrap.style.display = "none"; }
       pullOffsetRef.current = 0;
       isAnimatingRef.current = false;
-    };
-    // Use timeout matching transition duration (avoid transitionend bubbling from children)
-    setTimeout(cleanup, 260);
+    }, 260);
   }, []);
 
-  // Native touch listeners with { passive: false }
-  useEffect(() => {
-    const el = contentRef.current;
-    if (!el) return;
+  // ─── Pull-to-refresh handlers (React events + ref-based DOM updates) ──
 
-    let refreshingLocal = false;
+  const handlePullStart = useCallback((e: React.TouchEvent) => {
+    if (isAnimatingRef.current) return;
+    touchStartY.current = e.touches[0].clientY;
+    isPulling.current = false;
+    // Clear any leftover transition from snap-back
+    if (contentRef.current) contentRef.current.style.transition = "none";
+    if (spinnerWrapRef.current) spinnerWrapRef.current.style.transition = "none";
+  }, []);
 
-    const onTouchStart = (e: TouchEvent) => {
-      if (refreshingLocal) return;
-      touchStartY.current = e.touches[0].clientY;
+  const handlePullMove = useCallback((e: React.TouchEvent) => {
+    if (isAnimatingRef.current) return;
+    if (window.scrollY > 0) {
       isPulling.current = false;
+      if (pullOffsetRef.current > 0) applyPullOffset(0);
+      return;
+    }
+    const dy = e.touches[0].clientY - touchStartY.current;
+    if (dy > 0) {
+      isPulling.current = true;
+      applyPullOffset(Math.min(dy * 0.4, 100));
+    } else {
+      isPulling.current = false;
+      if (pullOffsetRef.current > 0) applyPullOffset(0);
+    }
+  }, [applyPullOffset]);
+
+  const handlePullEnd = useCallback(async () => {
+    if (!isPulling.current) {
+      if (pullOffsetRef.current > 0) snapBack();
+      return;
+    }
+    isPulling.current = false;
+    if (pullOffsetRef.current > 60) {
+      isAnimatingRef.current = true; // block new gestures during refresh
+      applyPullOffset(60);
+      if (spinnerRef.current) {
+        spinnerRef.current.style.transform = "";
+        spinnerRef.current.style.animation = "spin 0.8s linear infinite";
+      }
+      await loadRealData();
+      if (spinnerRef.current) spinnerRef.current.style.animation = "none";
       isAnimatingRef.current = false;
-      // Remove any leftover transition from previous snap-back
-      el.style.transition = "none";
-      if (spinnerWrapRef.current) spinnerWrapRef.current.style.transition = "none";
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (refreshingLocal) return;
-      if (window.scrollY > 0) {
-        isPulling.current = false;
-        if (pullOffsetRef.current > 0) applyPullOffset(0);
-        return;
-      }
-      const dy = e.touches[0].clientY - touchStartY.current;
-      if (dy > 0) {
-        isPulling.current = true;
-        e.preventDefault(); // prevent browser scroll / bounce
-        applyPullOffset(Math.min(dy * 0.4, 100));
-      } else {
-        isPulling.current = false;
-        if (pullOffsetRef.current > 0) applyPullOffset(0);
-      }
-    };
-
-    const onTouchEnd = async () => {
-      if (!isPulling.current && !refreshingLocal) {
-        if (pullOffsetRef.current > 0) snapBack();
-        return;
-      }
-      isPulling.current = false;
-      if (pullOffsetRef.current > 60) {
-        refreshingLocal = true;
-
-        applyPullOffset(60); // hold at threshold
-        // Start spin animation while loading
-        if (spinnerRef.current) {
-          spinnerRef.current.style.transform = "";
-          spinnerRef.current.style.animation = "spin 0.8s linear infinite";
-        }
-        await loadRealData();
-        // Stop spin, snap back
-        if (spinnerRef.current) spinnerRef.current.style.animation = "none";
-        refreshingLocal = false;
-
-        snapBack();
-      } else {
-        snapBack();
-      }
-    };
-
-    el.addEventListener("touchstart", onTouchStart, { passive: true });
-    el.addEventListener("touchmove", onTouchMove, { passive: false });
-    el.addEventListener("touchend", onTouchEnd, { passive: true });
-
-    return () => {
-      el.removeEventListener("touchstart", onTouchStart);
-      el.removeEventListener("touchmove", onTouchMove);
-      el.removeEventListener("touchend", onTouchEnd);
-    };
+      snapBack();
+    } else {
+      snapBack();
+    }
   }, [applyPullOffset, snapBack, loadRealData]);
 
-  // Re-sync ref-managed styles after every React re-render (before paint)
-  // so that React's style reconciliation can't overwrite them.
+  // Re-sync ref-managed styles after React re-renders (before paint)
   useLayoutEffect(() => {
-    if (isAnimatingRef.current) return; // don't interrupt snap-back
+    if (isAnimatingRef.current) return;
     applyPullOffset(pullOffsetRef.current);
   });
 
@@ -836,6 +808,9 @@ export default function Home() {
           paddingBottom: 90,
           willChange: "transform",
         }}
+        onTouchStart={handlePullStart}
+        onTouchMove={handlePullMove}
+        onTouchEnd={handlePullEnd}
       >
         {!feedLoaded && !isDemoMode && (
           <div style={{
