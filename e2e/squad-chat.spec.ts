@@ -2,17 +2,17 @@ import { test, expect } from "@playwright/test";
 import { loginAsTestUser } from "./helpers/auth";
 
 const navButton = (page: import("@playwright/test").Page, label: string) =>
-  page.getByRole("button", { name: label, exact: true });
+  page.getByRole("button", { name: new RegExp(`${label}$`) });
 
 test.describe("Squad chat flow", () => {
   test.beforeEach(async ({ page }) => {
     await loginAsTestUser(page);
-    await expect(navButton(page, "⚡ Feed")).toBeVisible({ timeout: 10_000 });
+    await expect(navButton(page, "Feed")).toBeVisible({ timeout: 10_000 });
   });
 
   test("open squad, see chat, send message, go back", async ({ page }) => {
     // Navigate to Squads tab
-    await navButton(page, "👥 Squads").click();
+    await navButton(page, "Squads").click();
 
     // Should see the "Drinks Crew" squad from seed data
     const squadCard = page.getByText("Drinks Crew");
@@ -42,7 +42,7 @@ test.describe("Squad chat flow", () => {
     if (await backButton.isVisible()) {
       await backButton.click();
     } else {
-      await navButton(page, "👥 Squads").click();
+      await navButton(page, "Squads").click();
     }
 
     // Squad list should be visible again

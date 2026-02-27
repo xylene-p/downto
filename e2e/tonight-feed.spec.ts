@@ -2,12 +2,12 @@ import { test, expect } from "@playwright/test";
 import { loginAsTestUser } from "./helpers/auth";
 
 const navButton = (page: import("@playwright/test").Page, label: string) =>
-  page.getByRole("button", { name: label, exact: true });
+  page.getByRole("button", { name: new RegExp(`${label}$`) });
 
 test.describe("Tonight feed", () => {
   test.beforeEach(async ({ page }) => {
     await loginAsTestUser(page);
-    await expect(navButton(page, "⚡ Feed")).toBeVisible({ timeout: 10_000 });
+    await expect(navButton(page, "Feed")).toBeVisible({ timeout: 10_000 });
   });
 
   test("Tonight tab shows today's events only", async ({ page }) => {

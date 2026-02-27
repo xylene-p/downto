@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { loginAsTestUser } from "./helpers/auth";
 
 const navButton = (page: import("@playwright/test").Page, label: string) =>
-  page.getByRole("button", { name: label, exact: true });
+  page.getByRole("button", { name: new RegExp(`${label}$`) });
 
 /**
  * Tests the NOTIFICATION_CLICK postMessage handler in page.tsx.
@@ -37,7 +37,7 @@ function dispatchNotificationClick(
 test.describe("Notification click routing", () => {
   test.beforeEach(async ({ page }) => {
     await loginAsTestUser(page);
-    await expect(navButton(page, "⚡ Feed")).toBeVisible({ timeout: 10_000 });
+    await expect(navButton(page, "Feed")).toBeVisible({ timeout: 10_000 });
   });
 
   test("squad_message routes to Squads tab", async ({ page }) => {
@@ -52,12 +52,12 @@ test.describe("Notification click routing", () => {
   test("friend_request routes to You tab", async ({ page }) => {
     await dispatchNotificationClick(page, "friend_request");
     await page.waitForTimeout(1_000);
-    await expect(navButton(page, "⚙ You")).toBeVisible();
+    await expect(navButton(page, "You")).toBeVisible();
   });
 
   test("check_response routes to Feed tab", async ({ page }) => {
     // First switch away from feed
-    await navButton(page, "👥 Squads").click();
+    await navButton(page, "Squads").click();
     await expect(page.getByText("Drinks Crew")).toBeVisible({ timeout: 5_000 });
 
     await dispatchNotificationClick(page, "check_response");
