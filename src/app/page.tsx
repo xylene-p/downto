@@ -79,6 +79,8 @@ export default function Home() {
   });
 
   // ─── Pull-to-refresh state ──────────────────────────────────────────────
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
   const pullOffsetRef = useRef(0);
   const touchStartY = useRef(0);
   const isPulling = useRef(false);
@@ -342,6 +344,7 @@ export default function Home() {
 
   const handlePullStart = useCallback((e: React.TouchEvent) => {
     if (isAnimatingRef.current) return;
+    if (tabRef.current !== "feed" && tabRef.current !== "groups") return;
     touchStartY.current = e.touches[0].clientY;
     isPulling.current = false;
     // Clear any leftover transition from snap-back
