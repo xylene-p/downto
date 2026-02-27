@@ -896,20 +896,21 @@ export async function getUnreadCount(): Promise<number> {
   return count ?? 0;
 }
 
-export async function hasUnreadSquadMessages(): Promise<boolean> {
+export async function getUnreadSquadIds(): Promise<string[]> {
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
+  if (!user) return [];
 
-  const { count, error } = await supabase
+  const { data, error } = await supabase
     .from('notifications')
-    .select('*', { count: 'exact', head: true })
+    .select('related_squad_id')
     .eq('user_id', user.id)
     .eq('is_read', false)
     .eq('type', 'squad_message')
-    .limit(1);
+    .not('related_squad_id', 'is', null);
 
-  if (error) return false;
-  return (count ?? 0) > 0;
+  if (error) return [];
+  const ids = new Set(data.map((n) => n.related_squad_id as string));
+  return [...ids];
 }
 
 export async function markNotificationRead(notificationId: string): Promise<void> {

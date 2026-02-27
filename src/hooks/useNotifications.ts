@@ -21,24 +21,31 @@ export type AppNotification = {
 interface UseNotificationsParams {
   userId: string | null;
   isDemoMode: boolean;
+  onUnreadSquadIds?: (ids: string[]) => void;
 }
 
-export function useNotifications({ userId, isDemoMode }: UseNotificationsParams) {
+export function useNotifications({ userId, isDemoMode, onUnreadSquadIds }: UseNotificationsParams) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [hasUnreadSquadMessage, setHasUnreadSquadMessage] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
+  const onUnreadSquadIdsRef = useRef(onUnreadSquadIds);
+  onUnreadSquadIdsRef.current = onUnreadSquadIds;
+
   const loadNotifications = useCallback(async () => {
     try {
-      const [notifs, count, hasSquadUnread] = await Promise.all([
+      const [notifs, count, unreadSquadIds] = await Promise.all([
         db.getNotifications(),
         db.getUnreadCount(),
-        db.hasUnreadSquadMessages(),
+        db.getUnreadSquadIds(),
       ]);
       setNotifications(notifs);
       setUnreadCount(count);
-      if (hasSquadUnread) setHasUnreadSquadMessage(true);
+      if (unreadSquadIds.length > 0) {
+        setHasUnreadSquadMessage(true);
+        onUnreadSquadIdsRef.current?.(unreadSquadIds);
+      }
     } catch (err) {
       logWarn("loadNotifications", "Failed to load notifications", { error: err });
     }

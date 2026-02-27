@@ -132,6 +132,11 @@ export default function Home() {
   const notificationsHook = useNotifications({
     userId,
     isDemoMode,
+    onUnreadSquadIds: (ids) => {
+      squadsHook.setSquads((prev) => prev.map((s) =>
+        ids.includes(s.id) ? { ...s, hasUnread: true } : s
+      ));
+    },
   });
 
   // ─── loadRealData (thin coordinator) ────────────────────────────────────
