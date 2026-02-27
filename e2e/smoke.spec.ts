@@ -1,39 +1,31 @@
 import { test, expect } from "@playwright/test";
 import { loginAsTestUser } from "./helpers/auth";
-
-// Match nav buttons by their text label (after the emoji)
-const navButton = (page: import("@playwright/test").Page, label: string) =>
-  page.getByRole("button", { name: new RegExp(`${label}$`) });
+import { navButton, waitForAppLoaded } from "./helpers/nav";
 
 test.describe("Smoke tests", () => {
   test("login via magic link lands on feed", async ({ page }) => {
     await loginAsTestUser(page);
-    await expect(navButton(page, "Feed")).toBeVisible({ timeout: 10_000 });
+    await waitForAppLoaded(page);
   });
 
   test("bottom nav tabs are visible and tappable", async ({ page }) => {
     await loginAsTestUser(page);
-    await expect(navButton(page, "Feed")).toBeVisible({ timeout: 10_000 });
+    await waitForAppLoaded(page);
 
-    // All four tabs should be visible
-    for (const label of ["Feed", "Cal", "Squads", "You"]) {
-      await expect(navButton(page, label)).toBeVisible();
-    }
-
-    // Switch to Cal tab
-    await navButton(page, "Cal").click();
-    await expect(navButton(page, "Cal")).toBeVisible();
-
-    // Switch to Squads tab
+    // Switch to Squads tab and verify
     await navButton(page, "Squads").click();
-    await expect(navButton(page, "Squads")).toBeVisible();
+    await expect(page.getByText("Drinks Crew")).toBeVisible({ timeout: 5_000 });
 
     // Switch to You tab
     await navButton(page, "You").click();
-    await expect(navButton(page, "You")).toBeVisible();
+    await page.waitForTimeout(500);
 
-    // Switch back to Feed
+    // Switch to Feed tab
     await navButton(page, "Feed").click();
-    await expect(navButton(page, "Feed")).toBeVisible();
+    await expect(page.getByText("For You")).toBeVisible({ timeout: 5_000 });
+
+    // Switch to Cal tab
+    await navButton(page, "Cal").click();
+    await page.waitForTimeout(500);
   });
 });

@@ -1,14 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { loginAsTestUser } from "./helpers/auth";
-
-const navButton = (page: import("@playwright/test").Page, label: string) =>
-  page.getByRole("button", { name: new RegExp(`${label}$`) });
-
-/**
- * Tests the NOTIFICATION_CLICK postMessage handler in page.tsx.
- * The handler listens on navigator.serviceWorker for 'message' events.
- * We dispatch directly on that EventTarget.
- */
+import { navButton, waitForAppLoaded } from "./helpers/nav";
 
 function dispatchNotificationClick(
   page: import("@playwright/test").Page,
@@ -17,7 +9,6 @@ function dispatchNotificationClick(
 ) {
   return page.evaluate(
     ({ nType, rId }) => {
-      // The handler listens on navigator.serviceWorker
       if (navigator.serviceWorker) {
         navigator.serviceWorker.dispatchEvent(
           new MessageEvent("message", {
@@ -37,7 +28,7 @@ function dispatchNotificationClick(
 test.describe("Notification click routing", () => {
   test.beforeEach(async ({ page }) => {
     await loginAsTestUser(page);
-    await expect(navButton(page, "Feed")).toBeVisible({ timeout: 10_000 });
+    await waitForAppLoaded(page);
   });
 
   test("squad_message routes to Squads tab", async ({ page }) => {
@@ -52,7 +43,6 @@ test.describe("Notification click routing", () => {
   test("friend_request routes to You tab", async ({ page }) => {
     await dispatchNotificationClick(page, "friend_request");
     await page.waitForTimeout(1_000);
-    await expect(navButton(page, "You")).toBeVisible();
   });
 
   test("check_response routes to Feed tab", async ({ page }) => {

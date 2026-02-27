@@ -1,13 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { loginAsTestUser } from "./helpers/auth";
-
-const navButton = (page: import("@playwright/test").Page, label: string) =>
-  page.getByRole("button", { name: new RegExp(`${label}$`) });
+import { navButton, waitForAppLoaded } from "./helpers/nav";
 
 test.describe("Squad chat flow", () => {
   test.beforeEach(async ({ page }) => {
     await loginAsTestUser(page);
-    await expect(navButton(page, "Feed")).toBeVisible({ timeout: 10_000 });
+    await waitForAppLoaded(page);
   });
 
   test("open squad, see chat, send message, go back", async ({ page }) => {
@@ -37,7 +35,7 @@ test.describe("Squad chat flow", () => {
       timeout: 5_000,
     });
 
-    // Go back to squad list — click the back button or nav tab
+    // Go back to squad list
     const backButton = page.getByText("←");
     if (await backButton.isVisible()) {
       await backButton.click();
