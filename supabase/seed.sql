@@ -1,0 +1,136 @@
+-- ============================================================================
+-- TEST SEED DATA
+-- ============================================================================
+-- Creates test users via Supabase auth, profiles, friendships, events,
+-- interest checks, a squad with messages — everything the E2E tests need.
+--
+-- This runs after all migrations via `supabase db reset` or `supabase start`.
+-- ============================================================================
+
+-- ─── Test users (created via auth.users + auth.identities) ───────────────────
+-- GoTrue requires both tables to look up users for magic links.
+
+-- User 1: kat@test.com
+INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change, email_change_confirm_status)
+VALUES (
+  'a1111111-1111-1111-1111-111111111111',
+  '00000000-0000-0000-0000-000000000000',
+  'authenticated',
+  'authenticated',
+  'kat@test.com',
+  crypt('testpass123', gen_salt('bf')),
+  now(),
+  '{"provider": "email", "providers": ["email"]}'::jsonb,
+  '{"username": "kat", "display_name": "Kat"}'::jsonb,
+  now(), now(), '', '', '', '', 0
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+VALUES (
+  'a1111111-1111-1111-1111-111111111111',
+  'a1111111-1111-1111-1111-111111111111',
+  '{"sub": "a1111111-1111-1111-1111-111111111111", "email": "kat@test.com"}'::jsonb,
+  'email',
+  'a1111111-1111-1111-1111-111111111111',
+  now(), now(), now()
+) ON CONFLICT DO NOTHING;
+
+-- User 2: sara@test.com
+INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change, email_change_confirm_status)
+VALUES (
+  'b2222222-2222-2222-2222-222222222222',
+  '00000000-0000-0000-0000-000000000000',
+  'authenticated',
+  'authenticated',
+  'sara@test.com',
+  crypt('testpass123', gen_salt('bf')),
+  now(),
+  '{"provider": "email", "providers": ["email"]}'::jsonb,
+  '{"username": "sara", "display_name": "Sara"}'::jsonb,
+  now(), now(), '', '', '', '', 0
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+VALUES (
+  'b2222222-2222-2222-2222-222222222222',
+  'b2222222-2222-2222-2222-222222222222',
+  '{"sub": "b2222222-2222-2222-2222-222222222222", "email": "sara@test.com"}'::jsonb,
+  'email',
+  'b2222222-2222-2222-2222-222222222222',
+  now(), now(), now()
+) ON CONFLICT DO NOTHING;
+
+-- Mark profiles as onboarded (profiles created by handle_new_user trigger)
+UPDATE public.profiles SET onboarded = true WHERE id IN (
+  'a1111111-1111-1111-1111-111111111111',
+  'b2222222-2222-2222-2222-222222222222'
+);
+
+-- ─── Friendship (accepted) ───────────────────────────────────────────────────
+
+INSERT INTO public.friendships (id, requester_id, addressee_id, status)
+VALUES (
+  'f1111111-1111-1111-1111-111111111111',
+  'a1111111-1111-1111-1111-111111111111',
+  'b2222222-2222-2222-2222-222222222222',
+  'accepted'
+) ON CONFLICT DO NOTHING;
+
+-- ─── Public event (today) ────────────────────────────────────────────────────
+
+INSERT INTO public.events (id, title, venue, date, date_display, time_display, vibes, is_public, created_by)
+VALUES (
+  'e1111111-1111-1111-1111-111111111111',
+  'Test Night Out',
+  'The Warehouse',
+  CURRENT_DATE,
+  'Tonight',
+  '10 PM',
+  ARRAY['house', 'techno'],
+  true,
+  'a1111111-1111-1111-1111-111111111111'
+) ON CONFLICT (id) DO NOTHING;
+
+-- A future event (tomorrow) — should NOT appear in tonight feed
+INSERT INTO public.events (id, title, venue, date, date_display, time_display, vibes, is_public, created_by)
+VALUES (
+  'e2222222-2222-2222-2222-222222222222',
+  'Tomorrow Hangout',
+  'Rooftop Bar',
+  CURRENT_DATE + 1,
+  'Tomorrow',
+  '8 PM',
+  ARRAY['chill'],
+  true,
+  'b2222222-2222-2222-2222-222222222222'
+) ON CONFLICT (id) DO NOTHING;
+
+-- ─── Interest check (from Sara, visible to Kat via friendship) ───────────────
+
+INSERT INTO public.interest_checks (id, author_id, text, expires_at)
+VALUES (
+  'c1111111-1111-1111-1111-111111111111',
+  'b2222222-2222-2222-2222-222222222222',
+  'anyone down for drinks tonight?',
+  now() + interval '24 hours'
+) ON CONFLICT (id) DO NOTHING;
+
+-- ─── Squad with messages ─────────────────────────────────────────────────────
+
+INSERT INTO public.squads (id, name, check_id, created_by)
+VALUES (
+  'd1111111-1111-1111-1111-111111111111',
+  'Drinks Crew',
+  'c1111111-1111-1111-1111-111111111111',
+  'b2222222-2222-2222-2222-222222222222'
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.squad_members (squad_id, user_id) VALUES
+  ('d1111111-1111-1111-1111-111111111111', 'a1111111-1111-1111-1111-111111111111'),
+  ('d1111111-1111-1111-1111-111111111111', 'b2222222-2222-2222-2222-222222222222')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.messages (squad_id, sender_id, text, created_at) VALUES
+  ('d1111111-1111-1111-1111-111111111111', 'b2222222-2222-2222-2222-222222222222', 'hey! where should we meet?', now() - interval '10 minutes'),
+  ('d1111111-1111-1111-1111-111111111111', 'a1111111-1111-1111-1111-111111111111', 'how about the lobby at 9?', now() - interval '5 minutes')
+ON CONFLICT DO NOTHING;

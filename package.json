@@ -7,7 +7,9 @@
     "dev": "next dev",
     "dev:prod": "bash -c '[ -f .env.development.local ] && mv .env.development.local .env.development.local.bak; trap \"[ -f .env.development.local.bak ] && mv .env.development.local.bak .env.development.local\" EXIT; next dev'",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -23,7 +25,9 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/web-push": "^3.6.4",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^4.0.18"
   }
 }
