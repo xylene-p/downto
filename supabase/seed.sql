@@ -7,37 +7,60 @@
 -- This runs after all migrations via `supabase db reset` or `supabase start`.
 -- ============================================================================
 
--- ─── Test users (created via auth.users so profile trigger fires) ────────────
+-- ─── Test users (created via auth.users + auth.identities) ───────────────────
+-- GoTrue requires both tables to look up users for magic links.
 
 -- User 1: kat@test.com
-INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, raw_user_meta_data, role, aud, created_at, updated_at)
+INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change, email_change_confirm_status)
 VALUES (
   'a1111111-1111-1111-1111-111111111111',
   '00000000-0000-0000-0000-000000000000',
+  'authenticated',
+  'authenticated',
   'kat@test.com',
   crypt('testpass123', gen_salt('bf')),
   now(),
+  '{"provider": "email", "providers": ["email"]}'::jsonb,
   '{"username": "kat", "display_name": "Kat"}'::jsonb,
-  'authenticated',
-  'authenticated',
-  now(), now()
+  now(), now(), '', '', '', '', 0
 ) ON CONFLICT (id) DO NOTHING;
 
+INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+VALUES (
+  'a1111111-1111-1111-1111-111111111111',
+  'a1111111-1111-1111-1111-111111111111',
+  '{"sub": "a1111111-1111-1111-1111-111111111111", "email": "kat@test.com"}'::jsonb,
+  'email',
+  'a1111111-1111-1111-1111-111111111111',
+  now(), now(), now()
+) ON CONFLICT DO NOTHING;
+
 -- User 2: sara@test.com
-INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, raw_user_meta_data, role, aud, created_at, updated_at)
+INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change, email_change_confirm_status)
 VALUES (
   'b2222222-2222-2222-2222-222222222222',
   '00000000-0000-0000-0000-000000000000',
+  'authenticated',
+  'authenticated',
   'sara@test.com',
   crypt('testpass123', gen_salt('bf')),
   now(),
+  '{"provider": "email", "providers": ["email"]}'::jsonb,
   '{"username": "sara", "display_name": "Sara"}'::jsonb,
-  'authenticated',
-  'authenticated',
-  now(), now()
+  now(), now(), '', '', '', '', 0
 ) ON CONFLICT (id) DO NOTHING;
 
--- Mark profiles as onboarded
+INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+VALUES (
+  'b2222222-2222-2222-2222-222222222222',
+  'b2222222-2222-2222-2222-222222222222',
+  '{"sub": "b2222222-2222-2222-2222-222222222222", "email": "sara@test.com"}'::jsonb,
+  'email',
+  'b2222222-2222-2222-2222-222222222222',
+  now(), now(), now()
+) ON CONFLICT DO NOTHING;
+
+-- Mark profiles as onboarded (profiles created by handle_new_user trigger)
 UPDATE public.profiles SET onboarded = true WHERE id IN (
   'a1111111-1111-1111-1111-111111111111',
   'b2222222-2222-2222-2222-222222222222'

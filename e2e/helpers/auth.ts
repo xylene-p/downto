@@ -35,9 +35,9 @@ export async function loginAsTestUser(
   }
 
   const data = await res.json();
-  const actionLink = data?.properties?.action_link;
+  const actionLink = data?.properties?.action_link || data?.action_link;
   if (!actionLink) {
-    throw new Error("No action_link in magic link response");
+    throw new Error(`No action_link in magic link response: ${JSON.stringify(data).slice(0, 200)}`);
   }
 
   await page.goto(actionLink);
