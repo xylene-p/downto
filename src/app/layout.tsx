@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Instrument_Serif, Space_Mono } from "next/font/google";
 import DevProdBanner from "@/components/DevProdBanner";
+import Grain from "@/components/Grain";
 
 import "./global.css";
+import "./animations.css";
 
 const instrumentSerif = Instrument_Serif({
   weight: "400",
@@ -10,7 +12,7 @@ const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
 });
 const spaceMono = Space_Mono({
-  weight: ['400', '700'],
+  weight: ["400", "700"],
   variable: "--font-space-mono",
   subsets: ["latin"],
 });
@@ -37,7 +39,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${instrumentSerif.variable} ${spaceMono.variable}`}>
+    <html
+      lang="en"
+      className={`${instrumentSerif.variable} ${spaceMono.variable}`}
+    >
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -59,17 +64,10 @@ export default function RootLayout({
           input, textarea, select { font-size: 16px !important; }
         `}</style>
       </head>
-      <body
-        style={{
-          margin: 0,
-          padding: 0,
-          background: "#000",
-          minHeight: "100vh",
-          overflowX: "hidden",
-        }}
-      >
+      <body>
+        <Grain />
         <DevProdBanner />
-        {children}
+        <div className="container">{children}</div>
       </body>
     </html>
   );
