@@ -1,22 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureVapid, sendPushToUser } from '@/lib/push';
+import { dedup } from '@/lib/dedup';
 
 export const runtime = 'nodejs';
-
-// Dedup: Supabase webhooks can double-fire for the same notification row.
-// Track recently processed notification IDs in memory (TTL 60s).
-const recentlySent = new Map<string, number>();
-
-function dedup(notificationId: string): boolean {
-  const now = Date.now();
-  // Evict stale entries
-  for (const [id, ts] of recentlySent) {
-    if (now - ts > 60_000) recentlySent.delete(id);
-  }
-  if (recentlySent.has(notificationId)) return true;
-  recentlySent.set(notificationId, now);
-  return false;
-}
 
 export async function POST(request: NextRequest) {
   if (!ensureVapid()) {
