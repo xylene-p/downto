@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import * as db from "@/lib/db";
 import { font, color } from "@/lib/styles";
-import { sanitize, sanitizeVibes, parseDateToISO } from "@/lib/utils";
+import { sanitize, sanitizeVibes, parseDateToISO, toLocalISODate } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
 import type { Person, Event, Tab } from "@/lib/ui-types";
 import { DEMO_EVENTS, DEMO_CHECKS, DEMO_TONIGHT, DEMO_SQUADS, DEMO_FRIENDS, DEMO_SUGGESTIONS, DEMO_NOTIFICATIONS, DEMO_SEARCH_USERS } from "@/lib/demo-data";
@@ -168,7 +168,7 @@ export default function Home() {
       const savedEventIds = savedEvents.map((se) => se.event!.id);
       const savedEventIdSet = new Set(savedEventIds);
       const savedDownMap = new Map(savedEvents.map((se) => [se.event!.id, se.is_down]));
-      const today = new Date().toISOString().split('T')[0];
+      const today = toLocalISODate(new Date());
 
       setEvents((prev) => {
         const prevPeopleDown = new Map(prev.map((e) => [e.id, e.peopleDown]));

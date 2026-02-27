@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { toLocalISODate } from './utils';
 import type {
   Profile,
   Event,
@@ -92,7 +93,7 @@ export async function getPublicEvents(date?: Date): Promise<Event[]> {
     .order('date', { ascending: true });
 
   if (date) {
-    query = query.eq('date', date.toISOString().split('T')[0]);
+    query = query.eq('date', toLocalISODate(date));
   }
 
   const { data, error } = await query;
