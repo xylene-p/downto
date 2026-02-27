@@ -357,6 +357,7 @@ export default function Home() {
 
   const handlePullMove = useCallback((e: React.TouchEvent) => {
     if (isAnimatingRef.current) return;
+    if (chatOpenRef.current) return;
     if (window.scrollY > 0) {
       isPulling.current = false;
       if (pullOffsetRef.current > 0) applyPullOffset(0);
