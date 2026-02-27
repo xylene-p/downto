@@ -6,9 +6,9 @@ import type { Page, Locator } from "@playwright/test";
  * inside a span within a button.
  */
 export function navButton(page: Page, label: string): Locator {
-  // Target the specific span inside the button that contains the nav label
-  // The span text is like "⚡ Feed", "📅 Cal", "👥 Squads", "⚙ You"
-  return page.locator(`button`).filter({ hasText: new RegExp(`^.+\\s${label}$`) });
+  // The nav button text is short: "{emoji} {Label}" (e.g. "📅 Cal", ~5 chars)
+  // Use max length to exclude longer buttons like "Save to Cal"
+  return page.locator(`button`).filter({ hasText: new RegExp(`^.{1,4}${label}$`) });
 }
 
 /**

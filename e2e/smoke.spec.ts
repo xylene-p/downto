@@ -24,8 +24,8 @@ test.describe("Smoke tests", () => {
     await navButton(page, "Feed").click();
     await expect(page.getByText("For You")).toBeVisible({ timeout: 5_000 });
 
-    // Switch to Cal tab
-    await navButton(page, "Cal").click();
+    // Switch to Cal tab — use .last() because "Save to Cal" button also exists
+    await navButton(page, "Cal").last().click();
     await page.waitForTimeout(500);
   });
 });
