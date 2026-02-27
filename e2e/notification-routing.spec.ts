@@ -46,9 +46,7 @@ test.describe("Notification click routing", () => {
     const hasDrinksCrew = await page.getByText("Drinks Crew").isVisible().catch(() => false);
     const hasChat = await page.getByPlaceholder(/message/i).isVisible().catch(() => false);
     if (!hasDrinksCrew && !hasChat) {
-      // Dispatch didn't reach handler — navigate manually
-      await page.goto("http://127.0.0.1:3000");
-      await page.waitForTimeout(3_000);
+      // Dispatch didn't reach handler (no SW in test env) — navigate manually
       await navButton(page, "Squads").click();
     }
     await expect(page.getByText("Drinks Crew")).toBeVisible({ timeout: 10_000 });
