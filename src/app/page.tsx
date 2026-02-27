@@ -82,6 +82,7 @@ export default function Home() {
   const pullOffsetRef = useRef(0);
   const touchStartY = useRef(0);
   const isPulling = useRef(false);
+  const isAnimatingRef = useRef(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const spinnerWrapRef = useRef<HTMLDivElement>(null);
   const spinnerRef = useRef<HTMLDivElement>(null);
@@ -320,6 +321,7 @@ export default function Home() {
   }, []);
 
   const snapBack = useCallback(() => {
+    isAnimatingRef.current = true;
     const content = contentRef.current;
     const wrap = spinnerWrapRef.current;
     if (content) {
@@ -338,6 +340,7 @@ export default function Home() {
         wrap.style.display = "none";
       }
       pullOffsetRef.current = 0;
+      isAnimatingRef.current = false;
     };
     // Use timeout matching transition duration (avoid transitionend bubbling from children)
     setTimeout(cleanup, 260);
@@ -354,6 +357,7 @@ export default function Home() {
       if (refreshingLocal) return;
       touchStartY.current = e.touches[0].clientY;
       isPulling.current = false;
+      isAnimatingRef.current = false;
       // Remove any leftover transition from previous snap-back
       el.style.transition = "none";
       if (spinnerWrapRef.current) spinnerWrapRef.current.style.transition = "none";
@@ -414,13 +418,12 @@ export default function Home() {
     };
   }, [applyPullOffset, snapBack, loadRealData]);
 
-  // Hide spinner wrapper before first paint (ref-only, so React won't reset it)
+  // Re-sync ref-managed styles after every React re-render (before paint)
+  // so that React's style reconciliation can't overwrite them.
   useLayoutEffect(() => {
-    if (spinnerWrapRef.current) {
-      spinnerWrapRef.current.style.display = "none";
-      spinnerWrapRef.current.style.opacity = "0";
-    }
-  }, []);
+    if (isAnimatingRef.current) return; // don't interrupt snap-back
+    applyPullOffset(pullOffsetRef.current);
+  });
 
   // ─── Effects ────────────────────────────────────────────────────────────
 
