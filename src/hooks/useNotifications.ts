@@ -31,12 +31,14 @@ export function useNotifications({ userId, isDemoMode }: UseNotificationsParams)
 
   const loadNotifications = useCallback(async () => {
     try {
-      const [notifs, count] = await Promise.all([
+      const [notifs, count, hasSquadUnread] = await Promise.all([
         db.getNotifications(),
         db.getUnreadCount(),
+        db.hasUnreadSquadMessages(),
       ]);
       setNotifications(notifs);
       setUnreadCount(count);
+      if (hasSquadUnread) setHasUnreadSquadMessage(true);
     } catch (err) {
       logWarn("loadNotifications", "Failed to load notifications", { error: err });
     }

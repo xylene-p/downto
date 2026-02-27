@@ -896,6 +896,22 @@ export async function getUnreadCount(): Promise<number> {
   return count ?? 0;
 }
 
+export async function hasUnreadSquadMessages(): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('is_read', false)
+    .eq('type', 'squad_message')
+    .limit(1);
+
+  if (error) return false;
+  return (count ?? 0) > 0;
+}
+
 export async function markNotificationRead(notificationId: string): Promise<void> {
   const { error } = await supabase
     .from('notifications')
