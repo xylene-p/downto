@@ -208,6 +208,7 @@ const NotificationsPanel = ({
           onTouchEnd={handleScrollTouchEnd}
           style={{
             overflowY: isDragging.current ? "hidden" : "auto",
+            overflowX: "hidden",
             flex: 1,
             padding: "0 0 32px",
           }}
