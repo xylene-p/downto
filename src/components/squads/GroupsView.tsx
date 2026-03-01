@@ -169,7 +169,8 @@ const GroupsView = ({
   const handleTouchMove = (e: React.TouchEvent) => {
     const dx = e.touches[0].clientX - touchStartX.current;
     const dy = Math.abs(e.touches[0].clientY - touchStartY.current);
-    if (!isDragging.current && dx > 10 && dy < 30) {
+    // Only activate swipe-to-dismiss when horizontal movement clearly dominates vertical
+    if (!isDragging.current && dx > 20 && dx > dy * 2.5) {
       isDragging.current = true;
     }
     if (isDragging.current && dx > 0) {
