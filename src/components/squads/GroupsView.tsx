@@ -7,6 +7,16 @@ import type { Squad } from "@/lib/ui-types";
 import { logError } from "@/lib/logger";
 import { parseNaturalDate, parseNaturalTime, parseDateToISO } from "@/lib/utils";
 
+const formatExpiryShort = (expiresAt?: string): string | null => {
+  if (!expiresAt) return null;
+  const msRemaining = new Date(expiresAt).getTime() - Date.now();
+  if (msRemaining <= 0) return "!";
+  const hours = Math.floor(msRemaining / (1000 * 60 * 60));
+  if (hours > 24) return `${Math.floor(hours / 24)}d`;
+  if (hours > 0) return `${hours}h`;
+  return `${Math.floor(msRemaining / (1000 * 60))}m`;
+};
+
 const formatExpiryLabel = (expiresAt?: string, graceStartedAt?: string): string | null => {
   if (!expiresAt) return null;
   const now = Date.now();
@@ -894,9 +904,30 @@ const GroupsView = ({
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ff3b30", flexShrink: 0 }} />
                 )}
               </div>
-              <span style={{ fontFamily: font.mono, fontSize: 10, color: color.faint }}>
-                {g.time}
-              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                {(() => {
+                  const exp = formatExpiryShort(g.expiresAt);
+                  if (!exp) return null;
+                  const msLeft = g.expiresAt ? new Date(g.expiresAt).getTime() - Date.now() : Infinity;
+                  const isUrgent = msLeft < 24 * 60 * 60 * 1000;
+                  return (
+                    <span style={{
+                      fontFamily: font.mono,
+                      fontSize: 9,
+                      fontWeight: 700,
+                      color: isUrgent ? "#ff3b30" : color.faint,
+                      background: isUrgent ? "rgba(255,59,48,0.12)" : "rgba(255,255,255,0.05)",
+                      padding: "2px 5px",
+                      borderRadius: 6,
+                    }}>
+                      ⏳ {exp}
+                    </span>
+                  );
+                })()}
+                <span style={{ fontFamily: font.mono, fontSize: 10, color: color.faint }}>
+                  {g.time}
+                </span>
+              </div>
             </div>
             <div
               style={{
