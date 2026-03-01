@@ -863,6 +863,8 @@ export default function Home() {
         {feedLoaded && tab === "calendar" && (
           <CalendarView
             events={events}
+            checks={checksHook.checks}
+            myCheckResponses={checksHook.myCheckResponses}
             onToggleSave={toggleSave}
             onToggleDown={toggleDown}
             onOpenSocial={(e) => squadsHook.setSocialEvent(e)}
