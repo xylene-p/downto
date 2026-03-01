@@ -988,6 +988,7 @@ export default function Home() {
           tab={tab}
           onTabChange={(t) => {
             setTab(t);
+            window.scrollTo(0, 0);
             if (t === "groups") {
               if (!isDemoMode && userId) loadRealData();
             }
