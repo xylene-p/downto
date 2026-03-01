@@ -352,7 +352,7 @@ export default function Home() {
 
   const handlePullStart = useCallback((e: React.TouchEvent) => {
     if (isAnimatingRef.current) return;
-    if (tabRef.current !== "feed" && tabRef.current !== "cal") return;
+    if (tabRef.current !== "feed" && tabRef.current !== "calendar") return;
     if (chatOpenRef.current) return;
     touchStartY.current = e.touches[0].clientY;
     isPulling.current = false;
