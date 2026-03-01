@@ -225,13 +225,14 @@ export default function Home() {
               rawDate: e.date ?? undefined,
             })),
         ];
-        combined.sort((a, b) => {
-          if (!a.rawDate && !b.rawDate) return 0;
-          if (!a.rawDate) return 1;
-          if (!b.rawDate) return -1;
-          return a.rawDate.localeCompare(b.rawDate);
-        });
-        return combined;
+        return combined
+          .filter((e) => !e.rawDate || e.rawDate >= today)
+          .sort((a, b) => {
+            if (!a.rawDate && !b.rawDate) return 0;
+            if (!a.rawDate) return 1;
+            if (!b.rawDate) return -1;
+            return a.rawDate.localeCompare(b.rawDate);
+          });
       });
 
       setTonightEvents((prev) => {
