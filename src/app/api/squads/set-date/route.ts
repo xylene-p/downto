@@ -49,12 +49,26 @@ export async function POST(req: NextRequest) {
 
   const displayName = profile?.display_name ?? 'Someone';
 
-  // Get squad's linked check_id
+  // Get squad's linked check_id and current check event_date
   const { data: squad } = await supabase
     .from('squads')
     .select('check_id')
     .eq('id', squadId)
     .single();
+
+  let checkHadDate = true;
+  if (squad?.check_id) {
+    const { data: check } = await supabase
+      .from('interest_checks')
+      .select('event_date, author_id')
+      .eq('id', squad.check_id)
+      .single();
+    checkHadDate = !!check?.event_date;
+
+    if (check?.author_id && check.author_id !== user.id) {
+      return NextResponse.json({ error: 'Only the check creator can set the date' }, { status: 403 });
+    }
+  }
 
   // --- Clear date/time ---
   if (clear) {
@@ -76,10 +90,16 @@ export async function POST(req: NextRequest) {
         .eq('id', squad.check_id);
     }
 
+    // Reset date and confirm state
     await supabase
       .from('squads')
-      .update({ locked_date: null })
+      .update({ locked_date: null, date_status: null })
       .eq('id', squadId);
+
+    await adminClient
+      .from('squad_date_confirms')
+      .delete()
+      .eq('squad_id', squadId);
 
     await adminClient
       .from('messages')
@@ -98,13 +118,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'date required' }, { status: 400 });
   }
 
+  // Determine if this is a proposal (dateless check getting a date for the first time)
+  const isProposal = squad?.check_id && !checkHadDate;
+
   // Update expires_at to date + 24h
   const expiresAt = new Date(date + 'T23:59:59Z');
   expiresAt.setHours(expiresAt.getHours() + 24);
 
+  const dateStatus = isProposal ? 'proposed' : null;
+
   const { error: updateError } = await supabase
     .from('squads')
-    .update({ expires_at: expiresAt.toISOString(), locked_date: date })
+    .update({
+      expires_at: expiresAt.toISOString(),
+      locked_date: date,
+      date_status: dateStatus,
+    })
     .eq('id', squadId);
 
   if (updateError) {
@@ -130,7 +159,76 @@ export async function POST(req: NextRequest) {
 
   const timeLabel = time ? ` at ${time}` : '';
 
-  // Insert system message
+  if (isProposal) {
+    // --- Proposal flow: insert date_confirm message + confirm rows ---
+
+    // Clear any old confirms (if re-proposing)
+    await adminClient
+      .from('squad_date_confirms')
+      .delete()
+      .eq('squad_id', squadId);
+
+    // Insert interactive system message
+    const { data: msg } = await adminClient
+      .from('messages')
+      .insert({
+        squad_id: squadId,
+        sender_id: null,
+        text: `${displayName} proposed ${dateLabel}${timeLabel} — are you still down?`,
+        is_system: true,
+        message_type: 'date_confirm',
+      })
+      .select('id')
+      .single();
+
+    const messageId = msg?.id;
+    if (!messageId) {
+      return NextResponse.json({ error: 'Failed to create message' }, { status: 500 });
+    }
+
+    // Get all squad members except proposer
+    const { data: members } = await adminClient
+      .from('squad_members')
+      .select('user_id')
+      .eq('squad_id', squadId)
+      .neq('user_id', user.id);
+
+    const otherMembers = members ?? [];
+
+    // Create pending confirm rows
+    if (otherMembers.length > 0) {
+      await adminClient
+        .from('squad_date_confirms')
+        .insert(otherMembers.map((m) => ({
+          squad_id: squadId,
+          message_id: messageId,
+          user_id: m.user_id,
+        })));
+
+      // Get squad name for notifications
+      const { data: squadData } = await supabase
+        .from('squads')
+        .select('name')
+        .eq('id', squadId)
+        .single();
+
+      // Create notifications (not push — just in-app)
+      await adminClient
+        .from('notifications')
+        .insert(otherMembers.map((m) => ({
+          user_id: m.user_id,
+          type: 'date_confirm',
+          title: squadData?.name ?? 'Squad',
+          body: `${displayName} proposed ${dateLabel}${timeLabel} — are you still down?`,
+          related_squad_id: squadId,
+          related_user_id: user.id,
+        })));
+    }
+
+    return NextResponse.json({ ok: true, expires_at: expiresAt.toISOString(), date_status: 'proposed' });
+  }
+
+  // --- Standard lock flow (dated checks) ---
   await adminClient
     .from('messages')
     .insert({
@@ -140,5 +238,5 @@ export async function POST(req: NextRequest) {
       is_system: true,
     });
 
-  return NextResponse.json({ ok: true, expires_at: expiresAt.toISOString() });
+  return NextResponse.json({ ok: true, expires_at: expiresAt.toISOString(), date_status: null });
 }

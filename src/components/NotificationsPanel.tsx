@@ -262,7 +262,7 @@ const NotificationsPanel = ({
                       type: "friends",
                       tab: n.type === "friend_request" && !alreadyFriends ? "add" : "friends",
                     });
-                  } else if (n.type === "squad_message" || n.type === "squad_invite") {
+                  } else if (n.type === "squad_message" || n.type === "squad_invite" || n.type === "date_confirm") {
                     // Mark all notifications for this squad as read
                     const squadId = n.related_squad_id;
                     if (squadId) {
@@ -319,6 +319,7 @@ const NotificationsPanel = ({
                       : n.type === "friend_accepted" ? "#34C75922"
                       : n.type === "check_response" ? "#FF9F0A22"
                       : n.type === "squad_invite" ? "#AF52DE22"
+                      : n.type === "date_confirm" ? "#E8FF5A22"
                       : "#5856D622",
                     display: "flex",
                     alignItems: "center",
@@ -331,6 +332,7 @@ const NotificationsPanel = ({
                     : n.type === "friend_accepted" ? "🤝"
                     : n.type === "check_response" ? "🔥"
                     : n.type === "squad_invite" ? "🚀"
+                    : n.type === "date_confirm" ? "📅"
                     : "💬"}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>

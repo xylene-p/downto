@@ -1017,6 +1017,52 @@ export async function extendSquad(squadId: string, days: number = 7): Promise<st
 }
 
 // ============================================================================
+// DATE CONFIRMS
+// ============================================================================
+
+export async function getDateConfirms(squadId: string): Promise<{
+  userId: string;
+  response: 'yes' | 'no' | null;
+  respondedAt: string | null;
+}[]> {
+  const { data, error } = await supabase
+    .from('squad_date_confirms')
+    .select('user_id, response, responded_at')
+    .eq('squad_id', squadId);
+
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    userId: row.user_id,
+    response: row.response as 'yes' | 'no' | null,
+    respondedAt: row.responded_at,
+  }));
+}
+
+export async function respondToDateConfirm(
+  squadId: string,
+  response: 'yes' | 'no'
+): Promise<{ removed?: boolean }> {
+  const token = (await supabase.auth.getSession()).data.session?.access_token;
+  if (!token) throw new Error('Not authenticated');
+
+  const res = await fetch('/api/squads/confirm-date', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ squadId, response }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || 'Failed to respond to date confirm');
+  }
+
+  return res.json();
+}
+
+// ============================================================================
 // CREW POOL
 // ============================================================================
 

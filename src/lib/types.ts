@@ -111,6 +111,7 @@ export interface Squad {
   grace_started_at: string | null;
   warned_at: string | null;
   locked_date: string | null;
+  date_status: string | null;
   archived_at: string | null;
   // Joined data
   event?: Event;
@@ -144,6 +145,7 @@ export interface Message {
   text: string;
   created_at: string;
   is_system: boolean;
+  message_type: string;
   // Joined data
   sender?: Profile;
 }
@@ -151,7 +153,7 @@ export interface Message {
 export interface Notification {
   id: string;
   user_id: string;
-  type: 'friend_request' | 'friend_accepted' | 'check_response' | 'squad_message' | 'squad_invite' | 'friend_check';
+  type: 'friend_request' | 'friend_accepted' | 'check_response' | 'squad_message' | 'squad_invite' | 'friend_check' | 'date_confirm';
   title: string;
   body: string | null;
   related_user_id: string | null;

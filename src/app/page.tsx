@@ -930,12 +930,13 @@ export default function Home() {
                 body: JSON.stringify({ squadId: squadDbId, date, time: time ?? null }),
               });
               if (!res.ok) throw new Error('Failed to set date');
-              const { expires_at } = await res.json();
+              const { expires_at, date_status } = await res.json();
               squadsHook.setSquads((prev) => prev.map((s) => s.id === squadDbId ? {
                 ...s,
                 eventIsoDate: date,
                 expiresAt: expires_at,
                 graceStartedAt: undefined,
+                dateStatus: date_status === 'proposed' ? 'proposed' : undefined,
               } : s));
             }}
             onClearSquadDate={async (squadDbId) => {
@@ -953,7 +954,11 @@ export default function Home() {
               squadsHook.setSquads((prev) => prev.map((s) => s.id === squadDbId ? {
                 ...s,
                 eventIsoDate: undefined,
+                dateStatus: undefined,
               } : s));
+            }}
+            onConfirmDate={async (squadDbId, response) => {
+              await db.respondToDateConfirm(squadDbId, response);
             }}
             userId={userId}
             onViewProfile={(uid) => setViewingUserId(uid)}

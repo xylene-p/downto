@@ -43,6 +43,7 @@ const GroupsView = ({
   onLeaveSquad,
   onSetSquadDate,
   onClearSquadDate,
+  onConfirmDate,
   userId,
   onViewProfile,
   onChatOpen,
@@ -56,6 +57,7 @@ const GroupsView = ({
   onLeaveSquad?: (squadDbId: string) => Promise<void>;
   onSetSquadDate?: (squadDbId: string, date: string, time?: string | null) => Promise<void>;
   onClearSquadDate?: (squadDbId: string) => Promise<void>;
+  onConfirmDate?: (squadDbId: string, response: 'yes' | 'no') => Promise<void>;
   userId?: string | null;
   onViewProfile?: (userId: string) => void;
   onChatOpen?: (open: boolean) => void;
@@ -68,9 +70,12 @@ const GroupsView = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const msgInputRef = useRef<HTMLTextAreaElement>(null);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showImOutConfirm, setShowImOutConfirm] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerValue, setDatePickerValue] = useState("");
   const [settingDate, setSettingDate] = useState(false);
+  const [dateConfirmStatus, setDateConfirmStatus] = useState<'yes' | 'no' | 'pending' | 'none'>('none');
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   useEffect(() => {
     if (autoSelectSquadId != null) {
@@ -94,6 +99,19 @@ const GroupsView = ({
     return () => { onChatOpen?.(false); };
   }, [chatVisible, onChatOpen]);
 
+  // Load date confirm status when entering a squad with a proposed date
+  useEffect(() => {
+    if (!selectedSquad?.id || selectedSquad.dateStatus !== 'proposed' || !userId) {
+      setDateConfirmStatus('none');
+      return;
+    }
+    db.getDateConfirms(selectedSquad.id).then((confirms) => {
+      const mine = confirms.find((c) => c.userId === userId);
+      if (!mine) { setDateConfirmStatus('none'); return; }
+      setDateConfirmStatus(mine.response ?? 'pending');
+    }).catch(() => {});
+  }, [selectedSquad?.id, selectedSquad?.dateStatus, userId]);
+
   // Subscribe to realtime messages for the selected squad
   useEffect(() => {
     if (!selectedSquad?.id) return;
@@ -107,6 +125,7 @@ const GroupsView = ({
         text: newMessage.text,
         time: "now",
         isYou: false,
+        ...(newMessage.message_type === 'date_confirm' ? { messageType: 'date_confirm' as const, messageId: newMessage.id } : {}),
       };
       const lastMsgPreview = isSystem ? newMessage.text : `${senderName}: ${newMessage.text}`;
       setSelectedSquad((prev) => {
@@ -339,34 +358,58 @@ const GroupsView = ({
                 }}
               >
                 {expiryLabel}
-                {onSetSquadDate && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowDatePicker(true);
-                      setDatePickerValue(
-                        selectedSquad.eventIsoDate
-                          ? new Date(selectedSquad.eventIsoDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
-                          : ""
-                      );
-                    }}
-                    style={{
-                      background: color.accent,
-                      color: "#000",
-                      border: "none",
-                      borderRadius: 6,
-                      padding: "2px 8px",
-                      fontFamily: font.mono,
-                      fontSize: 9,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {selectedSquad.eventIsoDate
-                      ? new Date(selectedSquad.eventIsoDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
-                      : "Set a date"}
-                  </button>
-                )}
+                {(() => {
+                  const isAuthor = selectedSquad.checkAuthorId === userId;
+                  const isProposed = selectedSquad.dateStatus === 'proposed' && selectedSquad.eventIsoDate;
+                  const dateLabel = selectedSquad.eventIsoDate
+                    ? new Date(selectedSquad.eventIsoDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+                    : "";
+                  const chipLabel = selectedSquad.eventIsoDate ? (isProposed ? `~${dateLabel}` : dateLabel) : null;
+
+                  if (isAuthor && onSetSquadDate) {
+                    return (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDatePicker(true);
+                          setDatePickerValue(dateLabel);
+                        }}
+                        style={{
+                          background: isProposed ? 'transparent' : color.accent,
+                          color: isProposed ? color.accent : "#000",
+                          border: isProposed ? `1px dashed ${color.accent}` : "none",
+                          borderRadius: 6,
+                          padding: "2px 8px",
+                          fontFamily: font.mono,
+                          fontSize: 9,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {chipLabel ?? "Set a date"}
+                      </button>
+                    );
+                  }
+
+                  if (chipLabel) {
+                    return (
+                      <span style={{
+                        background: isProposed ? 'transparent' : color.accent,
+                        color: isProposed ? color.accent : "#000",
+                        border: isProposed ? `1px dashed ${color.accent}` : "none",
+                        borderRadius: 6,
+                        padding: "2px 8px",
+                        fontFamily: font.mono,
+                        fontSize: 9,
+                        fontWeight: 700,
+                      }}>
+                        {chipLabel}
+                      </span>
+                    );
+                  }
+
+                  return null;
+                })()}
                 {selectedSquad.eventIsoDate && onClearSquadDate && selectedSquad.checkAuthorId === userId && (
                   <button
                     onClick={async (e) => {
@@ -506,6 +549,92 @@ const GroupsView = ({
                   }}
                 >
                   Leave
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* I'm out confirmation */}
+        {showImOutConfirm && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0, left: 0, right: 0, bottom: 0,
+              background: "rgba(0,0,0,0.7)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}
+            onClick={() => setShowImOutConfirm(false)}
+          >
+            <div
+              style={{
+                background: color.deep,
+                border: `1px solid ${color.border}`,
+                borderRadius: 16,
+                padding: "24px 20px",
+                maxWidth: 300,
+                width: "90%",
+                textAlign: "center",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p style={{ fontFamily: font.serif, fontSize: 18, color: color.text, marginBottom: 6 }}>
+                Can&apos;t make it?
+              </p>
+              <p style={{ fontFamily: font.mono, fontSize: 11, color: color.dim, marginBottom: 20 }}>
+                You&apos;ll be removed from this squad and lose access to the chat.
+              </p>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  onClick={() => setShowImOutConfirm(false)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    background: "none",
+                    border: `1px solid ${color.border}`,
+                    borderRadius: 10,
+                    color: color.text,
+                    fontFamily: font.mono,
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (selectedSquad?.id && onConfirmDate) {
+                      setConfirmLoading(true);
+                      try {
+                        await onConfirmDate(selectedSquad.id, 'no');
+                        setDateConfirmStatus('no');
+                        onSquadUpdate((prev) => prev.filter((s) => s.id !== selectedSquad.id));
+                        setSelectedSquad(null);
+                      } catch (err) {
+                        logError('dateConfirm', err);
+                      } finally {
+                        setConfirmLoading(false);
+                      }
+                    }
+                    setShowImOutConfirm(false);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "10px 0",
+                    background: "#ff4444",
+                    border: "none",
+                    borderRadius: 10,
+                    color: "#fff",
+                    fontFamily: font.mono,
+                    fontSize: 12,
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  I&apos;m out
                 </button>
               </div>
             </div>
@@ -661,7 +790,7 @@ const GroupsView = ({
                       fontWeight: 700,
                     }}
                   >
-                    {settingDate ? "..." : "Lock it in"}
+                    {settingDate ? "..." : (selectedSquad?.checkAuthorId === userId ? (selectedSquad?.eventIsoDate ? "Lock it in" : "Propose date") : "Propose new time")}
                   </button>
                 </div>
               </div>
@@ -680,7 +809,9 @@ const GroupsView = ({
             gap: 2,
           }}
         >
-          {selectedSquad.messages.map((msg, i) => {
+          {(() => {
+            const lastConfirmIdx = selectedSquad.messages.reduce((acc, m, idx) => m.messageType === 'date_confirm' ? idx : acc, -1);
+            return selectedSquad.messages.map((msg, i) => {
             const prev = i > 0 ? selectedSquad.messages[i - 1] : null;
             const next = i < selectedSquad.messages.length - 1 ? selectedSquad.messages[i + 1] : null;
             const sameSenderAsPrev = prev && prev.sender === msg.sender && prev.sender !== "system";
@@ -689,6 +820,90 @@ const GroupsView = ({
             const isLastInGroup = !sameSenderAsNext;
 
             if (msg.sender === "system") {
+              // Interactive date confirm message (only show buttons on the latest one)
+              if (msg.messageType === 'date_confirm' && i === lastConfirmIdx) {
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      textAlign: "center",
+                      padding: "8px 0",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: font.mono,
+                        fontSize: 10,
+                        color: color.dim,
+                      }}
+                    >
+                      {msg.text}
+                    </span>
+                    {dateConfirmStatus === 'pending' && !confirmLoading && (
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 8 }}>
+                        <button
+                          onClick={async () => {
+                            if (!selectedSquad?.id || confirmLoading) return;
+                            setConfirmLoading(true);
+                            try {
+                              await onConfirmDate?.(selectedSquad.id, 'yes');
+                              setDateConfirmStatus('yes');
+                            } catch (err) {
+                              logError('dateConfirm', err);
+                            } finally {
+                              setConfirmLoading(false);
+                            }
+                          }}
+                          style={{
+                            background: color.accent,
+                            color: '#000',
+                            border: 'none',
+                            borderRadius: 10,
+                            padding: '6px 16px',
+                            fontFamily: font.mono,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          STILL DOWN
+                        </button>
+                        <button
+                          onClick={() => setShowImOutConfirm(true)}
+                          style={{
+                            background: 'transparent',
+                            color: color.text,
+                            border: `1px solid ${color.borderMid}`,
+                            borderRadius: 10,
+                            padding: '6px 16px',
+                            fontFamily: font.mono,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          I'M OUT
+                        </button>
+                      </div>
+                    )}
+                    {confirmLoading && (
+                      <div style={{ fontFamily: font.mono, fontSize: 10, color: color.faint, marginTop: 6 }}>...</div>
+                    )}
+                    {dateConfirmStatus === 'yes' && !confirmLoading && (
+                      <div style={{ fontFamily: font.mono, fontSize: 10, color: color.accent, marginTop: 6 }}>
+                        you're in
+                      </div>
+                    )}
+                    {dateConfirmStatus === 'none' && !confirmLoading && (
+                      <div style={{ fontFamily: font.mono, fontSize: 10, color: color.faint, marginTop: 6 }}>
+                        waiting for responses
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              // Regular system message
               return (
                 <div
                   key={i}
@@ -762,7 +977,8 @@ const GroupsView = ({
                 )}
               </div>
             );
-          })}
+          });
+          })()}
           <div ref={messagesEndRef} />
         </div>
 

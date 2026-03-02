@@ -108,6 +108,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
           text: msg.text,
           time: formatTimeAgo(new Date(msg.created_at)),
           isYou: msg.sender_id === userId,
+          ...(msg.message_type === 'date_confirm' ? { messageType: 'date_confirm' as const, messageId: msg.id } : {}),
         }));
       const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
       return {
@@ -116,6 +117,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         event: s.event ? `${s.event.title} — ${s.event.date_display}` : undefined,
         eventDate: s.event?.date_display ?? undefined,
         eventIsoDate: s.locked_date ?? s.event?.date ?? undefined,
+        dateStatus: (s.date_status === 'proposed' || s.date_status === 'locked') ? s.date_status : undefined,
         members,
         messages,
         lastMsg: lastMessage ? (lastMessage.sender === "system" ? lastMessage.text : `${lastMessage.sender}: ${lastMessage.text}`) : "",

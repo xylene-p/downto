@@ -86,7 +86,8 @@ export interface Squad {
   eventDate?: string;
   eventIsoDate?: string;
   members: { name: string; avatar: string; userId?: string }[];
-  messages: { sender: string; text: string; time: string; isYou?: boolean }[];
+  dateStatus?: 'proposed' | 'locked';
+  messages: { sender: string; text: string; time: string; isYou?: boolean; messageType?: 'date_confirm'; messageId?: string }[];
   lastMsg: string;
   time: string;
   meetingSpot?: string;
