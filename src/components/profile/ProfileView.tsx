@@ -698,6 +698,22 @@ const ProfileView = ({
         </div>
       )}
       <div
+        style={{
+          padding: "14px 0",
+          borderBottom: `1px solid ${color.border}`,
+          fontFamily: font.mono,
+          fontSize: 12,
+          color: color.muted,
+          display: "flex",
+          justifyContent: "space-between",
+        }}
+      >
+        <span>About</span>
+        <span style={{ color: color.faint, fontSize: 11 }}>
+          v{(process.env.NEXT_PUBLIC_BUILD_ID ?? "dev").slice(0, 7)}
+        </span>
+      </div>
+      <div
         onClick={onLogout}
         style={{
           padding: "14px 0",
