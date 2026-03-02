@@ -10,7 +10,7 @@ const FirstCheckScreen = ({
   onComplete,
   onSkip,
 }: {
-  onComplete: (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number, eventTime?: string | null) => void;
+  onComplete: (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number, eventTime?: string | null, dateFlexible?: boolean) => void;
   onSkip: () => void;
 }) => {
   const [idea, setIdea] = useState("");
@@ -21,6 +21,7 @@ const FirstCheckScreen = ({
   const detectedTime = idea ? parseNaturalTime(idea) : null;
   const [dateDismissed, setDateDismissed] = useState(false);
   const [timeDismissed, setTimeDismissed] = useState(false);
+  const [dateLocked, setDateLocked] = useState(false);
   const ideaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -104,11 +105,16 @@ const FirstCheckScreen = ({
               alignItems: "center",
               gap: 6,
               padding: "6px 10px",
-              background: "rgba(232,255,90,0.08)",
+              background: dateLocked ? "rgba(232,255,90,0.08)" : "transparent",
               borderRadius: 8,
-              border: "1px solid rgba(232,255,90,0.2)",
+              border: dateLocked ? "1px solid rgba(232,255,90,0.2)" : "1px dashed rgba(232,255,90,0.35)",
+              animation: dateLocked ? "none" : "dashPulse 2s ease-in-out infinite",
+              cursor: "pointer",
             }}>
-              <span style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600 }}>
+              <span
+                onClick={() => setDateLocked((v) => !v)}
+                style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600, cursor: "pointer" }}
+              >
                 📅 {detectedDate.label}
               </span>
               <button
@@ -134,11 +140,16 @@ const FirstCheckScreen = ({
               alignItems: "center",
               gap: 6,
               padding: "6px 10px",
-              background: "rgba(232,255,90,0.08)",
+              background: dateLocked ? "rgba(232,255,90,0.08)" : "transparent",
               borderRadius: 8,
-              border: "1px solid rgba(232,255,90,0.2)",
+              border: dateLocked ? "1px solid rgba(232,255,90,0.2)" : "1px dashed rgba(232,255,90,0.35)",
+              animation: dateLocked ? "none" : "dashPulse 2s ease-in-out infinite",
+              cursor: "pointer",
             }}>
-              <span style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600 }}>
+              <span
+                onClick={() => setDateLocked((v) => !v)}
+                style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600, cursor: "pointer" }}
+              >
                 🕐 {detectedTime}
               </span>
               <button
@@ -233,7 +244,7 @@ const FirstCheckScreen = ({
           if (idea.trim()) {
             const eventDate = (!dateDismissed && detectedDate) ? detectedDate.iso : null;
             const eventTime = (!timeDismissed && detectedTime) ? detectedTime : null;
-            onComplete(sanitize(idea, 280), checkTimer, eventDate, squadSize, eventTime);
+            onComplete(sanitize(idea, 280), checkTimer, eventDate, squadSize, eventTime, !dateLocked);
           }
         }}
         disabled={!idea.trim()}

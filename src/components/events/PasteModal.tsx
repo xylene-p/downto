@@ -26,7 +26,7 @@ const AddModal = ({
   open: boolean;
   onClose: () => void;
   onSubmit: (e: ScrapedEvent, sharePublicly: boolean) => void;
-  onInterestCheck: (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number, movieData?: CheckMovie, eventTime?: string | null) => void;
+  onInterestCheck: (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number, movieData?: CheckMovie, eventTime?: string | null, dateFlexible?: boolean) => void;
   defaultMode?: "paste" | "idea" | "manual" | null;
 }) => {
   const [mode, setMode] = useState<"paste" | "idea" | "manual">("idea");
@@ -39,6 +39,7 @@ const AddModal = ({
   const detectedTime = idea ? parseNaturalTime(idea) : null;
   const [dateDismissed, setDateDismissed] = useState(false);
   const [timeDismissed, setTimeDismissed] = useState(false);
+  const [dateLocked, setDateLocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [scraped, setScraped] = useState<ScrapedEvent | null>(null);
   const [sharePublicly, setSharePublicly] = useState(false);
@@ -795,11 +796,16 @@ const AddModal = ({
                     alignItems: "center",
                     gap: 6,
                     padding: "6px 10px",
-                    background: "rgba(232,255,90,0.08)",
+                    background: dateLocked ? "rgba(232,255,90,0.08)" : "transparent",
                     borderRadius: 8,
-                    border: "1px solid rgba(232,255,90,0.2)",
+                    border: dateLocked ? "1px solid rgba(232,255,90,0.2)" : "1px dashed rgba(232,255,90,0.35)",
+                    animation: dateLocked ? "none" : "dashPulse 2s ease-in-out infinite",
+                    cursor: "pointer",
                   }}>
-                    <span style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600 }}>
+                    <span
+                      onClick={() => setDateLocked((v) => !v)}
+                      style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600, cursor: "pointer" }}
+                    >
                       📅 {detectedDate.label}
                     </span>
                     <button
@@ -825,11 +831,16 @@ const AddModal = ({
                     alignItems: "center",
                     gap: 6,
                     padding: "6px 10px",
-                    background: "rgba(232,255,90,0.08)",
+                    background: dateLocked ? "rgba(232,255,90,0.08)" : "transparent",
                     borderRadius: 8,
-                    border: "1px solid rgba(232,255,90,0.2)",
+                    border: dateLocked ? "1px solid rgba(232,255,90,0.2)" : "1px dashed rgba(232,255,90,0.35)",
+                    animation: dateLocked ? "none" : "dashPulse 2s ease-in-out infinite",
+                    cursor: "pointer",
                   }}>
-                    <span style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600 }}>
+                    <span
+                      onClick={() => setDateLocked((v) => !v)}
+                      style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600, cursor: "pointer" }}
+                    >
                       🕐 {detectedTime}
                     </span>
                     <button
@@ -1030,7 +1041,7 @@ const AddModal = ({
                 if (idea.trim()) {
                   const eventDate = (!dateDismissed && detectedDate) ? detectedDate.iso : null;
                   const eventTime = (!timeDismissed && detectedTime) ? detectedTime : null;
-                  onInterestCheck(sanitize(idea, 280), checkTimer, eventDate, squadSize, checkMovie ?? undefined, eventTime);
+                  onInterestCheck(sanitize(idea, 280), checkTimer, eventDate, squadSize, checkMovie ?? undefined, eventTime, !dateLocked);
                   onClose();
                 }
               }}

@@ -755,8 +755,8 @@ export default function Home() {
   if (showFirstCheck) {
     return (
       <FirstCheckScreen
-        onComplete={(idea, expiresInHours, eventDate, maxSquadSize, eventTime) => {
-          checksHook.handleCreateCheck(idea, expiresInHours, eventDate, maxSquadSize, undefined, eventTime);
+        onComplete={(idea, expiresInHours, eventDate, maxSquadSize, eventTime, dateFlexible) => {
+          checksHook.handleCreateCheck(idea, expiresInHours, eventDate, maxSquadSize, undefined, eventTime, dateFlexible);
           setShowFirstCheck(false);
         }}
         onSkip={() => {

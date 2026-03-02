@@ -562,7 +562,8 @@ export default function FeedView({
                                     <span style={{
                                       display: "inline-block",
                                       padding: "3px 8px",
-                                      background: "rgba(232,255,90,0.1)",
+                                      background: check.dateFlexible ? "transparent" : "rgba(232,255,90,0.1)",
+                                      border: check.dateFlexible ? "1px dashed rgba(232,255,90,0.3)" : "none",
                                       borderRadius: 6,
                                       fontFamily: font.mono,
                                       fontSize: 10,
@@ -576,7 +577,8 @@ export default function FeedView({
                                     <span style={{
                                       display: "inline-block",
                                       padding: "3px 8px",
-                                      background: "rgba(232,255,90,0.1)",
+                                      background: check.dateFlexible ? "transparent" : "rgba(232,255,90,0.1)",
+                                      border: check.dateFlexible ? "1px dashed rgba(232,255,90,0.3)" : "none",
                                       borderRadius: 6,
                                       fontFamily: font.mono,
                                       fontSize: 10,

@@ -46,6 +46,7 @@ export interface InterestCheck {
   eventDate?: string;
   eventDateLabel?: string;
   eventTime?: string;
+  dateFlexible?: boolean;
   maxSquadSize?: number;
   squadId?: string;
   squadMemberCount?: number;

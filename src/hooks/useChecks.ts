@@ -55,6 +55,7 @@ function transformCheck(c: ActiveCheck, userId: string | null): InterestCheck {
     eventDate: c.event_date ?? undefined,
     eventDateLabel: c.event_date ? new Date(c.event_date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined,
     eventTime: c.event_time ?? undefined,
+    dateFlexible: c.date_flexible,
     movieTitle: mm?.title,
     year: mm?.year,
     director: mm?.director,
@@ -196,7 +197,8 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
     eventDate: string | null,
     maxSquadSize: number,
     movieData?: { letterboxdUrl: string; title: string; year?: string; director?: string; thumbnail?: string; vibes?: string[] },
-    eventTime?: string | null
+    eventTime?: string | null,
+    dateFlexible?: boolean
   ) => {
     const expiresLabel = expiresInHours == null ? "open" : expiresInHours >= 24 ? "24h" : `${expiresInHours}h`;
     const dateLabel = eventDate ? new Date(eventDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined;
@@ -211,7 +213,7 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
 
     if (!isDemoMode && userId) {
       try {
-        const dbCheck = await db.createInterestCheck(idea, expiresInHours, eventDate, maxSquadSize, movieData, eventTime ?? null);
+        const dbCheck = await db.createInterestCheck(idea, expiresInHours, eventDate, maxSquadSize, movieData, eventTime ?? null, dateFlexible ?? true);
         const newCheck: InterestCheck = {
           id: dbCheck.id,
           text: idea,
@@ -225,6 +227,7 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
           eventDate: eventDate ?? undefined,
           eventDateLabel: dateLabel,
           eventTime: eventTime ?? undefined,
+          dateFlexible: dateFlexible ?? true,
           ...movieFields,
         };
         setChecks((prev) => [newCheck, ...prev]);
@@ -249,6 +252,7 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
         eventDate: eventDate ?? undefined,
         eventDateLabel: dateLabel,
         eventTime: eventTime ?? undefined,
+        dateFlexible: dateFlexible ?? true,
         ...movieFields,
       };
       setChecks((prev) => [newCheck, ...prev]);
