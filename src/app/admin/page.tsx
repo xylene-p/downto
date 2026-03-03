@@ -14,6 +14,8 @@ interface PushFailure {
   error: string | null;
 }
 
+type AdminTab = "users" | "push" | "versions";
+
 interface Metrics {
   totalUsers: number;
   onboarded: number;
@@ -33,6 +35,7 @@ interface Metrics {
   };
   versions: {
     distribution: { build_id: string; users: number; pings24h: number; latestPing: string }[];
+    commitMessages: Record<string, string>;
   };
 }
 
@@ -43,6 +46,7 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [versionSort, setVersionSort] = useState<"latest" | "users">("latest");
+  const [tab, setTab] = useState<AdminTab>("users");
 
   useEffect(() => {
     if (authLoading) return;
@@ -110,106 +114,83 @@ export default function AdminPage() {
     days.push({ date: key, count: metrics.signupsByDate[key] || 0 });
   }
 
+  const tabs: { key: AdminTab; label: string }[] = [
+    { key: "users", label: "Users" },
+    { key: "push", label: "Push" },
+    { key: "versions", label: "Versions" },
+  ];
+
   return (
     <div style={containerStyle}>
-      <h1 style={{ fontFamily: font.serif, fontSize: 28, color: color.text, margin: "0 0 24px" }}>
+      <h1 style={{ fontFamily: font.serif, fontSize: 28, color: color.text, margin: "0 0 20px" }}>
         Admin
       </h1>
 
-      {/* Summary cards */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 32 }}>
-        <SummaryCard label="Total Users" value={metrics.totalUsers} />
-        <SummaryCard label="Onboarded" value={metrics.onboarded} />
-        <SummaryCard label="Not Onboarded" value={metrics.notOnboarded} />
-      </div>
-
-      {/* Signups over time */}
-      <h2 style={sectionHeader}>Signups (last 30 days)</h2>
-      <div style={{ marginBottom: 32 }}>
-        {days.map(({ date, count }) => (
-          <div key={date} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-            <span style={{ fontFamily: font.mono, fontSize: 11, color: color.dim, width: 72, flexShrink: 0 }}>
-              {date.slice(5)}
-            </span>
-            <div
-              style={{
-                height: 14,
-                width: count > 0 ? `${(count / maxSignups) * 100}%` : 0,
-                backgroundColor: color.accent,
-                borderRadius: 2,
-                minWidth: count > 0 ? 4 : 0,
-              }}
-            />
-            {count > 0 && (
-              <span style={{ fontFamily: font.mono, fontSize: 11, color: color.muted }}>
-                {count}
-              </span>
-            )}
-          </div>
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            style={{
+              background: tab === t.key ? color.accent : "transparent",
+              color: tab === t.key ? "#000" : color.dim,
+              border: tab === t.key ? "none" : `1px solid ${color.borderMid}`,
+              borderRadius: 10,
+              padding: "8px 16px",
+              fontFamily: font.mono,
+              fontSize: 11,
+              fontWeight: tab === t.key ? 700 : 400,
+              cursor: "pointer",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+            }}
+          >
+            {t.label}
+          </button>
         ))}
       </div>
 
-      {/* Recent signups table */}
-      <h2 style={sectionHeader}>Recent Signups</h2>
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: font.mono, fontSize: 12 }}>
-          <thead>
-            <tr>
-              {["Username", "Display Name", "Signed Up", "Onboarded"].map((h) => (
-                <th
-                  key={h}
-                  style={{
-                    textAlign: "left",
-                    padding: "8px 12px",
-                    color: color.dim,
-                    borderBottom: `1px solid ${color.borderLight}`,
-                    fontWeight: 400,
-                  }}
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {metrics.recentSignups.map((u) => (
-              <tr key={u.username}>
-                <td style={cellStyle}>{u.username}</td>
-                <td style={cellStyle}>{u.display_name || "—"}</td>
-                <td style={cellStyle}>
-                  {new Date(u.created_at).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </td>
-                <td style={cellStyle}>
-                  <span style={{ color: u.onboarded ? color.accent : color.dim }}>
-                    {u.onboarded ? "Yes" : "No"}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Push delivery */}
-      <h2 style={{ ...sectionHeader, marginTop: 40 }}>Push Delivery (24h)</h2>
-      <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
-        <SummaryCard label="Sent" value={metrics.push.sent24h} />
-        <SummaryCard label="Failed" value={metrics.push.failed24h} accent="#ff4444" />
-        <SummaryCard label="Stale" value={metrics.push.stale24h} accent={color.muted} />
-      </div>
-
-      {metrics.push.recentFailures.length > 0 && (
+      {/* Users tab */}
+      {tab === "users" && (
         <>
-          <h2 style={sectionHeader}>Recent Push Failures</h2>
+          <div style={{ display: "flex", gap: 12, marginBottom: 32 }}>
+            <SummaryCard label="Total Users" value={metrics.totalUsers} />
+            <SummaryCard label="Onboarded" value={metrics.onboarded} />
+            <SummaryCard label="Not Onboarded" value={metrics.notOnboarded} />
+          </div>
+
+          <h2 style={sectionHeader}>Signups (last 30 days)</h2>
+          <div style={{ marginBottom: 32 }}>
+            {days.map(({ date, count }) => (
+              <div key={date} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                <span style={{ fontFamily: font.mono, fontSize: 11, color: color.dim, width: 72, flexShrink: 0 }}>
+                  {date.slice(5)}
+                </span>
+                <div
+                  style={{
+                    height: 14,
+                    width: count > 0 ? `${(count / maxSignups) * 100}%` : 0,
+                    backgroundColor: color.accent,
+                    borderRadius: 2,
+                    minWidth: count > 0 ? 4 : 0,
+                  }}
+                />
+                {count > 0 && (
+                  <span style={{ fontFamily: font.mono, fontSize: 11, color: color.muted }}>
+                    {count}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <h2 style={sectionHeader}>Recent Signups</h2>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: font.mono, fontSize: 12 }}>
               <thead>
                 <tr>
-                  {["Time", "Status", "User ID", "Error"].map((h) => (
+                  {["Username", "Display Name", "Signed Up", "Onboarded"].map((h) => (
                     <th
                       key={h}
                       style={{
@@ -226,26 +207,21 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {metrics.push.recentFailures.map((f, i) => (
-                  <tr key={i}>
-                    <td style={{ ...cellStyle, whiteSpace: "nowrap" }}>
-                      {new Date(f.created_at).toLocaleString("en-US", {
+                {metrics.recentSignups.map((u) => (
+                  <tr key={u.username}>
+                    <td style={cellStyle}>{u.username}</td>
+                    <td style={cellStyle}>{u.display_name || "—"}</td>
+                    <td style={cellStyle}>
+                      {new Date(u.created_at).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
+                        year: "numeric",
                       })}
                     </td>
                     <td style={cellStyle}>
-                      <span style={{ color: f.status === "failed" ? "#ff4444" : color.muted }}>
-                        {f.status}
+                      <span style={{ color: u.onboarded ? color.accent : color.dim }}>
+                        {u.onboarded ? "Yes" : "No"}
                       </span>
-                    </td>
-                    <td style={{ ...cellStyle, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {f.user_id.slice(0, 8)}...
-                    </td>
-                    <td style={{ ...cellStyle, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", color: color.muted }}>
-                      {f.error || "—"}
                     </td>
                   </tr>
                 ))}
@@ -255,60 +231,149 @@ export default function AdminPage() {
         </>
       )}
 
-      {/* Version distribution */}
-      <h2 style={{ ...sectionHeader, marginTop: 40 }}>Versions (7d)</h2>
+      {/* Push tab */}
+      {tab === "push" && (
+        <>
+          <h2 style={sectionHeader}>Delivery (24h)</h2>
+          <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
+            <SummaryCard label="Sent" value={metrics.push.sent24h} />
+            <SummaryCard label="Failed" value={metrics.push.failed24h} accent="#ff4444" />
+            <SummaryCard label="Stale" value={metrics.push.stale24h} accent={color.muted} />
+          </div>
 
-      {metrics.versions.distribution.length > 0 && (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: font.mono, fontSize: 12 }}>
-            <thead>
-              <tr>
-                <th
-                  style={{
-                    ...sortableHeader,
-                    color: versionSort === "latest" ? color.accent : color.dim,
-                    cursor: "pointer",
-                  }}
-                  onClick={() => setVersionSort("latest")}
-                >
-                  Build ID {versionSort === "latest" ? "↓" : ""}
-                </th>
-                <th
-                  style={{
-                    ...sortableHeader,
-                    color: versionSort === "users" ? color.accent : color.dim,
-                    cursor: "pointer",
-                  }}
-                  onClick={() => setVersionSort("users")}
-                >
-                  Users {versionSort === "users" ? "↓" : ""}
-                </th>
-                <th style={sortableHeader}>Pings (24h)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...metrics.versions.distribution]
-                .sort((a, b) =>
-                  versionSort === "users"
-                    ? b.users - a.users
-                    : b.latestPing.localeCompare(a.latestPing)
-                )
-                .map((v) => (
-                  <tr key={v.build_id}>
-                    <td style={{ ...cellStyle, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {v.build_id || "—"}
-                    </td>
-                    <td style={cellStyle}>
-                      <span style={{ color: color.accent, fontWeight: 700 }}>{v.users}</span>
-                    </td>
-                    <td style={cellStyle}>
-                      <span style={{ color: color.muted }}>{v.pings24h}</span>
-                    </td>
+          {metrics.push.recentFailures.length > 0 && (
+            <>
+              <h2 style={sectionHeader}>Recent Failures</h2>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: font.mono, fontSize: 12 }}>
+                  <thead>
+                    <tr>
+                      {["Time", "Status", "User ID", "Error"].map((h) => (
+                        <th
+                          key={h}
+                          style={{
+                            textAlign: "left",
+                            padding: "8px 12px",
+                            color: color.dim,
+                            borderBottom: `1px solid ${color.borderLight}`,
+                            fontWeight: 400,
+                          }}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {metrics.push.recentFailures.map((f, i) => (
+                      <tr key={i}>
+                        <td style={{ ...cellStyle, whiteSpace: "nowrap" }}>
+                          {new Date(f.created_at).toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </td>
+                        <td style={cellStyle}>
+                          <span style={{ color: f.status === "failed" ? "#ff4444" : color.muted }}>
+                            {f.status}
+                          </span>
+                        </td>
+                        <td style={{ ...cellStyle, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {f.user_id.slice(0, 8)}...
+                        </td>
+                        <td style={{ ...cellStyle, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", color: color.muted }}>
+                          {f.error || "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {metrics.push.recentFailures.length === 0 && (
+            <p style={{ color: color.faint, fontFamily: font.mono, fontSize: 12, textAlign: "center", padding: "32px 0" }}>
+              No recent failures
+            </p>
+          )}
+        </>
+      )}
+
+      {/* Versions tab */}
+      {tab === "versions" && (
+        <>
+          <h2 style={sectionHeader}>Distribution (7d)</h2>
+
+          {metrics.versions.distribution.length > 0 ? (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: font.mono, fontSize: 12 }}>
+                <thead>
+                  <tr>
+                    <th
+                      style={{
+                        ...sortableHeader,
+                        color: versionSort === "latest" ? color.accent : color.dim,
+                        cursor: "pointer",
+                      }}
+                      onClick={() => setVersionSort("latest")}
+                    >
+                      Build {versionSort === "latest" ? "↓" : ""}
+                    </th>
+                    <th
+                      style={{
+                        ...sortableHeader,
+                        color: versionSort === "users" ? color.accent : color.dim,
+                        cursor: "pointer",
+                      }}
+                      onClick={() => setVersionSort("users")}
+                    >
+                      Users {versionSort === "users" ? "↓" : ""}
+                    </th>
+                    <th style={sortableHeader}>24h</th>
                   </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {[...metrics.versions.distribution]
+                    .sort((a, b) =>
+                      versionSort === "users"
+                        ? b.users - a.users
+                        : b.latestPing.localeCompare(a.latestPing)
+                    )
+                    .map((v) => {
+                      const msg = metrics.versions.commitMessages[v.build_id];
+                      return (
+                        <tr key={v.build_id}>
+                          <td style={{ ...cellStyle, maxWidth: 260 }}>
+                            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {v.build_id ? v.build_id.slice(0, 7) : "—"}
+                            </div>
+                            {msg && (
+                              <div style={{ fontSize: 10, color: color.dim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>
+                                {msg}
+                              </div>
+                            )}
+                          </td>
+                          <td style={cellStyle}>
+                            <span style={{ color: color.accent, fontWeight: 700 }}>{v.users}</span>
+                          </td>
+                          <td style={cellStyle}>
+                            <span style={{ color: color.muted }}>{v.pings24h}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p style={{ color: color.faint, fontFamily: font.mono, fontSize: 12, textAlign: "center", padding: "32px 0" }}>
+              No version data
+            </p>
+          )}
+        </>
       )}
     </div>
   );

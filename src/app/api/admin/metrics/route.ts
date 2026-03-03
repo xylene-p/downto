@@ -98,6 +98,26 @@ export async function GET(request: NextRequest) {
     .map(([build_id, users]) => ({ build_id, users, pings24h: pingsPerBuild.get(build_id) || 0, latestPing: latestPingByBuild.get(build_id) || '' }))
     .sort((a, b) => b.latestPing.localeCompare(a.latestPing));
 
+  // Fetch commit messages from GitHub for build SHAs
+  const commitMessages: Record<string, string> = {};
+  const shas = versionDistribution
+    .map((v) => v.build_id)
+    .filter((id) => /^[0-9a-f]{7,40}$/.test(id));
+  if (shas.length > 0) {
+    try {
+      const ghRes = await fetch(
+        'https://api.github.com/repos/xylene-p/downto/commits?per_page=100',
+        { headers: { Accept: 'application/vnd.github+json' }, next: { revalidate: 300 } }
+      );
+      if (ghRes.ok) {
+        const commits = await ghRes.json() as { sha: string; commit: { message: string } }[];
+        for (const c of commits) {
+          commitMessages[c.sha] = c.commit.message.split('\n')[0];
+        }
+      }
+    } catch { /* non-critical — skip if GitHub is unreachable */ }
+  }
+
   return NextResponse.json({
     totalUsers: totalRes.count ?? 0,
     onboarded: onboardedRes.count ?? 0,
@@ -112,6 +132,7 @@ export async function GET(request: NextRequest) {
     },
     versions: {
       distribution: versionDistribution,
+      commitMessages,
     },
   });
 }
