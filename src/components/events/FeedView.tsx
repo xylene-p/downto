@@ -6,6 +6,7 @@ import type { Profile } from "@/lib/types";
 import { font, color } from "@/lib/styles";
 import type { Event, InterestCheck, Friend } from "@/lib/ui-types";
 import EventCard from "@/components/events/EventCard";
+import EditCheckModal from "@/components/events/EditCheckModal";
 import { logError } from "@/lib/logger";
 
 /** Render text with inline URLs as clickable links */
@@ -61,10 +62,6 @@ export interface FeedViewProps {
   setChecks: React.Dispatch<React.SetStateAction<InterestCheck[]>>;
   myCheckResponses: Record<string, "down" | "maybe">;
   setMyCheckResponses: React.Dispatch<React.SetStateAction<Record<string, "down" | "maybe">>>;
-  editingCheckId: string | null;
-  setEditingCheckId: (id: string | null) => void;
-  editingCheckText: string;
-  setEditingCheckText: (text: string) => void;
   events: Event[];
   setEvents: React.Dispatch<React.SetStateAction<Event[]>>;
   tonightEvents: Event[];
@@ -102,10 +99,6 @@ export default function FeedView({
   setChecks,
   myCheckResponses,
   setMyCheckResponses,
-  editingCheckId,
-  setEditingCheckId,
-  editingCheckText,
-  setEditingCheckText,
   events,
   setEvents,
   tonightEvents,
@@ -136,6 +129,7 @@ export default function FeedView({
 }: FeedViewProps) {
   const [showHidden, setShowHidden] = useState(false);
   const [expandedCheckId, setExpandedCheckId] = useState<string | null>(null);
+  const [editModalCheck, setEditModalCheck] = useState<InterestCheck | null>(null);
 
   const visibleChecks = checks
     .filter((c) => !hiddenCheckIds.has(c.id))
@@ -153,6 +147,7 @@ export default function FeedView({
     });
   const hiddenChecks = checks.filter((c) => hiddenCheckIds.has(c.id));
   return (
+    <>
           <div style={{ padding: "0 16px", animation: "fadeIn 0.3s ease" }}>
             {/* Feed mode toggle */}
             <div
@@ -409,84 +404,7 @@ export default function FeedView({
                             )}
                           </div>
                         </div>
-                        {editingCheckId === check.id ? (
-                          <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                              <input
-                                autoFocus
-                                value={editingCheckText}
-                                onChange={(e) => setEditingCheckText(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" && editingCheckText.trim()) {
-                                    const trimmed = editingCheckText.trim();
-                                    setChecks((prev) =>
-                                      prev.map((c) =>
-                                        c.id === check.id ? { ...c, text: trimmed } : c
-                                      )
-                                    );
-                                    setEditingCheckId(null);
-                                    showToast("Check updated!");
-                                    if (!isDemoMode && check.id) {
-                                      db.updateInterestCheck(check.id, { text: trimmed }).catch((err) => logError("updateCheck", err, { checkId: check.id }));
-                                      if (check.squadId) {
-                                        const squadName = trimmed.slice(0, 30) + (trimmed.length > 30 ? "..." : "");
-                                        db.updateSquadName(check.squadId, squadName).catch((err) => logError("updateSquadName", err, { squadId: check.squadId }));
-                                      }
-                                    }
-                                  } else if (e.key === "Escape") {
-                                    setEditingCheckId(null);
-                                  }
-                                }}
-                                style={{
-                                  flex: 1,
-                                  background: color.deep,
-                                  border: `1px solid ${color.accent}`,
-                                  borderRadius: 10,
-                                  padding: "10px 12px",
-                                  color: color.text,
-                                  fontFamily: font.serif,
-                                  fontSize: 16,
-                                  outline: "none",
-                                }}
-                              />
-                              <button
-                                onClick={() => {
-                                  if (editingCheckText.trim()) {
-                                    const trimmed = editingCheckText.trim();
-                                    setChecks((prev) =>
-                                      prev.map((c) =>
-                                        c.id === check.id ? { ...c, text: trimmed } : c
-                                      )
-                                    );
-                                    setEditingCheckId(null);
-                                    showToast("Check updated!");
-                                    if (!isDemoMode && check.id) {
-                                      db.updateInterestCheck(check.id, { text: trimmed }).catch((err) => logError("updateCheck", err, { checkId: check.id }));
-                                      if (check.squadId) {
-                                        const squadName = trimmed.slice(0, 30) + (trimmed.length > 30 ? "..." : "");
-                                        db.updateSquadName(check.squadId, squadName).catch((err) => logError("updateSquadName", err, { squadId: check.squadId }));
-                                      }
-                                    }
-                                  }
-                                }}
-                                style={{
-                                  background: color.accent,
-                                  color: "#000",
-                                  border: "none",
-                                  borderRadius: 8,
-                                  padding: "8px 12px",
-                                  fontFamily: font.mono,
-                                  fontSize: 10,
-                                  fontWeight: 700,
-                                  cursor: "pointer",
-                                }}
-                              >
-                                Save
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ marginBottom: 12 }}>
+                        <div style={{ marginBottom: 12 }}>
                               <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
                                 <p
                                   style={{
@@ -506,9 +424,7 @@ export default function FeedView({
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        setEditingCheckId(check.id);
-                                        setEditingCheckText(check.text);
-
+                                        setEditModalCheck(check);
                                       }}
                                       style={{
                                         background: "transparent",
@@ -637,7 +553,6 @@ export default function FeedView({
                               </button>
                             )}
                           </div>
-                        )}
                         <div style={{ marginTop: 8 }}>
                           <div
                             style={{
@@ -1511,5 +1426,55 @@ export default function FeedView({
               </>
             )}
           </div>
+
+      <EditCheckModal
+        check={editModalCheck}
+        open={!!editModalCheck}
+        onClose={() => setEditModalCheck(null)}
+        onSave={async (updates) => {
+          if (!editModalCheck) return;
+          const checkId = editModalCheck.id;
+
+          // Optimistically update local state
+          setChecks((prev) =>
+            prev.map((c) =>
+              c.id === checkId
+                ? {
+                    ...c,
+                    text: updates.text,
+                    eventDate: updates.eventDate ?? undefined,
+                    eventDateLabel: updates.eventDateLabel ?? undefined,
+                    eventTime: updates.eventTime ?? undefined,
+                    dateFlexible: updates.dateFlexible,
+                    timeFlexible: updates.timeFlexible,
+                  }
+                : c
+            )
+          );
+          setEditModalCheck(null);
+
+          if (!isDemoMode) {
+            try {
+              await db.updateInterestCheck(checkId, {
+                text: updates.text,
+                event_date: updates.eventDate,
+                event_time: updates.eventTime,
+                date_flexible: updates.dateFlexible,
+                time_flexible: updates.timeFlexible,
+              });
+              // Also update linked squad name if exists
+              if (editModalCheck.squadId) {
+                await db.updateSquadName(editModalCheck.squadId, updates.text);
+              }
+            } catch (err) {
+              logError("updateCheck", err, { checkId });
+              showToast("Failed to save changes");
+              return;
+            }
+          }
+          showToast("Check updated");
+        }}
+      />
+    </>
   );
 }

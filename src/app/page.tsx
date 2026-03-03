@@ -781,10 +781,6 @@ export default function Home() {
             setChecks={checksHook.setChecks}
             myCheckResponses={checksHook.myCheckResponses}
             setMyCheckResponses={checksHook.setMyCheckResponses}
-            editingCheckId={checksHook.editingCheckId}
-            setEditingCheckId={checksHook.setEditingCheckId}
-            editingCheckText={checksHook.editingCheckText}
-            setEditingCheckText={checksHook.setEditingCheckText}
             events={events}
             setEvents={setEvents}
             tonightEvents={tonightEvents}

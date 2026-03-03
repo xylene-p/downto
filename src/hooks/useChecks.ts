@@ -93,8 +93,6 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
   const [myCheckResponses, setMyCheckResponses] = useState<Record<string, "down" | "maybe">>({});
   const [hiddenCheckIds, setHiddenCheckIds] = useState<Set<string>>(new Set());
   const [pendingDownCheckIds, setPendingDownCheckIds] = useState<Set<string>>(new Set());
-  const [editingCheckId, setEditingCheckId] = useState<string | null>(null);
-  const [editingCheckText, setEditingCheckText] = useState("");
   const [newlyAddedCheckId, setNewlyAddedCheckId] = useState<string | null>(null);
 
   const loadChecks = useCallback(async () => {
@@ -321,10 +319,6 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
     setMyCheckResponses,
     hiddenCheckIds,
     pendingDownCheckIds,
-    editingCheckId,
-    setEditingCheckId,
-    editingCheckText,
-    setEditingCheckText,
     newlyAddedCheckId,
     setNewlyAddedCheckId,
     loadChecks,

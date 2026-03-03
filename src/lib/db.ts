@@ -655,7 +655,7 @@ export async function deleteInterestCheck(checkId: string): Promise<void> {
 
 export async function updateInterestCheck(
   checkId: string,
-  updates: { text?: string; max_squad_size?: number }
+  updates: { text?: string; max_squad_size?: number; event_date?: string | null; event_time?: string | null; date_flexible?: boolean; time_flexible?: boolean }
 ): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
