@@ -12,7 +12,7 @@ export async function sendOtp(_prevState: any, formData: FormData) {
     return error.message;
   }
 
-  redirect(`/auth/verify-otp?email=${email}`);
+  redirect(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
 }
 
 export async function resendOtp(_prevState: any, email: string) {
