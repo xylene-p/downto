@@ -1,24 +1,19 @@
 // Dedup: Supabase webhooks can double-fire for the same notification row.
-// Track recently processed notification IDs in memory (TTL 60s).
-const recentlySent = new Map<string, number>();
-
-const TTL_MS = 60_000;
+// Track recently processed notification IDs in memory (auto-expires after 60s).
+const recentIds = new Set<string>();
 
 /**
- * Returns true if this ID was already seen within the TTL window (duplicate).
+ * Returns true if this ID was already seen within the last 60s (duplicate).
  * Returns false on first call (not a duplicate) and records the ID.
  */
-export function dedup(notificationId: string, now = Date.now()): boolean {
-  // Evict stale entries
-  for (const [id, ts] of recentlySent) {
-    if (now - ts > TTL_MS) recentlySent.delete(id);
-  }
-  if (recentlySent.has(notificationId)) return true;
-  recentlySent.set(notificationId, now);
+export function isDuplicate(id: string): boolean {
+  if (recentIds.has(id)) return true;
+  recentIds.add(id);
+  setTimeout(() => recentIds.delete(id), 60_000);
   return false;
 }
 
 /** Clear all entries — for testing only */
 export function _resetDedup(): void {
-  recentlySent.clear();
+  recentIds.clear();
 }

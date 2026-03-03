@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureVapid, sendPushToUser } from '@/lib/push';
-import { dedup } from '@/lib/dedup';
+import { isDuplicate } from '@/lib/dedup';
 
 export const runtime = 'nodejs';
 
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Skip if we already processed this notification (webhook double-fire)
-  if (notification.id && dedup(notification.id)) {
+  if (notification.id && isDuplicate(notification.id)) {
     return NextResponse.json({ sent: 0, deduped: true });
   }
 
