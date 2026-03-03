@@ -39,7 +39,7 @@ const FriendsModal = ({
   const [searching, setSearching] = useState(false);
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
-  const [requestedOpen, setRequestedOpen] = useState(false);
+  const [requestedState, setRequestedState] = useState<"preview" | "expanded" | "collapsed">("preview");
   const touchStartY = useRef(0);
   const [dragOffset, setDragOffset] = useState(0);
   const [closing, setClosing] = useState(false);
@@ -298,92 +298,7 @@ const FriendsModal = ({
         >
         {tab === "friends" ? (
           <>
-            {filteredOutgoing.length > 0 && (
-              <div style={{ marginBottom: filteredFriends.length > 0 ? 16 : 0 }}>
-                <div
-                  onClick={() => setRequestedOpen(!requestedOpen)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    cursor: "pointer",
-                    paddingBottom: requestedOpen ? 8 : 0,
-                  }}
-                >
-                  <div
-                    style={{
-                      fontFamily: font.mono,
-                      fontSize: 10,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.15em",
-                      color: color.dim,
-                    }}
-                  >
-                    Requested ({filteredOutgoing.length})
-                  </div>
-                  <span
-                    style={{
-                      fontFamily: font.mono,
-                      fontSize: 12,
-                      color: color.faint,
-                      transition: "transform 0.2s",
-                      transform: requestedOpen ? "rotate(90deg)" : "rotate(0deg)",
-                    }}
-                  >
-                    ›
-                  </span>
-                </div>
-                {requestedOpen && filteredOutgoing.map((f) => (
-                  <div
-                    key={f.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      padding: "10px 0",
-                      borderBottom: `1px solid ${color.border}`,
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: "50%",
-                        background: color.borderLight,
-                        color: color.dim,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontFamily: font.mono,
-                        fontSize: 14,
-                        fontWeight: 700,
-                        marginRight: 12,
-                      }}
-                    >
-                      {f.avatar}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontFamily: font.mono, fontSize: 13, color: color.text }}>
-                        {f.name}
-                      </div>
-                      <div style={{ fontFamily: font.mono, fontSize: 11, color: color.dim }}>
-                        @{f.username}
-                      </div>
-                    </div>
-                    <span
-                      style={{
-                        fontFamily: font.mono,
-                        fontSize: 10,
-                        color: color.faint,
-                      }}
-                    >
-                      Pending
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {filteredFriends.length === 0 && filteredOutgoing.length === 0 ? (
+            {filteredFriends.length === 0 ? (
               <p
                 style={{
                   textAlign: "center",
@@ -548,6 +463,105 @@ const FriendsModal = ({
                 ))}
                 <div style={{ height: 20 }} />
               </>
+            )}
+
+            {/* Requested (outgoing pending) */}
+            {filteredOutgoing.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div
+                  onClick={() => setRequestedState((s) => s === "collapsed" ? "preview" : "collapsed")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    cursor: "pointer",
+                    paddingBottom: requestedState !== "collapsed" ? 8 : 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: font.mono,
+                      fontSize: 10,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.15em",
+                      color: color.dim,
+                    }}
+                  >
+                    Requested ({filteredOutgoing.length})
+                  </div>
+                  <span
+                    style={{
+                      fontFamily: font.mono,
+                      fontSize: 12,
+                      color: color.faint,
+                      transition: "transform 0.2s",
+                      transform: requestedState === "collapsed" ? "rotate(0deg)" : "rotate(90deg)",
+                    }}
+                  >
+                    ›
+                  </span>
+                </div>
+                {requestedState !== "collapsed" && (
+                  <>
+                    {(requestedState === "preview" ? filteredOutgoing.slice(0, 3) : filteredOutgoing).map((f) => (
+                      <div
+                        key={f.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          padding: "10px 0",
+                          borderBottom: `1px solid ${color.border}`,
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: "50%",
+                            background: color.borderLight,
+                            color: color.dim,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontFamily: font.mono,
+                            fontSize: 14,
+                            fontWeight: 700,
+                            marginRight: 12,
+                          }}
+                        >
+                          {f.avatar}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontFamily: font.mono, fontSize: 13, color: color.text }}>
+                            {f.name}
+                          </div>
+                          <div style={{ fontFamily: font.mono, fontSize: 11, color: color.dim }}>
+                            @{f.username}
+                          </div>
+                        </div>
+                        <span style={{ fontFamily: font.mono, fontSize: 10, color: color.faint }}>
+                          Pending
+                        </span>
+                      </div>
+                    ))}
+                    {requestedState === "preview" && filteredOutgoing.length > 3 && (
+                      <div
+                        onClick={() => setRequestedState("expanded")}
+                        style={{
+                          fontFamily: font.mono,
+                          fontSize: 11,
+                          color: color.dim,
+                          padding: "10px 0",
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        Show all ({filteredOutgoing.length})
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             )}
 
             {/* Search Results or Suggestions */}
