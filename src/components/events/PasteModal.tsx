@@ -309,7 +309,7 @@ const AddModal = ({
                     handlePull();
                   }
                 }}
-                placeholder="paste link here..."
+                placeholder="paste link"
                 rows={1}
                 style={{
                   flex: 1,
