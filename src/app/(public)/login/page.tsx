@@ -3,11 +3,8 @@
 import Form from "next/form";
 import { useEffect, useActionState, useState } from "react";
 import FormInput from "@/components/ui/Form/FormInput";
-import Button from "@/components/ui/Button/Button";
+import Button from "@/components/ui/Button";
 import { sendOtp } from "@/lib/auth";
-import ErrorText from "@/components/ui/ErrorText/ErrorText";
-
-import styles from "./page.module.css";
 
 export default function LoginPage() {
   const [pendingAddUser, setPendingAddUser] = useState<string | null>(null);
@@ -22,14 +19,14 @@ export default function LoginPage() {
   return (
     <div>
       {pendingAddUser && (
-        <div className={styles.messageContainer}>
-          <p>log in or create a profile to add @{pendingAddUser}</p>
+        <div className='mb-4'>
+          <p className='text-dt'>log in or create a profile to add @{pendingAddUser}</p>
         </div>
       )}
 
       {error && (
-        <div className={styles.errorContainer}>
-          <ErrorText>{error}</ErrorText>
+        <div className='mb-4'>
+          <p className="text-red-500">{error}</p>
         </div>
       )}
       <Form action={sendCodeAction} autoComplete="off">

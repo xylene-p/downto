@@ -1,6 +1,6 @@
-import BottomNav from "@/components/ui/BottomNav/BottomNav";
+import BottomNav from '@/components/ui/BottomNav';
 
-import Header from "@/components/ui/Header/Header";
+import Header from '@/components/ui/Header';
 
 export default function ProtectedLayout({
   children,
@@ -9,8 +9,8 @@ export default function ProtectedLayout({
 }) {
   return (
     <>
-      <Header/>
-      <main>{children}</main>
+      <Header />
+      <main className="flex-1 px-4">{children}</main>
       <BottomNav />
     </>
   );

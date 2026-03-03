@@ -1,8 +1,6 @@
-"use client";
+'use client';
 
-import React from "react";
-
-import styles from "./LinkButton.module.css";
+import React from 'react';
 
 interface LinkButtonProps {
   onClick?: () => void;
@@ -11,7 +9,10 @@ interface LinkButtonProps {
 
 const LinkButton: React.FC<LinkButtonProps> = ({ onClick, children }) => {
   return (
-    <button className={styles.linkButton} onClick={onClick}>
+    <button
+      className="cursor-pointer border-0 bg-transparent font-(family-name:--font-space-mono) text-xs text-neutral-700 underline"
+      onClick={onClick}
+    >
       {children}
     </button>
   );
