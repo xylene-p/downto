@@ -8,7 +8,6 @@ import {
   registerServiceWorker,
   subscribeToPush,
 } from "@/lib/pushNotifications";
-import GlobalStyles from "./GlobalStyles";
 import Grain from "./Grain";
 
 const IOSInstallScreen = ({ onComplete }: { onComplete: (enabled: boolean) => void }) => (
@@ -23,7 +22,6 @@ const IOSInstallScreen = ({ onComplete }: { onComplete: (enabled: boolean) => vo
       flexDirection: "column",
     }}
   >
-    <GlobalStyles />
     <Grain />
 
     <h1
@@ -156,7 +154,6 @@ const NotificationsScreen = ({ onComplete }: { onComplete: (enabled: boolean) =>
         flexDirection: "column",
       }}
     >
-      <GlobalStyles />
       <Grain />
 
       <h1

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { font, color } from "@/lib/styles";
-import GlobalStyles from "./GlobalStyles";
 import Grain from "./Grain";
 
 const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
@@ -61,7 +60,6 @@ const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
         flexDirection: "column",
       }}
     >
-      <GlobalStyles />
       <Grain />
 
       <h1

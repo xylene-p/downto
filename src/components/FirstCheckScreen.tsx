@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { font, color } from "@/lib/styles";
 import { parseNaturalDate, parseNaturalTime, sanitize } from "@/lib/utils";
-import GlobalStyles from "./GlobalStyles";
 import Grain from "./Grain";
 
 const FirstCheckScreen = ({
@@ -42,7 +41,6 @@ const FirstCheckScreen = ({
         flexDirection: "column",
       }}
     >
-      <GlobalStyles />
       <Grain />
 
       <h1

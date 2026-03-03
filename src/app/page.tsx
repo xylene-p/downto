@@ -8,7 +8,6 @@ import { sanitize, sanitizeVibes, parseDateToISO, toLocalISODate } from "@/lib/u
 import type { Profile } from "@/lib/types";
 import type { Person, Event, Tab } from "@/lib/ui-types";
 import { DEMO_EVENTS, DEMO_CHECKS, DEMO_TONIGHT, DEMO_SQUADS, DEMO_FRIENDS, DEMO_SUGGESTIONS, DEMO_NOTIFICATIONS, DEMO_SEARCH_USERS } from "@/lib/demo-data";
-import GlobalStyles from "@/components/GlobalStyles";
 import Grain from "@/components/Grain";
 import AuthScreen from "@/components/AuthScreen";
 import ProfileSetupScreen from "@/components/ProfileSetupScreen";

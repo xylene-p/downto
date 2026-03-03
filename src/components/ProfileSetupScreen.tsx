@@ -4,7 +4,6 @@ import { useState } from "react";
 import * as db from "@/lib/db";
 import type { Profile } from "@/lib/types";
 import { font, color } from "@/lib/styles";
-import GlobalStyles from "./GlobalStyles";
 import Grain from "./Grain";
 import { logError } from "@/lib/logger";
 
@@ -67,7 +66,6 @@ const ProfileSetupScreen = ({
         flexDirection: "column",
       }}
     >
-      <GlobalStyles />
       <Grain />
 
       <h1

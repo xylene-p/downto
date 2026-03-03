@@ -79,3 +79,23 @@ main {
 footer {
   flex-shrink: 0;
 }
+
+::-webkit-scrollbar {
+  width: 0;
+}
+
+input::placeholder {
+  color: #444;
+}
+
+input:focus {
+  border-color: #e8ff5a !important;
+}
+
+button {
+  transition: all 0.15s ease;
+}
+
+button:active {
+  transform: scale(0.97);
+}
