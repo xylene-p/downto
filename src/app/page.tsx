@@ -12,7 +12,7 @@ import GlobalStyles from "@/components/GlobalStyles";
 import Grain from "@/components/Grain";
 import AuthScreen from "@/components/AuthScreen";
 import ProfileSetupScreen from "@/components/ProfileSetupScreen";
-import EnableNotificationsScreen from "@/components/EnableNotificationsScreen";
+import EnableNotificationsScreen, { IOSInstallScreen } from "@/components/EnableNotificationsScreen";
 import EditEventModal from "@/components/events/EditEventModal";
 import EventLobby from "@/components/events/EventLobby";
 import AddModal from "@/components/events/PasteModal";
@@ -26,7 +26,7 @@ import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import Toast from "@/components/Toast";
 import SquadNotificationBanner from "@/components/SquadNotificationBanner";
-import IOSInstallBanner from "@/components/IOSInstallBanner";
+import { isIOSNotStandalone } from "@/lib/pushNotifications";
 import NotificationsPanel from "@/components/NotificationsPanel";
 import FirstCheckScreen from "@/components/FirstCheckScreen";
 import { useAuth } from "@/hooks/useAuth";
@@ -64,6 +64,14 @@ export default function Home() {
   const [newlyAddedId, setNewlyAddedId] = useState<string | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [addModalDefaultMode, setAddModalDefaultMode] = useState<"paste" | "idea" | "manual" | null>(null);
+
+  // ─── PWA install gate (iOS Safari, pre-auth) ───────────────────────────
+  const [installDismissed, setInstallDismissed] = useState(true); // default true to avoid flash
+  useEffect(() => {
+    setInstallDismissed(
+      !isIOSNotStandalone() || localStorage.getItem("pwa-install-dismissed") === "1"
+    );
+  }, []);
 
   // ─── Misc page-level state ──────────────────────────────────────────────
   const [squadChatOrigin, setSquadChatOrigin] = useState<Tab | null>(null);
@@ -709,6 +717,17 @@ export default function Home() {
     return <div style={{ minHeight: "100vh", background: color.bg }} />;
   }
 
+  if (!installDismissed) {
+    return (
+      <IOSInstallScreen
+        onComplete={() => {
+          localStorage.setItem("pwa-install-dismissed", "1");
+          setInstallDismissed(true);
+        }}
+      />
+    );
+  }
+
   if (!isLoggedIn) {
     return (
       <AuthScreen
@@ -1040,8 +1059,6 @@ export default function Home() {
           }}
         />
       )}
-
-      <IOSInstallBanner />
 
       <AddModal
         open={addModalOpen}

@@ -237,4 +237,5 @@ const EnableNotificationsScreen = ({
   return <NotificationsScreen onComplete={onComplete} />;
 };
 
+export { IOSInstallScreen };
 export default EnableNotificationsScreen;
