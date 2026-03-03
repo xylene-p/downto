@@ -1,38 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-function getSupabaseClient(accessToken: string) {
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
-  });
-}
+import { authenticateRequest, isAuthError } from '@/lib/api-auth';
 
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await authenticateRequest(request);
+  if (isAuthError(auth)) return auth.error;
+  const { user, supabase } = auth;
 
-  const token = authHeader.slice(7);
-  const supabase = getSupabaseClient(token);
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const { endpoint, p256dh, auth } = await request.json();
-  if (!endpoint || !p256dh || !auth) {
+  const { endpoint, p256dh, auth: authKey } = await request.json();
+  if (!endpoint || !p256dh || !authKey) {
     return NextResponse.json({ error: 'Missing subscription fields' }, { status: 400 });
   }
 
   const { error } = await supabase
     .from('push_subscriptions')
     .upsert(
-      { user_id: user.id, endpoint, p256dh, auth },
+      { user_id: user.id, endpoint, p256dh, auth: authKey },
       { onConflict: 'user_id,endpoint' }
     );
 
@@ -44,18 +26,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const token = authHeader.slice(7);
-  const supabase = getSupabaseClient(token);
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await authenticateRequest(request);
+  if (isAuthError(auth)) return auth.error;
+  const { user, supabase } = auth;
 
   const { endpoint } = await request.json();
   if (!endpoint) {
