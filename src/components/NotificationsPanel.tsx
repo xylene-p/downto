@@ -285,7 +285,7 @@ const NotificationsPanel = ({
                     }
                     onClose();
                     onNavigate({ type: "groups", squadId: squadId ?? undefined });
-                  } else if (n.type === "check_response") {
+                  } else if (n.type === "check_response" || n.type === "friend_check") {
                     // Mark single notification as read
                     if (!n.is_read) {
                       if (!isDemoMode && userId) db.markNotificationRead(n.id);
