@@ -32,7 +32,7 @@ interface Metrics {
     recentFailures: PushFailure[];
   };
   versions: {
-    distribution: { build_id: string; users: number; pings24h: number }[];
+    distribution: { build_id: string; users: number; pings24h: number; latestPing: string }[];
   };
 }
 
@@ -42,6 +42,7 @@ export default function AdminPage() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [versionSort, setVersionSort] = useState<"latest" | "users">("latest");
 
   useEffect(() => {
     if (authLoading) return;
@@ -262,36 +263,49 @@ export default function AdminPage() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: font.mono, fontSize: 12 }}>
             <thead>
               <tr>
-                {["Build ID", "Users", "Pings (24h)"].map((h) => (
-                  <th
-                    key={h}
-                    style={{
-                      textAlign: "left",
-                      padding: "8px 12px",
-                      color: color.dim,
-                      borderBottom: `1px solid ${color.borderLight}`,
-                      fontWeight: 400,
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
+                <th
+                  style={{
+                    ...sortableHeader,
+                    color: versionSort === "latest" ? color.accent : color.dim,
+                    cursor: "pointer",
+                  }}
+                  onClick={() => setVersionSort("latest")}
+                >
+                  Build ID {versionSort === "latest" ? "↓" : ""}
+                </th>
+                <th
+                  style={{
+                    ...sortableHeader,
+                    color: versionSort === "users" ? color.accent : color.dim,
+                    cursor: "pointer",
+                  }}
+                  onClick={() => setVersionSort("users")}
+                >
+                  Users {versionSort === "users" ? "↓" : ""}
+                </th>
+                <th style={sortableHeader}>Pings (24h)</th>
               </tr>
             </thead>
             <tbody>
-              {metrics.versions.distribution.map((v) => (
-                <tr key={v.build_id}>
-                  <td style={{ ...cellStyle, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {v.build_id || "—"}
-                  </td>
-                  <td style={cellStyle}>
-                    <span style={{ color: color.accent, fontWeight: 700 }}>{v.users}</span>
-                  </td>
-                  <td style={cellStyle}>
-                    <span style={{ color: color.muted }}>{v.pings24h}</span>
-                  </td>
-                </tr>
-              ))}
+              {[...metrics.versions.distribution]
+                .sort((a, b) =>
+                  versionSort === "users"
+                    ? b.users - a.users
+                    : b.latestPing.localeCompare(a.latestPing)
+                )
+                .map((v) => (
+                  <tr key={v.build_id}>
+                    <td style={{ ...cellStyle, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {v.build_id || "—"}
+                    </td>
+                    <td style={cellStyle}>
+                      <span style={{ color: color.accent, fontWeight: 700 }}>{v.users}</span>
+                    </td>
+                    <td style={cellStyle}>
+                      <span style={{ color: color.muted }}>{v.pings24h}</span>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
@@ -345,4 +359,11 @@ const cellStyle: React.CSSProperties = {
   padding: "8px 12px",
   color: color.text,
   borderBottom: `1px solid ${color.border}`,
+};
+
+const sortableHeader: React.CSSProperties = {
+  textAlign: "left",
+  padding: "8px 12px",
+  borderBottom: `1px solid ${color.borderLight}`,
+  fontWeight: 400,
 };

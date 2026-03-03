@@ -85,9 +85,18 @@ export async function GET(request: NextRequest) {
   for (const buildId of latestByUser.values()) {
     buildCounts.set(buildId, (buildCounts.get(buildId) || 0) + 1);
   }
+  // Track the latest ping timestamp per build_id (data is already sorted by created_at desc)
+  const latestPingByBuild = new Map<string, string>();
+  if (versionPingsRes.data) {
+    for (const row of versionPingsRes.data) {
+      if (!latestPingByBuild.has(row.build_id)) {
+        latestPingByBuild.set(row.build_id, row.created_at);
+      }
+    }
+  }
   const versionDistribution = Array.from(buildCounts.entries())
-    .map(([build_id, users]) => ({ build_id, users, pings24h: pingsPerBuild.get(build_id) || 0 }))
-    .sort((a, b) => b.users - a.users);
+    .map(([build_id, users]) => ({ build_id, users, pings24h: pingsPerBuild.get(build_id) || 0, latestPing: latestPingByBuild.get(build_id) || '' }))
+    .sort((a, b) => b.latestPing.localeCompare(a.latestPing));
 
   return NextResponse.json({
     totalUsers: totalRes.count ?? 0,
