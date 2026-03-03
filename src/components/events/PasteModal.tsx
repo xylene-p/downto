@@ -793,7 +793,9 @@ const AddModal = ({
                 marginBottom: 12,
               }}>
                 {detectedDate && !dateDismissed && (
-                  <div style={{
+                  <div
+                    onClick={() => { setDateLocked((v) => !v); setHasToggledLock(true); }}
+                    style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
@@ -804,13 +806,12 @@ const AddModal = ({
                     cursor: "pointer",
                   }}>
                     <span
-                      onClick={() => { setDateLocked((v) => !v); setHasToggledLock(true); }}
-                      style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600, cursor: "pointer" }}
+                      style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600 }}
                     >
                       📅 {detectedDate.label}
                     </span>
                     <button
-                      onClick={() => setDateDismissed(true)}
+                      onClick={(e) => { e.stopPropagation(); setDateDismissed(true); }}
                       style={{
                         background: "none",
                         border: "none",
@@ -827,7 +828,9 @@ const AddModal = ({
                   </div>
                 )}
                 {detectedTime && !timeDismissed && (
-                  <div style={{
+                  <div
+                    onClick={() => { setTimeLocked((v) => !v); setHasToggledLock(true); }}
+                    style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
@@ -838,13 +841,12 @@ const AddModal = ({
                     cursor: "pointer",
                   }}>
                     <span
-                      onClick={() => { setTimeLocked((v) => !v); setHasToggledLock(true); }}
-                      style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600, cursor: "pointer" }}
+                      style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600 }}
                     >
                       🕐 {detectedTime}
                     </span>
                     <button
-                      onClick={() => setTimeDismissed(true)}
+                      onClick={(e) => { e.stopPropagation(); setTimeDismissed(true); }}
                       style={{
                         background: "none",
                         border: "none",
