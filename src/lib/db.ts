@@ -274,20 +274,27 @@ export async function getPeopleDown(eventId: string): Promise<(SavedEvent & { us
   return data ?? [];
 }
 
-export async function getPeopleDownBatch(
-  eventIds: string[]
-): Promise<Record<string, { name: string; avatar: string; mutual: boolean; userId: string }[]>> {
+type EventUserEntry = { userId: string; name: string; avatar: string; mutual: boolean };
+
+async function fetchEventUsersBatch(
+  table: 'saved_events' | 'crew_pool',
+  eventIds: string[],
+): Promise<Record<string, EventUserEntry[]>> {
   if (eventIds.length === 0) return {};
 
   const { data: { user } } = await supabase.auth.getUser();
   const currentUserId = user?.id;
 
-  const { data, error } = await supabase
-    .from('saved_events')
+  let query = supabase
+    .from(table)
     .select('event_id, user:profiles(*)')
-    .in('event_id', eventIds)
-    .eq('is_down', true);
+    .in('event_id', eventIds);
 
+  if (table === 'saved_events') {
+    query = query.eq('is_down', true);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
 
   // Get friend IDs for mutual detection
@@ -308,21 +315,27 @@ export async function getPeopleDownBatch(
     }
   }
 
-  const result: Record<string, { name: string; avatar: string; mutual: boolean; userId: string }[]> = {};
+  const result: Record<string, EventUserEntry[]> = {};
   for (const row of (data ?? []) as unknown as { event_id: string; user: Profile }[]) {
     const eventId = row.event_id;
     if (!result[eventId]) result[eventId] = [];
     const profile = row.user;
     if (profile && profile.id !== currentUserId) {
       result[eventId].push({
+        userId: profile.id,
         name: profile.display_name,
         avatar: profile.avatar_letter,
         mutual: friendIds.has(profile.id),
-        userId: profile.id,
       });
     }
   }
   return result;
+}
+
+export async function getPeopleDownBatch(
+  eventIds: string[]
+): Promise<Record<string, EventUserEntry[]>> {
+  return fetchEventUsersBatch('saved_events', eventIds);
 }
 
 // ============================================================================
@@ -1156,52 +1169,8 @@ export async function removeFromCrewPool(eventId: string, userIds: string[]): Pr
 
 export async function getCrewPoolBatch(
   eventIds: string[]
-): Promise<Record<string, { userId: string; name: string; avatar: string; mutual: boolean }[]>> {
-  if (eventIds.length === 0) return {};
-
-  const { data: { user } } = await supabase.auth.getUser();
-  const currentUserId = user?.id;
-
-  const { data, error } = await supabase
-    .from('crew_pool')
-    .select('event_id, user_id, user:profiles(*)')
-    .in('event_id', eventIds);
-
-  if (error) throw error;
-
-  // Get friend IDs for mutual detection
-  let friendIds: Set<string> = new Set();
-  if (currentUserId) {
-    const { data: friendships } = await supabase
-      .from('friendships')
-      .select('requester_id, addressee_id')
-      .eq('status', 'accepted')
-      .or(`requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`);
-
-    if (friendships) {
-      friendIds = new Set(
-        friendships.map(f =>
-          f.requester_id === currentUserId ? f.addressee_id : f.requester_id
-        )
-      );
-    }
-  }
-
-  const result: Record<string, { userId: string; name: string; avatar: string; mutual: boolean }[]> = {};
-  for (const row of (data ?? []) as unknown as { event_id: string; user_id: string; user: Profile }[]) {
-    const eventId = row.event_id;
-    if (!result[eventId]) result[eventId] = [];
-    const profile = row.user;
-    if (profile && profile.id !== currentUserId) {
-      result[eventId].push({
-        userId: profile.id,
-        name: profile.display_name,
-        avatar: profile.avatar_letter,
-        mutual: friendIds.has(profile.id),
-      });
-    }
-  }
-  return result;
+): Promise<Record<string, EventUserEntry[]>> {
+  return fetchEventUsersBatch('crew_pool', eventIds);
 }
 
 export async function getUserPoolEventIds(
