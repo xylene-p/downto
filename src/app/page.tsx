@@ -866,13 +866,14 @@ export default function Home() {
               const squad = squadsHook.squads.find((s) => s.id === squadDbId);
               if (squad?.checkId) {
                 const dateLabel = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                const isProposal = date_status === 'proposed';
                 checksHook.setChecks((prev) => prev.map((c) => c.id === squad.checkId ? {
                   ...c,
                   eventDate: date,
                   eventDateLabel: dateLabel,
                   eventTime: time ?? c.eventTime,
-                  dateFlexible: false,
-                  ...(time ? { timeFlexible: false } : {}),
+                  dateFlexible: isProposal,
+                  ...(time ? { timeFlexible: isProposal } : {}),
                 } : c));
               }
             }}

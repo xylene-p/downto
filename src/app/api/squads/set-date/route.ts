@@ -132,8 +132,8 @@ export async function POST(req: NextRequest) {
       .from('interest_checks')
       .update({
         event_date: date,
-        date_flexible: false,
-        ...(time !== undefined ? { event_time: time, time_flexible: false } : {}),
+        date_flexible: isProposal,
+        ...(time !== undefined ? { event_time: time, time_flexible: isProposal } : {}),
       })
       .eq('id', squad.check_id);
   }

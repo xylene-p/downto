@@ -146,10 +146,10 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
     });
 
     // Link checks to their squads (distinguish member vs waitlisted)
-    const checkToSquad = new Map<string, { squadId: string; inSquad: boolean; isWaitlisted: boolean; eventIsoDate?: string }>();
+    const checkToSquad = new Map<string, { squadId: string; inSquad: boolean; isWaitlisted: boolean; eventIsoDate?: string; dateStatus?: string }>();
     for (const sq of transformedSquads) {
       if (sq.checkId) {
-        checkToSquad.set(sq.checkId, { squadId: sq.id, inSquad: !sq.isWaitlisted, isWaitlisted: !!sq.isWaitlisted, eventIsoDate: sq.eventIsoDate });
+        checkToSquad.set(sq.checkId, { squadId: sq.id, inSquad: !sq.isWaitlisted, isWaitlisted: !!sq.isWaitlisted, eventIsoDate: sq.eventIsoDate, dateStatus: sq.dateStatus });
       }
     }
     setChecks((prev) => prev.map((c) => {
@@ -158,9 +158,10 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         // Backfill check date from squad locked_date if check has no date
         const datePatch: Partial<InterestCheck> = {};
         if (!c.eventDate && sq.eventIsoDate) {
+          const isProposed = sq.dateStatus === 'proposed';
           datePatch.eventDate = sq.eventIsoDate;
           datePatch.eventDateLabel = new Date(sq.eventIsoDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-          datePatch.dateFlexible = false;
+          datePatch.dateFlexible = isProposed;
         }
         return { ...c, squadId: sq.squadId, inSquad: sq.inSquad, isWaitlisted: sq.isWaitlisted, ...datePatch };
       }
