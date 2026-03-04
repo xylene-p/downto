@@ -41,9 +41,9 @@ const CalendarView = ({
   }, [events]);
   const saved = events.filter((e) => e.saved);
 
-  // Calendar-worthy checks: have eventDate AND user responded down/maybe
+  // Calendar-worthy checks: have eventDate AND (user responded down/maybe OR user is the author)
   const calendarChecks = checks.filter(
-    (c) => c.eventDate && myCheckResponses[c.id]
+    (c) => c.eventDate && (myCheckResponses[c.id] || c.authorId === userId)
   );
 
   // Build a 2-week grid starting from Monday of the current week
