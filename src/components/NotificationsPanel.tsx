@@ -286,8 +286,8 @@ const NotificationsPanel = ({
                     onClose();
                     onNavigate({ type: "groups", squadId: squadId ?? undefined });
                   } else if (n.type === "check_response" || n.type === "friend_check" || n.type === "check_tag") {
-                    // Mark single notification as read
-                    if (!n.is_read) {
+                    // Mark single notification as read (except check_tag — cleared on accept/decline)
+                    if (!n.is_read && n.type !== "check_tag") {
                       if (!isDemoMode && userId) db.markNotificationRead(n.id);
                       setNotifications((prev) =>
                         prev.map((notif) => notif.id === n.id ? { ...notif, is_read: true } : notif)

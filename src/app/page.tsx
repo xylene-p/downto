@@ -105,6 +105,19 @@ export default function Home() {
     showToast,
     onCheckCreated: () => { setTab("feed"); setFeedMode("foryou"); setShowAddGlow(false); localStorage.removeItem("showAddGlow"); },
     onDownResponse: () => { loadRealDataRef.current(); },
+    onCoAuthorRespond: (checkId: string) => {
+      // Mark check_tag notification as read when user accepts/declines
+      const tagNotif = notificationsHook.notifications.find(
+        (n) => n.type === "check_tag" && n.related_check_id === checkId && !n.is_read
+      );
+      if (tagNotif) {
+        if (!isDemoMode && userId) db.markNotificationRead(tagNotif.id);
+        notificationsHook.setNotifications((prev) =>
+          prev.map((n) => n.id === tagNotif.id ? { ...n, is_read: true } : n)
+        );
+        notificationsHook.setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+    },
   });
 
   const squadsHook = useSquads({

@@ -104,9 +104,10 @@ interface UseChecksParams {
   showToast: (msg: string) => void;
   onCheckCreated?: () => void;
   onDownResponse?: () => Promise<void> | void;
+  onCoAuthorRespond?: (checkId: string) => void;
 }
 
-export function useChecks({ userId, isDemoMode, profile, friendCount, showToast, onCheckCreated, onDownResponse }: UseChecksParams) {
+export function useChecks({ userId, isDemoMode, profile, friendCount, showToast, onCheckCreated, onDownResponse, onCoAuthorRespond }: UseChecksParams) {
   const [checks, setChecks] = useState<InterestCheck[]>([]);
   const [myCheckResponses, setMyCheckResponses] = useState<Record<string, "down" | "maybe">>({});
   const [hiddenCheckIds, setHiddenCheckIds] = useState<Set<string>>(new Set());
@@ -338,6 +339,7 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
         return { ...c, responses: [...c.responses, { name: 'You', avatar: profile?.avatar_letter ?? '?', status: 'down' as const }] };
       }));
       showToast("You're now a co-author!");
+      onCoAuthorRespond?.(checkId);
       loadChecks();
     } catch (err) {
       logError('acceptCoAuthorTag', err, { checkId });
@@ -360,6 +362,7 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
             }
           : c
       ));
+      onCoAuthorRespond?.(checkId);
     } catch (err) {
       logError('declineCoAuthorTag', err, { checkId });
     }
