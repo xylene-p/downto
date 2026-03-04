@@ -871,6 +871,8 @@ export default function Home() {
                   eventDate: date,
                   eventDateLabel: dateLabel,
                   eventTime: time ?? c.eventTime,
+                  dateFlexible: false,
+                  ...(time ? { timeFlexible: false } : {}),
                 } : c));
               }
             }}
