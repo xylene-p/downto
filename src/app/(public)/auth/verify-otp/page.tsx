@@ -69,7 +69,6 @@ function VerifyOtp() {
           placeholder="00000000"
           autoFocus
           autoComplete="one-time-code"
-          required
           inputClassName="text-2xl text-center tracking-[0.3rem]"
         />
         <Button
