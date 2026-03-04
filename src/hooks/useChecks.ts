@@ -124,6 +124,7 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
       if (fofAnnotations.length > 0) {
         const viaMap = new Map(fofAnnotations.map((a) => [a.check_id, a.via_friend_name]));
         for (const c of transformedChecks) {
+          if (c.isYours || c.isCoAuthor) continue; // co-authors see it as friend-priority
           const via = viaMap.get(c.id);
           if (via) c.viaFriendName = via;
         }
@@ -143,6 +144,7 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
     if (fofAnnotations && fofAnnotations.length > 0) {
       const viaMap = new Map(fofAnnotations.map((a) => [a.check_id, a.via_friend_name]));
       for (const c of transformedChecks) {
+        if (c.isYours || c.isCoAuthor) continue; // co-authors see it as friend-priority
         const via = viaMap.get(c.id);
         if (via) c.viaFriendName = via;
       }

@@ -233,11 +233,11 @@ export default function FeedView({
                           if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
                         } : undefined}
                         style={{
-                          background: check.isYours ? "rgba(232,255,90,0.05)" : color.card,
+                          background: (check.isYours || check.isCoAuthor) ? "rgba(232,255,90,0.05)" : color.card,
                           borderRadius: 14,
                           overflow: "hidden",
                           marginBottom: 8,
-                          border: `1px solid ${check.id === newlyAddedCheckId ? "rgba(90,200,255,0.5)" : check.isYours ? "rgba(232,255,90,0.2)" : color.border}`,
+                          border: `1px solid ${check.id === newlyAddedCheckId ? "rgba(90,200,255,0.5)" : (check.isYours || check.isCoAuthor) ? "rgba(232,255,90,0.2)" : color.border}`,
                           ...(check.id === newlyAddedCheckId ? { animation: "checkGlow 2s ease-in-out infinite" } : {}),
                         }}
                       >
@@ -372,7 +372,7 @@ export default function FeedView({
                               style={{
                                 fontFamily: font.mono,
                                 fontSize: 11,
-                                color: check.isYours ? color.accent : color.muted,
+                                color: (check.isYours || check.isCoAuthor) ? color.accent : color.muted,
                               }}
                             >
                               {check.author}
@@ -411,7 +411,7 @@ export default function FeedView({
                             >
                               {check.expiresIn === "open" ? "open" : check.expiresIn === "expired" ? "expired" : `${check.expiresIn} left`}
                             </span>
-                            {!check.isYours && (
+                            {!check.isYours && !check.isCoAuthor && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
