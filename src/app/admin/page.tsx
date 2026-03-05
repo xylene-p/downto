@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
@@ -34,7 +34,7 @@ interface Metrics {
     recentFailures: PushFailure[];
   };
   versions: {
-    distribution: { build_id: string; users: number; pings24h: number; latestPing: string }[];
+    distribution: { build_id: string; users: number; pings24h: number; latestPing: string; userNames: string[] }[];
     commitMessages: Record<string, string>;
   };
 }
@@ -46,6 +46,7 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [versionSort, setVersionSort] = useState<"latest" | "users">("latest");
+  const [expandedBuild, setExpandedBuild] = useState<string | null>(null);
   const [tab, setTab] = useState<AdminTab>("users");
 
   useEffect(() => {
@@ -344,14 +345,20 @@ export default function AdminPage() {
                     )
                     .map((v) => {
                       const msg = metrics.versions.commitMessages[v.build_id];
+                      const isExpanded = expandedBuild === v.build_id;
                       return (
-                        <tr key={v.build_id}>
+                        <Fragment key={v.build_id}>
+                        <tr
+                          onClick={() => setExpandedBuild(isExpanded ? null : v.build_id)}
+                          style={{ cursor: "pointer" }}
+                        >
                           <td style={{ ...cellStyle, maxWidth: 260 }}>
                             <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <span style={{ color: color.faint, marginRight: 6 }}>{isExpanded ? "▾" : "▸"}</span>
                               {v.build_id ? v.build_id.slice(0, 7) : "—"}
                             </div>
                             {msg && (
-                              <div style={{ fontSize: 10, color: color.dim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>
+                              <div style={{ fontSize: 10, color: color.dim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2, paddingLeft: 16 }}>
                                 {msg}
                               </div>
                             )}
@@ -363,6 +370,21 @@ export default function AdminPage() {
                             <span style={{ color: color.muted }}>{v.pings24h}</span>
                           </td>
                         </tr>
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan={3} style={{ padding: "4px 12px 12px 28px" }}>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                                {v.userNames.map((name) => (
+                                  <span key={name} style={{
+                                    fontFamily: font.mono, fontSize: 10, color: color.muted,
+                                    background: color.borderLight, padding: "3px 8px", borderRadius: 6,
+                                  }}>{name}</span>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        </Fragment>
                       );
                     })}
                 </tbody>

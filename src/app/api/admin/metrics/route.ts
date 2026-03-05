@@ -79,8 +79,36 @@ export async function GET(request: NextRequest) {
       }
     }
   }
+  // Group user_ids by build
+  const usersByBuild = new Map<string, string[]>();
+  for (const [userId, buildId] of latestByUser.entries()) {
+    const list = usersByBuild.get(buildId) || [];
+    list.push(userId);
+    usersByBuild.set(buildId, list);
+  }
+
+  // Fetch display names for all users with version pings
+  const allUserIds = [...latestByUser.keys()];
+  const profileNames = new Map<string, string>();
+  if (allUserIds.length > 0) {
+    const { data: profiles } = await admin.from('profiles')
+      .select('id, display_name, username')
+      .in('id', allUserIds);
+    if (profiles) {
+      for (const p of profiles) {
+        profileNames.set(p.id, p.display_name || p.username || p.id.slice(0, 8));
+      }
+    }
+  }
+
   const versionDistribution = Array.from(buildCounts.entries())
-    .map(([build_id, users]) => ({ build_id, users, pings24h: pingsPerBuild.get(build_id) || 0, latestPing: latestPingByBuild.get(build_id) || '' }))
+    .map(([build_id, users]) => ({
+      build_id,
+      users,
+      pings24h: pingsPerBuild.get(build_id) || 0,
+      latestPing: latestPingByBuild.get(build_id) || '',
+      userNames: (usersByBuild.get(build_id) || []).map(uid => profileNames.get(uid) || uid.slice(0, 8)),
+    }))
     .sort((a, b) => b.latestPing.localeCompare(a.latestPing));
 
   // Fetch commit messages from GitHub for build SHAs
