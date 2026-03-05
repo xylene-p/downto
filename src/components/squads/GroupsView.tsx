@@ -76,7 +76,6 @@ const GroupsView = ({
   const [settingDate, setSettingDate] = useState(false);
   const [dateConfirmStatus, setDateConfirmStatus] = useState<'yes' | 'no' | 'pending' | 'none'>('none');
   const [dateConfirms, setDateConfirms] = useState<Map<string, 'yes' | 'no' | null>>(new Map());
-  const [confirmListOpen, setConfirmListOpen] = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [chatHeight, setChatHeight] = useState<string>("100dvh");
@@ -123,7 +122,6 @@ const GroupsView = ({
     if (!selectedSquad?.id || selectedSquad.dateStatus !== 'proposed' || !userId) {
       setDateConfirmStatus('none');
       setDateConfirms(new Map());
-      setConfirmListOpen(false);
       return;
     }
     db.getDateConfirms(selectedSquad.id).then((confirms) => {
@@ -344,13 +342,18 @@ const GroupsView = ({
               {selectedSquad.members.map((m) => {
                 const hasConfirmFlow = selectedSquad.dateStatus === 'proposed' || selectedSquad.dateStatus === 'locked';
                 const confirmResponse = m.userId ? dateConfirms.get(m.userId) : undefined;
-                const ringStyle = hasConfirmFlow && dateConfirms.size > 0
-                  ? confirmResponse === 'yes'
-                    ? { border: '2px solid #34C759' }
-                    : confirmResponse === 'no'
-                      ? { border: '2px solid #ff3b30' }
-                      : { border: `2px dashed ${color.faint}` }
-                  : {};
+                const isConfirmed = hasConfirmFlow && dateConfirms.size > 0 && confirmResponse === 'yes';
+                const isPending = hasConfirmFlow && dateConfirms.size > 0 && confirmResponse !== 'yes';
+                const avatarBg = isConfirmed
+                  ? color.accent
+                  : isPending
+                    ? color.borderLight
+                    : m.name === "You" ? color.accent : color.borderLight;
+                const avatarColor = isConfirmed
+                  ? "#000"
+                  : isPending
+                    ? color.dim
+                    : m.name === "You" ? "#000" : color.dim;
                 return (
                   <div
                     key={m.name}
@@ -359,8 +362,8 @@ const GroupsView = ({
                       width: 24,
                       height: 24,
                       borderRadius: "50%",
-                      background: m.name === "You" ? color.accent : color.borderLight,
-                      color: m.name === "You" ? "#000" : color.dim,
+                      background: avatarBg,
+                      color: avatarColor,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -368,7 +371,6 @@ const GroupsView = ({
                       fontSize: 10,
                       fontWeight: 700,
                       cursor: m.name !== "You" && m.userId ? "pointer" : "default",
-                      ...ringStyle,
                     }}
                   >
                     {m.avatar}
@@ -377,44 +379,6 @@ const GroupsView = ({
               })}
             </div>
           </div>
-          {(selectedSquad.dateStatus === 'proposed' || selectedSquad.dateStatus === 'locked') && dateConfirms.size > 0 && (() => {
-            const confirmedCount = Array.from(dateConfirms.values()).filter((v) => v === 'yes').length;
-            const totalCount = selectedSquad.members.length;
-            return (
-              <div style={{ margin: "6px 0 0" }}>
-                <button
-                  onClick={() => setConfirmListOpen((o) => !o)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    padding: 0,
-                    cursor: "pointer",
-                    fontFamily: font.mono,
-                    fontSize: 10,
-                    color: confirmedCount === totalCount ? '#34C759' : color.dim,
-                    letterSpacing: "0.08em",
-                  }}
-                >
-                  {confirmedCount}/{totalCount} confirmed {confirmListOpen ? "▴" : "▾"}
-                </button>
-                {confirmListOpen && (
-                  <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
-                    {selectedSquad.members.map((m) => {
-                      const status = m.userId ? dateConfirms.get(m.userId) : undefined;
-                      const icon = status === 'yes' ? '✓' : status === 'no' ? '✗' : '…';
-                      const iconColor = status === 'yes' ? '#34C759' : status === 'no' ? '#ff3b30' : color.faint;
-                      return (
-                        <div key={m.name} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontFamily: font.mono, fontSize: 11, color: iconColor, width: 12 }}>{icon}</span>
-                          <span style={{ fontFamily: font.mono, fontSize: 11, color: color.muted }}>{m.name}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
           {(() => {
             const expiryLabel = formatExpiryLabel(selectedSquad.expiresAt, selectedSquad.graceStartedAt);
             if (!expiryLabel) return null;
