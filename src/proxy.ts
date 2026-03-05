@@ -1,8 +1,9 @@
 import { type NextRequest } from 'next/server';
-import { updateSession } from '@/lib/supabase/proxy';
+// import { updateSession } from '@/lib/supabase/proxy';
 
 export async function proxy(request: NextRequest) {
-  return await updateSession(request);
+  // TODO: uncomment after full migration to MPA
+  // return await updateSession(request);
 }
 
 export const config = {
