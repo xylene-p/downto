@@ -99,10 +99,14 @@ const EditCheckModal = ({
     const trimmed = text.trim();
     if (!trimmed) return;
 
-    // Extract @mentions → friend IDs for new tags
+    // Extract @mentions → friend IDs for new tags (match username or display name)
     const mentionNames = [...trimmed.matchAll(/@(\S+)/g)].map(m => m[1].toLowerCase());
     const taggedIds = (friends ?? [])
-      .filter(f => mentionNames.includes(f.name.toLowerCase()))
+      .filter(f => mentionNames.some(m =>
+        m === f.username?.toLowerCase() ||
+        m === f.name.toLowerCase() ||
+        m === f.name.split(' ')[0]?.toLowerCase()
+      ))
       .map(f => f.id);
     // Filter out already-tagged co-authors
     const existingIds = new Set((check.coAuthors ?? []).map(ca => ca.userId));

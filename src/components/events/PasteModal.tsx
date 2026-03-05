@@ -1114,10 +1114,14 @@ const AddModal = ({
                 if (idea.trim()) {
                   const eventDate = (!dateDismissed && detectedDate) ? detectedDate.iso : null;
                   const eventTime = (!timeDismissed && detectedTime) ? detectedTime : null;
-                  // Extract @mentions → friend IDs
+                  // Extract @mentions → friend IDs (match against username or display name)
                   const mentionNames = [...idea.matchAll(/@(\S+)/g)].map(m => m[1].toLowerCase());
                   const taggedIds = (friends ?? [])
-                    .filter(f => mentionNames.includes(f.name.toLowerCase()))
+                    .filter(f => mentionNames.some(m =>
+                      m === f.username?.toLowerCase() ||
+                      m === f.name.toLowerCase() ||
+                      m === f.name.split(' ')[0]?.toLowerCase()
+                    ))
                     .map(f => f.id);
                   onInterestCheck(sanitize(idea, 280), checkTimer, eventDate, squadSize, checkMovie ?? undefined, eventTime, !dateLocked, !timeLocked, taggedIds.length > 0 ? taggedIds : undefined);
                   onClose();
