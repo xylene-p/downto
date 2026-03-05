@@ -10,7 +10,7 @@ import EditCheckModal from "@/components/events/EditCheckModal";
 import { logError } from "@/lib/logger";
 
 /** Render @mentions highlighted + inline URLs as clickable links */
-function Linkify({ children, dimmed }: { children: string; dimmed?: boolean }) {
+function Linkify({ children, dimmed, coAuthors }: { children: string; dimmed?: boolean; coAuthors?: { name: string }[] }) {
   // Split on URLs and @mentions
   const tokenRe = /(https?:\/\/[^\s),]+|@\S+)/g;
   const parts = children.split(tokenRe);
@@ -38,9 +38,14 @@ function Linkify({ children, dimmed }: { children: string; dimmed?: boolean }) {
           );
         }
         if (/^@\S+/.test(part)) {
+          const mention = part.slice(1).toLowerCase();
+          const matched = coAuthors?.find(ca =>
+            ca.name.toLowerCase() === mention ||
+            ca.name.split(' ')[0]?.toLowerCase() === mention
+          );
           return (
             <span key={i} style={{ color: color.accent, fontWeight: 600 }}>
-              {part}
+              @{matched ? matched.name : part.slice(1)}
             </span>
           );
         }
@@ -483,7 +488,7 @@ export default function FeedView({
                                     flex: 1,
                                   }}
                                 >
-                                  <Linkify>{check.text}</Linkify>
+                                  <Linkify coAuthors={check.coAuthors}>{check.text}</Linkify>
                                 </p>
                                 {(check.isYours || check.isCoAuthor) && (
                                   <div style={{ display: "flex", gap: 4, flexShrink: 0, marginTop: 2 }}>
@@ -1042,7 +1047,7 @@ export default function FeedView({
                                   </span>
                                 </div>
                                 <p style={{ fontFamily: font.serif, fontSize: 16, color: color.dim, margin: 0, lineHeight: 1.4 }}>
-                                  <Linkify dimmed>{check.text}</Linkify>
+                                  <Linkify dimmed coAuthors={check.coAuthors}>{check.text}</Linkify>
                                 </p>
                               </div>
                               <button
