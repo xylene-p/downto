@@ -392,10 +392,10 @@ const CalendarView = ({
                       {c.eventTime && <span>{c.eventTime}</span>}
                       {c.eventTime && <span>·</span>}
                       <span style={{
-                        color: response === "down" ? color.accent : color.muted,
+                        color: response === "down" ? color.accent : response === "maybe" ? color.muted : color.dim,
                         fontWeight: 700,
                       }}>
-                        {response === "down" ? "✓ Down" : "✓ Maybe"}
+                        {response === "down" ? "✓ Down" : response === "maybe" ? "✓ Maybe" : "Yours"}
                       </span>
                     </div>
                   </div>
