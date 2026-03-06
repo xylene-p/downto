@@ -1278,6 +1278,9 @@ const AddModal = ({
                 cursor: idea.trim() ? "pointer" : "not-allowed",
                 textTransform: "uppercase",
                 letterSpacing: "0.1em",
+                position: "sticky",
+                bottom: 0,
+                zIndex: 1,
               }}
             >
               {checkMovie ? "Send Movie Check →" : "Send Interest Check →"}
