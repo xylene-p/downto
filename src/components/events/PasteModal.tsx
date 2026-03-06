@@ -994,7 +994,7 @@ const AddModal = ({
                     <span
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (hasValue) chip.setLocked(!chip.locked);
+                        chip.setLocked(!chip.locked);
                       }}
                       style={{
                         fontFamily: font.mono,
@@ -1002,7 +1002,7 @@ const AddModal = ({
                         color: hasValue ? color.accent : color.dim,
                         fontWeight: 600,
                         userSelect: "none",
-                        cursor: hasValue ? "pointer" : "default",
+                        cursor: "pointer",
                       }}
                     >
                       {hasValue ? value : chip.placeholder}
