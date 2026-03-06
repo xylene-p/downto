@@ -49,13 +49,3 @@ export async function verifyOtp(_prevState: any, formData: FormData) {
   // Redirect the user to a protected route
   redirect('/');
 }
-
-// Verify Magic Link; used in dev
-export async function verifyMagicLink({ token }: { token: string }) {
-  const supabase = await createClient();
-
-  return await supabase.auth.verifyOtp({
-    type: 'email',
-    token_hash: token,
-  });
-}
