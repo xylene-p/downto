@@ -71,9 +71,15 @@ const GroupsView = ({
   const msgInputRef = useRef<HTMLTextAreaElement>(null);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showImOutConfirm, setShowImOutConfirm] = useState(false);
+  const [showSquadPopup, setShowSquadPopup] = useState(false);
+  const [squadPopupView, setSquadPopupView] = useState<'menu' | 'members'>('menu');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerValue, setDatePickerValue] = useState("");
   const [settingDate, setSettingDate] = useState(false);
+  const [dateLocked, setDateLocked] = useState(false);
+  const [timeLocked, setTimeLocked] = useState(false);
+  const [dateDismissed, setDateDismissed] = useState(false);
+  const [timeDismissed, setTimeDismissed] = useState(false);
   const [dateConfirmStatus, setDateConfirmStatus] = useState<'yes' | 'no' | 'pending' | 'none'>('none');
   const [dateConfirms, setDateConfirms] = useState<Map<string, 'yes' | 'no' | null>>(new Map());
   const [confirmLoading, setConfirmLoading] = useState(false);
@@ -269,11 +275,17 @@ const GroupsView = ({
           style={{
             padding: "0 20px 12px",
             borderBottom: `1px solid ${color.border}`,
+            position: "relative",
+            zIndex: (showSquadPopup || showDatePicker) ? 10000 : "auto",
+            background: color.bg,
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <div
+            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}
+          >
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setSelectedSquad(null);
                 onBack?.();
               }}
@@ -281,32 +293,19 @@ const GroupsView = ({
                 background: "none",
                 border: "none",
                 color: color.accent,
-                fontFamily: font.mono,
-                fontSize: 12,
+                fontSize: 18,
                 cursor: "pointer",
                 padding: 0,
+                marginRight: 8,
+                flexShrink: 0,
               }}
             >
-              ← Back
+              ‹
             </button>
-            {selectedSquad.id && (
-              <button
-                onClick={() => setShowLeaveConfirm(true)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: color.dim,
-                  fontFamily: font.mono,
-                  fontSize: 11,
-                  cursor: "pointer",
-                  padding: 0,
-                }}
-              >
-                Leave
-              </button>
-            )}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div
+              onClick={() => setShowSquadPopup(true)}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flex: 1, minWidth: 0 }}
+            >
             <div style={{ minWidth: 0, flex: 1 }}>
               <h2
                 style={{
@@ -315,9 +314,10 @@ const GroupsView = ({
                   color: color.text,
                   fontWeight: 400,
                   margin: 0,
-                  whiteSpace: "nowrap",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical" as const,
                   overflow: "hidden",
-                  textOverflow: "ellipsis",
                 }}
               >
                 {selectedSquad.name}
@@ -338,175 +338,186 @@ const GroupsView = ({
                 </p>
               )}
             </div>
-            <div style={{ display: "flex", gap: 4, marginLeft: 12, flexShrink: 0 }}>
-              {selectedSquad.members.map((m) => {
-                const hasConfirmFlow = selectedSquad.dateStatus === 'proposed' || selectedSquad.dateStatus === 'locked';
-                const confirmResponse = m.userId ? dateConfirms.get(m.userId) : undefined;
-                const isConfirmed = hasConfirmFlow && dateConfirms.size > 0 && confirmResponse === 'yes';
-                const isPending = hasConfirmFlow && dateConfirms.size > 0 && confirmResponse !== 'yes';
-                const avatarBg = isConfirmed
-                  ? color.accent
-                  : isPending
-                    ? color.borderLight
-                    : m.name === "You" ? color.accent : color.borderLight;
-                const avatarColor = isConfirmed
-                  ? "#000"
-                  : isPending
-                    ? color.dim
-                    : m.name === "You" ? "#000" : color.dim;
-                return (
-                  <div
-                    key={m.name}
-                    onClick={() => m.name !== "You" && m.userId && onViewProfile?.(m.userId)}
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: "50%",
-                      background: avatarBg,
-                      color: avatarColor,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontFamily: font.mono,
-                      fontSize: 10,
-                      fontWeight: 700,
-                      cursor: m.name !== "You" && m.userId ? "pointer" : "default",
-                    }}
-                  >
-                    {m.avatar}
-                  </div>
-                );
-              })}
+            <div
+              onClick={() => setShowSquadPopup(true)}
+              style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", marginLeft: 12, flexShrink: 0, cursor: "pointer" }}
+            >
+              <div style={{ display: "flex", alignItems: "center" }}>
+                {selectedSquad.members.slice(0, 4).map((m, idx) => {
+                  const hasConfirmFlow = selectedSquad.dateStatus === 'proposed' || selectedSquad.dateStatus === 'locked';
+                  const confirmResponse = m.userId ? dateConfirms.get(m.userId) : undefined;
+                  const isConfirmed = hasConfirmFlow && dateConfirms.size > 0 && confirmResponse === 'yes';
+                  const isPending = hasConfirmFlow && dateConfirms.size > 0 && confirmResponse !== 'yes';
+                  const avatarBg = isConfirmed
+                    ? color.accent
+                    : isPending
+                      ? color.borderLight
+                      : m.name === "You" ? color.accent : color.borderLight;
+                  const avatarColor = isConfirmed
+                    ? "#000"
+                    : isPending
+                      ? color.dim
+                      : m.name === "You" ? "#000" : color.dim;
+                  return (
+                    <div
+                      key={m.name}
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: "50%",
+                        background: avatarBg,
+                        color: avatarColor,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontFamily: font.mono,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        marginLeft: idx === 0 ? 0 : -6,
+                        border: `2px solid ${color.card}`,
+                        position: "relative",
+                        zIndex: 4 - idx,
+                      }}
+                    >
+                      {m.avatar}
+                    </div>
+                  );
+                })}
+                {selectedSquad.members.length > 4 && (
+                  <span style={{
+                    fontFamily: font.mono,
+                    fontSize: 8,
+                    fontWeight: 700,
+                    color: color.dim,
+                    marginLeft: 4,
+                  }}>
+                    +{selectedSquad.members.length - 4}
+                  </span>
+                )}
+              </div>
+            </div>
             </div>
           </div>
           {(() => {
+            const isAuthor = selectedSquad.checkAuthorId === userId;
+            const dateLabel = selectedSquad.eventIsoDate
+              ? new Date(selectedSquad.eventIsoDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+              : null;
+            const timeLabel = selectedSquad.eventTime ?? null;
+            const isDateFlexible = selectedSquad.dateFlexible !== false;
+            const isTimeFlexible = selectedSquad.timeFlexible !== false;
+            const showExtend = !selectedSquad.eventIsoDate ||
+              new Date(selectedSquad.eventIsoDate + "T00:00:00") <= new Date(new Date().toDateString());
             const expiryLabel = formatExpiryLabel(selectedSquad.expiresAt, selectedSquad.graceStartedAt);
-            if (!expiryLabel) return null;
-            const isUrgent = !!selectedSquad.graceStartedAt ||
+            const expiryUrgent = !!selectedSquad.graceStartedAt ||
               (selectedSquad.expiresAt && new Date(selectedSquad.expiresAt).getTime() - Date.now() < 24 * 60 * 60 * 1000);
+            const hasContent = dateLabel || timeLabel || (isAuthor && onSetSquadDate) || showExtend || expiryLabel;
+            if (!hasContent) return null;
             return (
-              <div
-                style={{
-                  fontFamily: font.mono,
-                  fontSize: 10,
-                  color: isUrgent ? color.accent : color.faint,
-                  margin: "4px 0 0",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                {expiryLabel}
-                {(() => {
-                  const isAuthor = selectedSquad.checkAuthorId === userId;
-                  const isProposed = selectedSquad.dateStatus === 'proposed' && selectedSquad.eventIsoDate;
-                  const dateLabel = selectedSquad.eventIsoDate
-                    ? new Date(selectedSquad.eventIsoDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
-                    : "";
-                  const chipLabel = selectedSquad.eventIsoDate ? (isProposed ? `~${dateLabel}` : dateLabel) : null;
-
-                  if (isAuthor && onSetSquadDate) {
-                    return (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowDatePicker(true);
-                          setDatePickerValue(dateLabel);
-                        }}
-                        style={{
-                          background: isProposed ? 'transparent' : color.accent,
-                          color: isProposed ? color.accent : "#000",
-                          border: isProposed ? `1px dashed ${color.accent}` : "none",
-                          borderRadius: 6,
-                          padding: "2px 8px",
-                          fontFamily: font.mono,
-                          fontSize: 9,
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {chipLabel ?? "Set a date"}
-                      </button>
-                    );
-                  }
-
-                  if (chipLabel) {
-                    return (
-                      <span style={{
-                        background: isProposed ? 'transparent' : color.accent,
-                        color: isProposed ? color.accent : "#000",
-                        border: isProposed ? `1px dashed ${color.accent}` : "none",
-                        borderRadius: 6,
-                        padding: "2px 8px",
-                        fontFamily: font.mono,
-                        fontSize: 9,
-                        fontWeight: 700,
-                      }}>
-                        {chipLabel}
-                      </span>
-                    );
-                  }
-
-                  return null;
-                })()}
-                {selectedSquad.eventIsoDate && onClearSquadDate && selectedSquad.checkAuthorId === userId && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "6px 0 0", flexWrap: "wrap" }}>
+                {dateLabel && (
+                  <span style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "2px 8px",
+                    background: !isDateFlexible ? "rgba(232,255,90,0.08)" : "transparent",
+                    borderRadius: 6,
+                    border: !isDateFlexible ? "1px solid rgba(232,255,90,0.2)" : "1px dashed rgba(232,255,90,0.35)",
+                    fontFamily: font.mono,
+                    fontSize: 9,
+                    fontWeight: 600,
+                    color: color.accent,
+                  }}>
+                    📅 {dateLabel}
+                    <span style={{ fontSize: 8, color: !isDateFlexible ? color.accent : color.dim }}>
+                      {!isDateFlexible ? "locked" : "flexible"}
+                    </span>
+                  </span>
+                )}
+                {timeLabel && (
+                  <span style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "2px 8px",
+                    background: !isTimeFlexible ? "rgba(232,255,90,0.08)" : "transparent",
+                    borderRadius: 6,
+                    border: !isTimeFlexible ? "1px solid rgba(232,255,90,0.2)" : "1px dashed rgba(232,255,90,0.35)",
+                    fontFamily: font.mono,
+                    fontSize: 9,
+                    fontWeight: 600,
+                    color: color.accent,
+                  }}>
+                    🕐 {timeLabel}
+                    <span style={{ fontSize: 8, color: !isTimeFlexible ? color.accent : color.dim }}>
+                      {!isTimeFlexible ? "locked" : "flexible"}
+                    </span>
+                  </span>
+                )}
+                {!dateLabel && !timeLabel && isAuthor && onSetSquadDate && (
                   <button
-                    onClick={async (e) => {
+                    onClick={(e) => {
                       e.stopPropagation();
-                      try {
-                        await onClearSquadDate(selectedSquad.id);
-                        setSelectedSquad((prev) => prev ? { ...prev, eventIsoDate: undefined } : prev);
-                      } catch {
-                        // Error handled by parent
-                      }
+                      setShowDatePicker(true);
+                      setDatePickerValue("");
+                      setDateLocked(false);
+                      setTimeLocked(false);
+                      setDateDismissed(false);
+                      setTimeDismissed(false);
                     }}
                     style={{
-                      background: "none",
-                      color: color.faint,
-                      border: `1px solid ${color.border}`,
+                      background: "transparent",
+                      color: color.accent,
+                      border: `1px dashed ${color.accent}`,
                       borderRadius: 6,
                       padding: "2px 8px",
                       fontFamily: font.mono,
                       fontSize: 9,
+                      fontWeight: 700,
                       cursor: "pointer",
                     }}
                   >
-                    Clear date
+                    Set date &amp; time
                   </button>
                 )}
-                {(() => {
-                  // Show extend for undated squads, or dated squads on/after the event day
-                  const showExtend = !selectedSquad.eventIsoDate ||
-                    new Date(selectedSquad.eventIsoDate + "T00:00:00") <= new Date(new Date().toDateString());
-                  if (!showExtend) return null;
-                  return (
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        try {
-                          const newExpiry = await db.extendSquad(selectedSquad.id);
-                          onSquadUpdate((prev) => prev.map((s) =>
-                            s.id === selectedSquad.id ? { ...s, expiresAt: newExpiry } : s
-                          ));
-                          setSelectedSquad((prev) => prev ? { ...prev, expiresAt: newExpiry } : prev);
-                        } catch {}
-                      }}
-                      style={{
-                        background: "transparent",
-                        color: color.dim,
-                        border: `1px solid ${color.borderMid}`,
-                        borderRadius: 6,
-                        padding: "2px 8px",
-                        fontFamily: font.mono,
-                        fontSize: 9,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      +7 days
-                    </button>
-                  );
-                })()}
+                {showExtend && (
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        const newExpiry = await db.extendSquad(selectedSquad.id);
+                        onSquadUpdate((prev) => prev.map((s) =>
+                          s.id === selectedSquad.id ? { ...s, expiresAt: newExpiry } : s
+                        ));
+                        setSelectedSquad((prev) => prev ? { ...prev, expiresAt: newExpiry } : prev);
+                      } catch {}
+                    }}
+                    style={{
+                      background: "transparent",
+                      color: color.dim,
+                      border: `1px solid ${color.borderMid}`,
+                      borderRadius: 6,
+                      padding: "2px 8px",
+                      fontFamily: font.mono,
+                      fontSize: 9,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    +7 days
+                  </button>
+                )}
+                {expiryLabel && (
+                  <span style={{
+                    fontFamily: font.mono,
+                    fontSize: 9,
+                    color: expiryUrgent ? color.accent : color.faint,
+                    marginLeft: "auto",
+                  }}>
+                    {expiryLabel}
+                  </span>
+                )}
               </div>
             );
           })()}
@@ -690,12 +701,17 @@ const GroupsView = ({
             : null);
           const detectedTime = parseNaturalTime(datePickerValue);
           const isValid = !!parsedISO;
+          const hasDate = !!parsedLabel && !dateDismissed;
+          const hasTime = !!detectedTime && !timeDismissed;
+          const allLocked = hasDate && dateLocked && (!hasTime || timeLocked) && (!detectedTime || !timeDismissed || timeLocked);
+          const bothLocked = hasDate && dateLocked && hasTime && timeLocked;
+          const submitLabel = settingDate ? "..." : (bothLocked ? "Lock it in" : "Propose");
           return (
             <div
               style={{
                 position: "fixed",
                 top: 0, left: 0, right: 0, bottom: 0,
-                background: "rgba(0,0,0,0.7)",
+                background: "rgba(0,0,0,0.3)",
                 display: "flex",
                 alignItems: "flex-start",
                 justifyContent: "center",
@@ -717,7 +733,7 @@ const GroupsView = ({
                 onClick={(e) => e.stopPropagation()}
               >
                 <p style={{ fontFamily: font.serif, fontSize: 18, color: color.text, marginBottom: 6 }}>
-                  Set a date
+                  Set date & time
                 </p>
                 <p style={{ fontFamily: font.mono, fontSize: 11, color: color.dim, marginBottom: 16 }}>
                   Lock in when this is happening
@@ -745,40 +761,85 @@ const GroupsView = ({
                     fontFamily: font.mono,
                     fontSize: 13,
                     outline: "none",
-                    marginBottom: (parsedLabel || detectedTime) ? 4 : 16,
+                    marginBottom: (hasDate || hasTime) ? 8 : 16,
                   }}
                 />
-                {(parsedLabel || detectedTime) && (
+                {/* Auto-detected date/time chips */}
+                {(hasDate || hasTime) && (
                   <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap", marginBottom: 12 }}>
-                    {parsedLabel && (
-                      <span style={{
-                        display: "inline-block",
-                        padding: "3px 8px",
-                        background: "rgba(232,255,90,0.08)",
-                        borderRadius: 8,
-                        border: "1px solid rgba(232,255,90,0.2)",
-                        fontFamily: font.mono,
-                        fontSize: 11,
-                        color: color.accent,
-                        fontWeight: 600,
-                      }}>
-                        📅 {parsedLabel}
-                      </span>
+                    {hasDate && (
+                      <div
+                        onClick={() => setDateLocked((v) => !v)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          padding: "6px 10px",
+                          background: dateLocked ? "rgba(232,255,90,0.08)" : "transparent",
+                          borderRadius: 8,
+                          border: dateLocked ? "1px solid rgba(232,255,90,0.2)" : "1px dashed rgba(232,255,90,0.35)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <span style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600 }}>
+                          📅 {parsedLabel}
+                        </span>
+                        <span style={{ fontFamily: font.mono, fontSize: 9, color: dateLocked ? color.accent : color.dim, fontWeight: 600 }}>
+                          {dateLocked ? "locked" : "flexible"}
+                        </span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDateDismissed(true); }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: color.dim,
+                            fontFamily: font.mono,
+                            fontSize: 13,
+                            cursor: "pointer",
+                            padding: "0 2px",
+                            lineHeight: 1,
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
                     )}
-                    {detectedTime && (
-                      <span style={{
-                        display: "inline-block",
-                        padding: "3px 8px",
-                        background: "rgba(232,255,90,0.08)",
-                        borderRadius: 8,
-                        border: "1px solid rgba(232,255,90,0.2)",
-                        fontFamily: font.mono,
-                        fontSize: 11,
-                        color: color.accent,
-                        fontWeight: 600,
-                      }}>
-                        🕐 {detectedTime}
-                      </span>
+                    {hasTime && (
+                      <div
+                        onClick={() => setTimeLocked((v) => !v)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          padding: "6px 10px",
+                          background: timeLocked ? "rgba(232,255,90,0.08)" : "transparent",
+                          borderRadius: 8,
+                          border: timeLocked ? "1px solid rgba(232,255,90,0.2)" : "1px dashed rgba(232,255,90,0.35)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <span style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600 }}>
+                          🕐 {detectedTime}
+                        </span>
+                        <span style={{ fontFamily: font.mono, fontSize: 9, color: timeLocked ? color.accent : color.dim, fontWeight: 600 }}>
+                          {timeLocked ? "locked" : "flexible"}
+                        </span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setTimeDismissed(true); }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: color.dim,
+                            fontFamily: font.mono,
+                            fontSize: 13,
+                            cursor: "pointer",
+                            padding: "0 2px",
+                            lineHeight: 1,
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
                     )}
                   </div>
                 )}
@@ -831,7 +892,7 @@ const GroupsView = ({
                       fontWeight: 700,
                     }}
                   >
-                    {settingDate ? "..." : (selectedSquad?.checkAuthorId === userId ? (selectedSquad?.eventIsoDate ? "Lock it in" : "Propose date") : "Propose new time")}
+                    {submitLabel}
                   </button>
                 </div>
               </div>
@@ -839,6 +900,17 @@ const GroupsView = ({
           );
         })()}
 
+        {/* Messages + Input blur wrapper */}
+        <div style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          filter: (showSquadPopup || showDatePicker) ? 'blur(4px)' : 'none',
+          opacity: (showSquadPopup || showDatePicker) ? 0.3 : 1,
+          pointerEvents: (showSquadPopup || showDatePicker) ? 'none' : 'auto',
+          transition: 'filter 0.2s, opacity 0.2s',
+          minHeight: 0,
+        }}>
         {/* Messages */}
         <div
           style={{
@@ -1097,6 +1169,229 @@ const GroupsView = ({
             ↑
           </button>
         </div>
+        )}
+        </div>{/* end blur wrapper */}
+
+        {/* Squad popup modal */}
+        {showSquadPopup && (
+          <div
+            onClick={() => { setShowSquadPopup(false); setSquadPopupView('menu'); }}
+            style={{
+              position: "fixed",
+              top: 0, left: 0, right: 0, bottom: 0,
+              background: "rgba(0,0,0,0.3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: color.deep,
+                border: `1px solid ${color.border}`,
+                borderRadius: 16,
+                padding: "24px 20px",
+                maxWidth: 300,
+                width: "90%",
+              }}
+            >
+              {squadPopupView === 'menu' ? (
+                <>
+                  {/* Facepile + member count */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 20 }}>
+                    <div style={{ display: "flex", alignItems: "center", marginBottom: 6 }}>
+                      {selectedSquad.members.slice(0, 4).map((m, idx) => {
+                        const hasConfirmFlow = selectedSquad.dateStatus === 'proposed' || selectedSquad.dateStatus === 'locked';
+                        const confirmResponse = m.userId ? dateConfirms.get(m.userId) : undefined;
+                        const isConfirmed = hasConfirmFlow && dateConfirms.size > 0 && confirmResponse === 'yes';
+                        const isPending = hasConfirmFlow && dateConfirms.size > 0 && confirmResponse !== 'yes';
+                        const avatarBg = isConfirmed
+                          ? color.accent
+                          : isPending
+                            ? color.borderLight
+                            : m.name === "You" ? color.accent : color.borderLight;
+                        const avatarColor = isConfirmed
+                          ? "#000"
+                          : isPending
+                            ? color.dim
+                            : m.name === "You" ? "#000" : color.dim;
+                        return (
+                          <div
+                            key={m.name}
+                            style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: "50%",
+                              background: avatarBg,
+                              color: avatarColor,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontFamily: font.mono,
+                              fontSize: 10,
+                              fontWeight: 700,
+                              marginLeft: idx === 0 ? 0 : -6,
+                              border: `2px solid ${color.deep}`,
+                              position: "relative",
+                              zIndex: 4 - idx,
+                            }}
+                          >
+                            {m.avatar}
+                          </div>
+                        );
+                      })}
+                      {selectedSquad.members.length > 4 && (
+                        <span style={{ fontFamily: font.mono, fontSize: 8, fontWeight: 700, color: color.dim, marginLeft: 4 }}>
+                          +{selectedSquad.members.length - 4}
+                        </span>
+                      )}
+                    </div>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: color.dim }}>
+                      {selectedSquad.members.length} member{selectedSquad.members.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  {/* Menu items */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                    <button
+                      onClick={() => setSquadPopupView('members')}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        borderBottom: `1px solid ${color.border}`,
+                        color: color.text,
+                        fontFamily: font.mono,
+                        fontSize: 12,
+                        padding: "12px 0",
+                        cursor: "pointer",
+                        textAlign: "center",
+                      }}
+                    >
+                      See members
+                    </button>
+                    {selectedSquad.checkAuthorId === userId && onSetSquadDate && (
+                      <button
+                        onClick={() => {
+                          setShowSquadPopup(false);
+                          setSquadPopupView('menu');
+                          setShowDatePicker(true);
+                          const dateLabel = selectedSquad.eventIsoDate
+                            ? new Date(selectedSquad.eventIsoDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+                            : "";
+                          setDatePickerValue(dateLabel);
+                          setDateLocked(false);
+                          setTimeLocked(false);
+                          setDateDismissed(false);
+                          setTimeDismissed(false);
+
+                        }}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          borderBottom: `1px solid ${color.border}`,
+                          color: color.text,
+                          fontFamily: font.mono,
+                          fontSize: 12,
+                          padding: "12px 0",
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        Set plans
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setShowSquadPopup(false);
+                        setSquadPopupView('menu');
+                        setShowLeaveConfirm(true);
+                      }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#ff4444",
+                        fontFamily: font.mono,
+                        fontSize: 12,
+                        padding: "12px 0",
+                        cursor: "pointer",
+                        textAlign: "center",
+                      }}
+                    >
+                      Leave
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Members view - back arrow */}
+                  <button
+                    onClick={() => setSquadPopupView('menu')}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: color.accent,
+                      fontFamily: font.mono,
+                      fontSize: 12,
+                      cursor: "pointer",
+                      padding: 0,
+                      marginBottom: 16,
+                    }}
+                  >
+                    ← Back
+                  </button>
+
+                  {/* Member list */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {selectedSquad.members.map((m) => (
+                      <div
+                        key={m.name}
+                        onClick={() => {
+                          if (m.name !== "You" && m.userId) {
+                            setShowSquadPopup(false);
+                            setSquadPopupView('menu');
+                            onViewProfile?.(m.userId);
+                          }
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          cursor: m.name !== "You" && m.userId ? "pointer" : "default",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: "50%",
+                            background: m.name === "You" ? color.accent : color.borderLight,
+                            color: m.name === "You" ? "#000" : color.dim,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontFamily: font.mono,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {m.avatar}
+                        </div>
+                        <span style={{ fontFamily: font.mono, fontSize: 12, color: color.text }}>
+                          {m.name}
+                        </span>
+                        {m.name === "You" && (
+                          <span style={{ fontFamily: font.mono, fontSize: 10, color: color.dim }}>you</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         )}
       </div>
     );
