@@ -46,30 +46,16 @@ export async function POST(req: NextRequest) {
   if (squad?.check_id) {
     const { data: check } = await supabase
       .from('interest_checks')
-      .select('event_date, author_id')
+      .select('event_date')
       .eq('id', squad.check_id)
       .single();
     checkHadDate = !!check?.event_date;
-
-    if (check?.author_id && check.author_id !== user.id) {
-      return NextResponse.json({ error: 'Only the check creator can set the date' }, { status: 403 });
-    }
   }
 
   // --- Clear date/time ---
   if (clear) {
-    // Only the check creator can clear
+    // Any squad member can clear (membership already verified above)
     if (squad?.check_id) {
-      const { data: check } = await supabase
-        .from('interest_checks')
-        .select('author_id')
-        .eq('id', squad.check_id)
-        .single();
-
-      if (check?.author_id !== user.id) {
-        return NextResponse.json({ error: 'Only the check creator can clear the date' }, { status: 403 });
-      }
-
       await adminClient
         .from('interest_checks')
         .update({ event_date: null, event_time: null })

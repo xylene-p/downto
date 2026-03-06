@@ -399,7 +399,6 @@ const GroupsView = ({
             </div>
           </div>
           {(() => {
-            const isAuthor = selectedSquad.checkAuthorId === userId;
             const dateLabel = selectedSquad.eventIsoDate
               ? new Date(selectedSquad.eventIsoDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
               : null;
@@ -411,7 +410,7 @@ const GroupsView = ({
             const expiryLabel = formatExpiryLabel(selectedSquad.expiresAt, selectedSquad.graceStartedAt);
             const expiryUrgent = !!selectedSquad.graceStartedAt ||
               (selectedSquad.expiresAt && new Date(selectedSquad.expiresAt).getTime() - Date.now() < 24 * 60 * 60 * 1000);
-            const hasContent = dateLabel || timeLabel || (isAuthor && onSetSquadDate) || showExtend || expiryLabel;
+            const hasContent = dateLabel || timeLabel || onSetSquadDate || showExtend || expiryLabel;
             if (!hasContent) return null;
             return (
               <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "6px 0 0", flexWrap: "wrap" }}>
@@ -455,7 +454,7 @@ const GroupsView = ({
                     </span>
                   </span>
                 )}
-                {!dateLabel && !timeLabel && isAuthor && onSetSquadDate && (
+                {!dateLabel && !timeLabel && onSetSquadDate && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -1263,7 +1262,7 @@ const GroupsView = ({
                     >
                       See members
                     </button>
-                    {selectedSquad.checkAuthorId === userId && onSetSquadDate && (
+                    {onSetSquadDate && (
                       <button
                         onClick={() => {
                           setShowSquadPopup(false);
