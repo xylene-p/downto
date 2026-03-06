@@ -242,10 +242,11 @@ export default function AdminPage() {
                     <td style={cellStyle}>{u.username}</td>
                     <td style={cellStyle}>{u.display_name || "—"}</td>
                     <td style={cellStyle}>
-                      {new Date(u.created_at).toLocaleDateString("en-US", {
+                      {new Date(u.created_at).toLocaleString("en-US", {
                         month: "short",
                         day: "numeric",
-                        year: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
                       })}
                     </td>
                     <td style={cellStyle}>
