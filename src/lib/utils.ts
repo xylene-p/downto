@@ -105,6 +105,31 @@ export const parseNaturalDate = (text: string): { label: string; iso: string } |
     const d = new Date(today); d.setDate(d.getDate() + 7);
     return { label: lbl(d), iso: fmt(d) };
   }
+  // "in N weeks" / "in two weeks" etc.
+  const inWeeksMatch = lower.match(/\bin (\d+|two|three|four) weeks?\b/);
+  if (inWeeksMatch) {
+    const wordToNum: Record<string, number> = { two: 2, three: 3, four: 4 };
+    const n = wordToNum[inWeeksMatch[1]] ?? parseInt(inWeeksMatch[1]);
+    if (n > 0) {
+      const d = new Date(today); d.setDate(d.getDate() + n * 7);
+      return { label: lbl(d), iso: fmt(d) };
+    }
+  }
+  // "next month"
+  if (/\bnext month\b/.test(lower)) {
+    const d = new Date(today); d.setMonth(d.getMonth() + 1, 1);
+    return { label: lbl(d), iso: fmt(d) };
+  }
+  // "in N months"
+  const inMonthsMatch = lower.match(/\bin (\d+|two|three) months?\b/);
+  if (inMonthsMatch) {
+    const wordToNum: Record<string, number> = { two: 2, three: 3 };
+    const n = wordToNum[inMonthsMatch[1]] ?? parseInt(inMonthsMatch[1]);
+    if (n > 0) {
+      const d = new Date(today); d.setMonth(d.getMonth() + n, 1);
+      return { label: lbl(d), iso: fmt(d) };
+    }
+  }
   // "next [day]" — skip this week
   const nextDayMatch = lower.match(/\bnext (mon|tue|wed|thu|fri|sat|sun|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
   if (nextDayMatch) {
