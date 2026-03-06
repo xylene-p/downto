@@ -108,7 +108,7 @@ const FirstCheckScreen = ({
 
           if (isEditing) {
             const validate = (v: string): string | null => {
-              if (!v) return "";
+              if (!v) return null;
               if (chip.key === "date") {
                 const parsed = parseNaturalDate(v);
                 if (parsed) return parsed.label;
@@ -208,7 +208,7 @@ const FirstCheckScreen = ({
               )}
               {hasValue && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); chip.setManual(""); chip.setLocked(false); }}
+                  onClick={(e) => { e.stopPropagation(); chip.setManual(null); chip.setLocked(false); }}
                   style={{ background: "none", border: "none", color: color.dim, fontFamily: font.mono, fontSize: 13, cursor: "pointer", padding: "0 2px", lineHeight: 1 }}
                 >
                   ×

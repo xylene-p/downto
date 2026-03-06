@@ -911,7 +911,7 @@ const AddModal = ({
 
                 if (isEditing) {
                   const validate = (v: string): string | null => {
-                    if (!v) return "";
+                    if (!v) return null;
                     if (chip.key === "date") {
                       const parsed = parseNaturalDate(v);
                       if (parsed) return parsed.label;
@@ -1024,7 +1024,7 @@ const AddModal = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          chip.setManual("");
+                          chip.setManual(null);
                           chip.setLocked(false);
                         }}
                         style={{
