@@ -1,6 +1,6 @@
 export const colors = {
   dt: '#e8ff5a',
-  danger: '#ff3b30',
+  danger: '#ff6b6b',
   neutral: {
     925: '#111',
   },
