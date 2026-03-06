@@ -199,6 +199,26 @@ const formatTimeMatch = (rawHour: number, minutes: string | null, meridiem: "am"
   return minutes ? `${rawHour}:${minutes} ${suffix}` : `${rawHour} ${suffix}`;
 };
 
+/** Parse a location from text, e.g. "dinner at Jollibee" → "Jollibee" */
+export const parseNaturalLocation = (text: string): string | null => {
+  const lower = text.toLowerCase();
+
+  // Skip "at" followed by time-like words
+  const timeWords = /^(noon|midnight|night|\d{1,2}(:\d{2})?\s*(am|pm)?)\b/;
+
+  // Match "at {location}" — capture everything after "at" until end or common stop words
+  const atMatch = lower.match(/\bat\s+(.+?)(?:\s*[·|,]|\s+(?:on|at|around|from|with)\s|\s*$)/);
+  if (atMatch) {
+    const candidate = atMatch[1].trim();
+    if (timeWords.test(candidate)) return null;
+    if (candidate.length < 2 || candidate.length > 50) return null;
+    // Capitalize first letter of each word
+    return candidate.replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  return null;
+};
+
 /** Format a date as relative time ago (e.g., "2h", "5m", "now") */
 export const formatTimeAgo = (date: Date): string => {
   const now = new Date();
