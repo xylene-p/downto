@@ -122,6 +122,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         eventTime: s.check?.event_time ?? undefined,
         dateFlexible: s.check?.date_flexible ?? true,
         timeFlexible: s.check?.time_flexible ?? true,
+        maxSquadSize: s.check?.max_squad_size ?? undefined,
         dateStatus: (s.date_status === 'proposed' || s.date_status === 'locked') ? s.date_status : undefined,
         members,
         messages,

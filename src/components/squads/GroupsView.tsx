@@ -1241,7 +1241,7 @@ const GroupsView = ({
                       )}
                     </div>
                     <span style={{ fontFamily: font.mono, fontSize: 10, color: color.dim }}>
-                      {selectedSquad.members.length} member{selectedSquad.members.length !== 1 ? 's' : ''}
+                      {selectedSquad.members.length}{selectedSquad.maxSquadSize && selectedSquad.maxSquadSize < 999 ? `/${selectedSquad.maxSquadSize}` : ''} member{selectedSquad.members.length !== 1 ? 's' : ''}
                     </span>
                   </div>
 

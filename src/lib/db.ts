@@ -792,7 +792,7 @@ export async function getSquads(): Promise<Squad[]> {
     .select(`
       *,
       event:events(*),
-      check:interest_checks(author_id, event_time, date_flexible, time_flexible),
+      check:interest_checks(author_id, event_time, date_flexible, time_flexible, max_squad_size),
       members:squad_members(*, user:profiles!user_id(*)),
       messages(*, sender:profiles!sender_id(*))
     `)
