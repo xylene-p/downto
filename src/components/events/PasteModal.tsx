@@ -910,21 +910,49 @@ const AddModal = ({
                 const isEditing = editingChip === chip.key;
 
                 if (isEditing) {
+                  const validate = (v: string): string | null => {
+                    if (!v) return "";
+                    if (chip.key === "date") {
+                      const parsed = parseNaturalDate(v);
+                      if (parsed) return parsed.label;
+                      if (parseDateToISO(v)) return v;
+                      return null; // invalid
+                    }
+                    if (chip.key === "time") {
+                      const parsed = parseNaturalTime(v);
+                      if (parsed) return parsed;
+                      return null; // invalid
+                    }
+                    return v; // location: accept anything
+                  };
                   return (
                     <input
                       key={chip.key}
                       autoFocus
-                      placeholder={chip.placeholder.replace("?", "")}
+                      placeholder={chip.key === "date" ? "e.g. friday, mar 7" : chip.key === "time" ? "e.g. 7pm, noon" : "e.g. Jollibee"}
                       defaultValue={value ?? ""}
                       onBlur={(e) => {
                         const v = e.target.value.trim();
-                        chip.setManual(v || "");
-                        setEditingChip(null);
+                        const result = validate(v);
+                        if (result !== null) {
+                          chip.setManual(result);
+                          setEditingChip(null);
+                        } else {
+                          // Invalid — flash red then refocus
+                          e.target.style.borderColor = "#ff4444";
+                          setTimeout(() => {
+                            e.target.style.borderColor = color.accent;
+                          }, 800);
+                          e.target.focus();
+                        }
                       }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
                           (e.target as HTMLInputElement).blur();
+                        }
+                        if (e.key === "Escape") {
+                          setEditingChip(null);
                         }
                       }}
                       style={{
@@ -938,6 +966,7 @@ const AddModal = ({
                         fontWeight: 600,
                         outline: "none",
                         width: 120,
+                        transition: "border-color 0.2s",
                       }}
                     />
                   );
