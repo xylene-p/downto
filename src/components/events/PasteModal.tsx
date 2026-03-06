@@ -760,6 +760,10 @@ const AddModal = ({
                 onChange={(e) => {
                   const val = e.target.value.slice(0, 280);
                   setIdea(val);
+                  // Reset dismissed chips so auto-detection re-evaluates
+                  setManualDate(null);
+                  setManualTime(null);
+                  setManualLocation(null);
                   // Detect @mention
                   const cursor = e.target.selectionStart ?? val.length;
                   const before = val.slice(0, cursor);
@@ -911,7 +915,7 @@ const AddModal = ({
 
                 if (isEditing) {
                   const validate = (v: string): string | null => {
-                    if (!v) return null;
+                    if (!v) return "";
                     if (chip.key === "date") {
                       const parsed = parseNaturalDate(v);
                       if (parsed) return parsed.label;
@@ -1024,7 +1028,7 @@ const AddModal = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          chip.setManual(null);
+                          chip.setManual("");
                           chip.setLocked(false);
                         }}
                         style={{
