@@ -787,21 +787,6 @@ const GroupsView = ({
                         <span style={{ fontFamily: font.mono, fontSize: 9, color: dateLocked ? color.accent : color.dim, fontWeight: 600 }}>
                           {dateLocked ? "locked" : "flexible"}
                         </span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDateDismissed(true); }}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            color: color.dim,
-                            fontFamily: font.mono,
-                            fontSize: 13,
-                            cursor: "pointer",
-                            padding: "0 2px",
-                            lineHeight: 1,
-                          }}
-                        >
-                          ×
-                        </button>
                       </div>
                     )}
                     {hasTime && (
@@ -824,21 +809,6 @@ const GroupsView = ({
                         <span style={{ fontFamily: font.mono, fontSize: 9, color: timeLocked ? color.accent : color.dim, fontWeight: 600 }}>
                           {timeLocked ? "locked" : "flexible"}
                         </span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setTimeDismissed(true); }}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            color: color.dim,
-                            fontFamily: font.mono,
-                            fontSize: 13,
-                            cursor: "pointer",
-                            padding: "0 2px",
-                            lineHeight: 1,
-                          }}
-                        >
-                          ×
-                        </button>
                       </div>
                     )}
                   </div>
