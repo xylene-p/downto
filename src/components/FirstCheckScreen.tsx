@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { font, color } from "@/lib/styles";
-import { parseNaturalDate, parseNaturalTime, parseNaturalLocation, parseDateToISO, sanitize } from "@/lib/utils";
+import { parseNaturalDate, parseNaturalTime, parseNaturalLocation, parseDateToISO, sanitize, findDateTimeSpans, stripDateTimeText } from "@/lib/utils";
+import HighlightedTextarea from "./HighlightedTextarea";
 import Grain from "./Grain";
 
 const FirstCheckScreen = ({
@@ -71,29 +72,28 @@ const FirstCheckScreen = ({
       </p>
 
       {/* Idea textarea */}
-      <textarea
-        ref={ideaRef}
-        value={idea}
-        onChange={(e) => { setIdea(e.target.value.slice(0, 280)); setManualDate(null); setManualTime(null); setManualLocation(null); }}
-        maxLength={280}
-        placeholder="e.g., park hang w me and @kat ^.^ dinner at 7 tomorrow? need to touch grass asap"
-        style={{
-          width: "100%",
-          background: color.card,
-          border: `1px solid ${color.borderMid}`,
-          borderRadius: 12,
-          padding: "14px 16px",
-          color: color.text,
-          fontFamily: font.mono,
-          fontSize: 13,
-          outline: "none",
-          resize: "none",
-          height: 100,
-          lineHeight: 1.5,
-          marginBottom: 16,
-          boxSizing: "border-box",
-        }}
-      />
+      <div style={{ marginBottom: 16 }}>
+        <HighlightedTextarea
+          textareaRef={ideaRef}
+          value={idea}
+          onChange={(e) => { setIdea(e.target.value.slice(0, 280)); setManualDate(null); setManualTime(null); setManualLocation(null); }}
+          spans={findDateTimeSpans(idea)}
+          maxLength={280}
+          placeholder="e.g., park hang w me and @kat ^.^ dinner at 7 tomorrow? need to touch grass asap"
+          background={color.card}
+          style={{
+            width: "100%",
+            border: `1px solid ${color.borderMid}`,
+            borderRadius: 12,
+            padding: "14px 16px",
+            color: color.text,
+            fontFamily: font.mono,
+            fontSize: 13,
+            height: 100,
+            lineHeight: 1.5,
+          }}
+        />
+      </div>
 
       {/* Date / Time / Location chips — always visible */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
@@ -303,7 +303,8 @@ const FirstCheckScreen = ({
               ? (manualDate ? parseDateToISO(manualDate) : null)
               : (detectedDate?.iso ?? null);
             const eventTime = manualTime !== null ? (manualTime || null) : (detectedTime ?? null);
-            onComplete(sanitize(idea, 280), checkTimer, eventDate, squadSize === 0 ? 999 : squadSize, eventTime, !dateLocked, !timeLocked);
+            const title = sanitize(stripDateTimeText(idea), 280);
+            onComplete(title, checkTimer, eventDate, squadSize === 0 ? 999 : squadSize, eventTime, !dateLocked, !timeLocked);
           }
         }}
         disabled={!idea.trim()}

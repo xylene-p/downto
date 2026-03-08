@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { font, color } from "@/lib/styles";
 import type { ScrapedEvent } from "@/lib/ui-types";
-import { parseNaturalDate, parseNaturalTime, parseNaturalLocation, parseDateToISO, sanitize } from "@/lib/utils";
+import { parseNaturalDate, parseNaturalTime, parseNaturalLocation, parseDateToISO, sanitize, findDateTimeSpans, stripDateTimeText } from "@/lib/utils";
+import HighlightedTextarea from "../HighlightedTextarea";
 import { logWarn } from "@/lib/logger";
 import * as db from "@/lib/db";
 
@@ -754,8 +755,8 @@ const AddModal = ({
               >
                 Got an idea? See if your friends are down.
               </p>
-              <textarea
-                ref={ideaRef}
+              <HighlightedTextarea
+                textareaRef={ideaRef}
                 value={idea}
                 onChange={(e) => {
                   const val = e.target.value.slice(0, 280);
@@ -817,19 +818,18 @@ const AddModal = ({
                     setMentionIdx(-1);
                   }
                 }}
+                spans={findDateTimeSpans(idea)}
                 maxLength={280}
                 placeholder="e.g., park hang w me and @kat ^.^ dinner at 7 tomorrow? need to touch grass asap"
+                background={color.deep}
                 style={{
                   width: "100%",
-                  background: color.deep,
                   border: `1px solid ${color.borderMid}`,
                   borderRadius: 12,
                   padding: "14px 16px",
                   color: color.text,
                   fontFamily: font.mono,
                   fontSize: 13,
-                  outline: "none",
-                  resize: "none",
                   height: 100,
                   lineHeight: 1.5,
                 }}
@@ -1239,7 +1239,8 @@ const AddModal = ({
                       m === f.name.split(' ')[0]?.toLowerCase()
                     ))
                     .map(f => f.id);
-                  onInterestCheck(sanitize(idea, 280), checkTimer, eventDate, squadSize === 0 ? 999 : squadSize, checkMovie ?? undefined, eventTime, !dateLocked, !timeLocked, taggedIds.length > 0 ? taggedIds : undefined);
+                  const title = sanitize(stripDateTimeText(idea), 280);
+                  onInterestCheck(title, checkTimer, eventDate, squadSize === 0 ? 999 : squadSize, checkMovie ?? undefined, eventTime, !dateLocked, !timeLocked, taggedIds.length > 0 ? taggedIds : undefined);
                   onClose();
                 }
               }}

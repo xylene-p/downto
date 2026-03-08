@@ -244,6 +244,109 @@ export const parseNaturalLocation = (text: string): string | null => {
   return null;
 };
 
+// ── Span-finding helpers (for inline highlighting) ─────────────────────
+
+export type TextSpan = { start: number; end: number; type: "date" | "time" };
+
+/** Find the position of the first date phrase in text (mirrors parseNaturalDate priority) */
+export const findDateSpan = (text: string): TextSpan | null => {
+  const lower = text.toLowerCase();
+
+  // Order matches parseNaturalDate priority
+  const patterns: RegExp[] = [
+    /\b(tonight|today|tn)\b/,
+    /\b(tomorrow|tmrw|tmr)\b/,
+    /\bthis weekend\b/,
+    /\bnext weekend\b/,
+    /\bin \d+ days?\b/,
+    /\b(in a week|next week)\b/,
+    /\bin (\d+|two|three|four) weeks?\b/,
+    /\bnext month\b/,
+    /\bin (\d+|two|three) months?\b/,
+    /\bnext (mon|tue|wed|thu|fri|sat|sun|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/,
+    /\bthis (mon|tue|wed|thu|fri|sat|sun|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/,
+    /\b(mon|tue|wed|thu|fri|sat|sun|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/,
+    /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}(?:st|nd|rd|th)?\b/,
+    /\b\d{1,2}\/\d{1,2}\b/,
+  ];
+
+  for (const pattern of patterns) {
+    const m = lower.match(pattern);
+    if (m && m.index !== undefined) {
+      // Verify parseNaturalDate would actually parse this
+      if (parseNaturalDate(text)) {
+        return { start: m.index, end: m.index + m[0].length, type: "date" };
+      }
+    }
+  }
+  return null;
+};
+
+/** Find the position of the first time phrase in text (mirrors parseNaturalTime priority) */
+export const findTimeSpan = (text: string): TextSpan | null => {
+  const lower = text.toLowerCase();
+
+  // "noon" / "midnight" — include "at " prefix if present
+  for (const word of ["noon", "midnight"] as const) {
+    const re = new RegExp(`\\bat\\s+${word}\\b|\\b${word}\\b`);
+    const m = lower.match(re);
+    if (m && m.index !== undefined) {
+      return { start: m.index, end: m.index + m[0].length, type: "time" };
+    }
+  }
+
+  // "at 7", "at 7pm", "at 7:30pm"
+  const atRe = /\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/;
+  const atM = lower.match(atRe);
+  if (atM && atM.index !== undefined) {
+    const hour = parseInt(atM[1]);
+    if (hour >= 1 && hour <= 12) {
+      return { start: atM.index, end: atM.index + atM[0].length, type: "time" };
+    }
+  }
+
+  // "7pm", "7:30pm"
+  const meridiemRe = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/;
+  const merM = lower.match(meridiemRe);
+  if (merM && merM.index !== undefined) {
+    const hour = parseInt(merM[1]);
+    if (hour >= 1 && hour <= 12) {
+      return { start: merM.index, end: merM.index + merM[0].length, type: "time" };
+    }
+  }
+
+  return null;
+};
+
+/** Find all date/time spans in text, sorted by position */
+export const findDateTimeSpans = (text: string): TextSpan[] => {
+  const spans: TextSpan[] = [];
+  const dateSpan = findDateSpan(text);
+  if (dateSpan) spans.push(dateSpan);
+  const timeSpan = findTimeSpan(text);
+  if (timeSpan) spans.push(timeSpan);
+  // Remove overlaps: if spans overlap, keep only the first (date has priority)
+  if (spans.length === 2) {
+    const [a, b] = spans;
+    if (a.start < b.end && b.start < a.end) {
+      spans.pop();
+    }
+  }
+  return spans.sort((a, b) => a.start - b.start);
+};
+
+/** Strip detected date/time phrases from text, collapse whitespace */
+export const stripDateTimeText = (text: string): string => {
+  const spans = findDateTimeSpans(text);
+  if (spans.length === 0) return text;
+  // Remove spans from right to left to preserve indices
+  let result = text;
+  for (let i = spans.length - 1; i >= 0; i--) {
+    result = result.slice(0, spans[i].start) + result.slice(spans[i].end);
+  }
+  return result.replace(/\s{2,}/g, " ").trim();
+};
+
 /** Format a date as relative time ago (e.g., "2h", "5m", "now") */
 export const formatTimeAgo = (date: Date): string => {
   const now = new Date();
