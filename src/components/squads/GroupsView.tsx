@@ -134,7 +134,8 @@ const GroupsView = ({
     if (!vv) return;
     const update = () => {
       setChatHeight(`${vv.height}px`);
-      setChatTop(vv.offsetTop);
+      // Prevent iOS from scrolling the page when focusing input — keeps fixed positioning correct
+      window.scrollTo(0, 0);
       // Scroll messages into view after keyboard resize
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "instant" }), 50);
     };
