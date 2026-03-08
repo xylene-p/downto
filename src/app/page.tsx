@@ -719,6 +719,16 @@ export default function Home() {
 
   return (
     <div>
+      {/* Fixed background behind header — covers Dynamic Island / notch area */}
+      <div style={{
+        position: "fixed",
+        top: -120,
+        left: 0,
+        right: 0,
+        height: 120,
+        background: color.bg,
+        zIndex: 49,
+      }} />
       <Header
         unreadCount={notificationsHook.unreadCount}
         onOpenNotifications={() => {
