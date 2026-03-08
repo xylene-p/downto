@@ -1318,6 +1318,7 @@ const GroupsView = ({
             }}
           />
           <button
+            onMouseDown={(e) => e.preventDefault()}
             onClick={handleSend}
             disabled={!newMsg.trim()}
             style={{
