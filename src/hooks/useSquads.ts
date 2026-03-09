@@ -108,8 +108,9 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         userId: m.user_id,
       }));
       const memberIds = new Set(members.map((m) => m.userId));
+      const waitlistedIds = new Set(waitlistedMembers.map((m) => m.userId));
       const downResponders = ((s.check as unknown as Record<string, unknown>)?.responses as Array<{ user_id: string; response: string; user?: { display_name?: string; avatar_letter?: string } }> ?? [])
-        .filter((r) => r.response === 'down' && !memberIds.has(r.user_id))
+        .filter((r) => r.response === 'down' && !memberIds.has(r.user_id) && !waitlistedIds.has(r.user_id))
         .map((r) => ({
           name: r.user?.display_name ?? 'Unknown',
           avatar: r.user?.avatar_letter ?? r.user?.display_name?.charAt(0)?.toUpperCase() ?? '?',

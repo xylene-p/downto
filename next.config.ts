@@ -32,6 +32,7 @@ function detectSkipNotify(): string {
 }
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["http://127.0.0.1"],
   reactStrictMode: true,
   typescript: {
     // Type errors are caught in dev/IDE; skip during build to save ~8s on Vercel

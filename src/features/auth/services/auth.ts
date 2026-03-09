@@ -24,28 +24,41 @@ export async function sendOtp(_prevState: any, formData: FormData) {
   const email = formData.get('email') as string;
 
   // Local dev: skip OTP email and sign in directly
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('127.0.0.1')) {
-    const { createClient: createSupabaseClient } =
-      await import('@supabase/supabase-js');
+  const isLocalDev = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('127.0.0.1')
+    || process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('localhost');
+  if (isLocalDev) {
+    console.log('[dev-auth] Auto-login attempt for', email);
+    const { createClient: createSupabaseClient } = await import(
+      '@supabase/supabase-js'
+    );
     const admin = createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
     );
     const { data, error: genError } = await admin.auth.admin.generateLink({
       type: 'magiclink',
       email,
     });
-    if (genError || !data?.properties?.email_otp) {
-      return genError?.message || 'Failed to generate dev login';
+    if (genError) {
+      console.error('[dev-auth] generateLink error:', genError.message);
+      return genError.message;
     }
+    if (!data?.properties?.email_otp) {
+      console.error('[dev-auth] No email_otp in response:', JSON.stringify(data?.properties));
+      return 'Dev login: no OTP returned';
+    }
+    console.log('[dev-auth] Got OTP, verifying...');
     const { error: verifyError } = await supabase.auth.verifyOtp({
       email,
       token: data.properties.email_otp,
       type: 'email',
     });
     if (verifyError) {
+      console.error('[dev-auth] verifyOtp error:', verifyError.message);
       return verifyError.message;
     }
+    console.log('[dev-auth] Success, redirecting');
     redirect('/');
   }
 
