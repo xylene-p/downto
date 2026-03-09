@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import * as db from "@/lib/db";
 import { font, color } from "@/lib/styles";
 import type { Squad } from "@/lib/ui-types";
@@ -80,6 +80,7 @@ const GroupsView = ({
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showImOutConfirm, setShowImOutConfirm] = useState(false);
   const [kickTarget, setKickTarget] = useState<{ name: string; userId: string } | null>(null);
+  const [memberMenu, setMemberMenu] = useState<{ name: string; userId: string } | null>(null);
   const [showSquadPopup, setShowSquadPopup] = useState(false);
   const [squadPopupView, setSquadPopupView] = useState<'menu' | 'members'>('menu');
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -1538,8 +1539,8 @@ const GroupsView = ({
                       const isConfirmed = isLocked || (isProposed && dateConfirms.size > 0 && confirmResponse === 'yes');
                       const isGrayed = isProposed && dateConfirms.size > 0 && !isConfirmed;
                       return (
+                      <React.Fragment key={m.name}>
                       <div
-                        key={m.name}
                         onClick={() => {
                           if (m.name !== "You" && m.userId) {
                             setShowSquadPopup(false);
@@ -1591,54 +1592,90 @@ const GroupsView = ({
                                 {isConfirmed ? "down" : confirmResponse === 'no' ? "out" : "pending"}
                               </span>
                             )}
-                            {onSetMemberRole && (
-                              <button
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  await onSetMemberRole(selectedSquad.id, m.userId!, 'waitlist');
-                                  const updated = {
-                                    ...selectedSquad,
-                                    members: selectedSquad.members.filter((x) => x.userId !== m.userId),
-                                    waitlistedMembers: [...(selectedSquad.waitlistedMembers ?? []), { name: m.name, avatar: m.avatar, userId: m.userId! }],
-                                  };
-                                  setSelectedSquad(updated);
-                                  onSquadUpdate((prev: Squad[]) => prev.map((s) => s.id === selectedSquad.id ? updated : s));
-                                }}
-                                style={{
-                                  background: "none",
-                                  border: "none",
-                                  color: color.faint,
-                                  fontFamily: font.mono,
-                                  fontSize: 10,
-                                  cursor: "pointer",
-                                  padding: "2px 0",
-                                }}
-                              >
-                                waitlist
-                              </button>
-                            )}
-                            {onKickMember && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setKickTarget({ name: m.name, userId: m.userId! });
-                                }}
-                                style={{
-                                  background: "none",
-                                  border: "none",
-                                  color: color.faint,
-                                  fontFamily: font.mono,
-                                  fontSize: 10,
-                                  cursor: "pointer",
-                                  padding: "2px 0",
-                                }}
-                              >
-                                kick
-                              </button>
-                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setMemberMenu(memberMenu?.userId === m.userId ? null : { name: m.name, userId: m.userId! });
+                              }}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                color: color.faint,
+                                fontFamily: font.mono,
+                                fontSize: 14,
+                                cursor: "pointer",
+                                padding: "2px 4px",
+                                letterSpacing: "0.1em",
+                              }}
+                            >
+                              •••
+                            </button>
                           </div>
                         )}
                       </div>
+                      {memberMenu?.userId === m.userId && (
+                        <div style={{
+                          background: color.deep,
+                          border: `1px solid ${color.border}`,
+                          borderRadius: 10,
+                          padding: "4px 0",
+                          marginTop: 4,
+                          marginLeft: 38,
+                        }}>
+                          {onSetMemberRole && (
+                            <button
+                              onClick={async () => {
+                                setMemberMenu(null);
+                                await onSetMemberRole(selectedSquad.id, m.userId!, 'waitlist');
+                                const updated = {
+                                  ...selectedSquad,
+                                  members: selectedSquad.members.filter((x) => x.userId !== m.userId),
+                                  waitlistedMembers: [...(selectedSquad.waitlistedMembers ?? []), { name: m.name, avatar: m.avatar, userId: m.userId! }],
+                                };
+                                setSelectedSquad(updated);
+                                onSquadUpdate((prev: Squad[]) => prev.map((s) => s.id === selectedSquad.id ? updated : s));
+                              }}
+                              style={{
+                                display: "block",
+                                width: "100%",
+                                background: "none",
+                                border: "none",
+                                color: color.muted,
+                                fontFamily: font.mono,
+                                fontSize: 11,
+                                padding: "8px 14px",
+                                cursor: "pointer",
+                                textAlign: "left",
+                              }}
+                            >
+                              Move to waitlist
+                            </button>
+                          )}
+                          {onKickMember && (
+                            <button
+                              onClick={() => {
+                                setMemberMenu(null);
+                                setKickTarget({ name: m.name, userId: m.userId! });
+                              }}
+                              style={{
+                                display: "block",
+                                width: "100%",
+                                background: "none",
+                                border: "none",
+                                color: "#ff4444",
+                                fontFamily: font.mono,
+                                fontSize: 11,
+                                padding: "8px 14px",
+                                cursor: "pointer",
+                                textAlign: "left",
+                              }}
+                            >
+                              Kick from squad
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      </React.Fragment>
                       );
                     })}
                   </div>
