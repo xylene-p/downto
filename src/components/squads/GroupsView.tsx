@@ -55,7 +55,7 @@ const GroupsView = ({
   clearAutoSelectSquadId?: () => void;
   onSendMessage?: (squadDbId: string, text: string) => Promise<void>;
   onLeaveSquad?: (squadDbId: string) => Promise<void>;
-  onSetSquadDate?: (squadDbId: string, date: string, time?: string | null) => Promise<void>;
+  onSetSquadDate?: (squadDbId: string, date: string, time?: string | null, locked?: boolean) => Promise<void>;
   onClearSquadDate?: (squadDbId: string) => Promise<void>;
   onConfirmDate?: (squadDbId: string, response: 'yes' | 'no') => Promise<void>;
   userId?: string | null;
@@ -873,10 +873,14 @@ const GroupsView = ({
                       if (!parsedISO || !selectedSquad?.id || !onSetSquadDate) return;
                       setSettingDate(true);
                       try {
-                        await onSetSquadDate(selectedSquad.id, parsedISO, detectedTime);
+                        await onSetSquadDate(selectedSquad.id, parsedISO, detectedTime, bothLocked);
                         setSelectedSquad((prev) => prev ? {
                           ...prev,
                           eventIsoDate: parsedISO,
+                          eventTime: detectedTime ?? prev.eventTime,
+                          dateFlexible: !dateLocked,
+                          timeFlexible: !timeLocked,
+                          dateStatus: bothLocked ? 'locked' : 'proposed',
                           graceStartedAt: undefined,
                         } : prev);
                         setShowDatePicker(false);

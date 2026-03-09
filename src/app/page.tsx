@@ -860,7 +860,7 @@ export default function Home() {
             onLeaveSquad={async (squadDbId) => {
               await db.leaveSquad(squadDbId);
             }}
-            onSetSquadDate={async (squadDbId, date, time) => {
+            onSetSquadDate={async (squadDbId, date, time, locked) => {
               const token = (await supabase.auth.getSession()).data.session?.access_token;
               if (!token) return;
               const res = await fetch('/api/squads/set-date', {
@@ -869,16 +869,19 @@ export default function Home() {
                   'Content-Type': 'application/json',
                   Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ squadId: squadDbId, date, time: time ?? null }),
+                body: JSON.stringify({ squadId: squadDbId, date, time: time ?? null, locked: !!locked }),
               });
               if (!res.ok) throw new Error('Failed to set date');
               const { expires_at, date_status } = await res.json();
               squadsHook.setSquads((prev) => prev.map((s) => s.id === squadDbId ? {
                 ...s,
                 eventIsoDate: date,
+                eventTime: time ?? s.eventTime,
                 expiresAt: expires_at,
                 graceStartedAt: undefined,
-                dateStatus: date_status === 'proposed' ? 'proposed' : undefined,
+                dateStatus: date_status === 'locked' ? 'locked' : date_status === 'proposed' ? 'proposed' : undefined,
+                dateFlexible: date_status === 'proposed',
+                timeFlexible: date_status === 'proposed',
               } : s));
               // Update the linked check's date so the feed card reflects the change
               const squad = squadsHook.squads.find((s) => s.id === squadDbId);

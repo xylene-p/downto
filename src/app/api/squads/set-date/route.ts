@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
   if (isAuthError(auth)) return auth.error;
   const { user, supabase } = auth;
 
-  const { squadId, date, time, clear } = await req.json();
+  const { squadId, date, time, clear, locked } = await req.json();
   if (!squadId) {
     return NextResponse.json({ error: 'squadId required' }, { status: 400 });
   }
@@ -90,14 +90,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'date required' }, { status: 400 });
   }
 
-  // Any date change on a check-based squad triggers the confirm flow
-  const isProposal = !!squad?.check_id;
+  // Check-based squads use the confirm flow unless the user locked everything in
+  const isProposal = !!squad?.check_id && !locked;
 
   // Update expires_at to date + 24h
   const expiresAt = new Date(date + 'T23:59:59Z');
   expiresAt.setHours(expiresAt.getHours() + 24);
 
-  const dateStatus = isProposal ? 'proposed' : null;
+  const dateStatus = locked ? 'locked' : isProposal ? 'proposed' : null;
 
   const { error: updateError } = await supabase
     .from('squads')
@@ -118,8 +118,8 @@ export async function POST(req: NextRequest) {
       .from('interest_checks')
       .update({
         event_date: date,
-        date_flexible: isProposal,
-        ...(time !== undefined ? { event_time: time, time_flexible: isProposal } : {}),
+        date_flexible: !locked,
+        ...(time !== undefined ? { event_time: time, time_flexible: !locked } : {}),
       })
       .eq('id', squad.check_id);
   }
@@ -201,7 +201,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, expires_at: expiresAt.toISOString(), date_status: 'proposed' });
   }
 
-  // --- Standard lock flow (dated checks) ---
+  // --- Standard lock flow ---
   await adminClient
     .from('messages')
     .insert({
@@ -211,5 +211,5 @@ export async function POST(req: NextRequest) {
       is_system: true,
     });
 
-  return NextResponse.json({ ok: true, expires_at: expiresAt.toISOString(), date_status: null });
+  return NextResponse.json({ ok: true, expires_at: expiresAt.toISOString(), date_status: locked ? 'locked' : null });
 }
