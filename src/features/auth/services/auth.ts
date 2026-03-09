@@ -1,7 +1,22 @@
 'use server';
 
 import { redirect } from 'next/navigation'; // For redirection after successful verification
-import { createClient } from './supabase/server';
+import { createClient } from '@/lib/supabase/server';
+
+export async function getUser() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error) {
+    redirect('/login');
+  }
+
+  return user;
+}
 
 export async function sendOtp(_prevState: any, formData: FormData) {
   const supabase = await createClient();
@@ -10,9 +25,8 @@ export async function sendOtp(_prevState: any, formData: FormData) {
 
   // Local dev: skip OTP email and sign in directly
   if (process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('127.0.0.1')) {
-    const { createClient: createSupabaseClient } = await import(
-      '@supabase/supabase-js'
-    );
+    const { createClient: createSupabaseClient } =
+      await import('@supabase/supabase-js');
     const admin = createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
