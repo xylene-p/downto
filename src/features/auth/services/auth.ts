@@ -12,7 +12,7 @@ export async function getUser() {
   } = await supabase.auth.getUser();
 
   if (error) {
-    throw new Error('Not authenticated');
+    redirect('/login');
   }
 
   return user;
