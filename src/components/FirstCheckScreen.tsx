@@ -176,6 +176,10 @@ const FirstCheckScreen = ({
             >
               <span
                 onClick={() => {
+                  if (chip.key === "location") {
+                    if (hasValue) chip.setLocked(!chip.locked);
+                    return;
+                  }
                   if (!hasValue) setEditingChip(chip.key);
                   else if (chip.locked) chip.setLocked(false);
                   else setEditingChip(chip.key);

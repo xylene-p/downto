@@ -246,7 +246,7 @@ export const parseNaturalLocation = (text: string): string | null => {
 
 // ── Span-finding helpers (for inline highlighting) ─────────────────────
 
-export type TextSpan = { start: number; end: number; type: "date" | "time" };
+export type TextSpan = { start: number; end: number; type: "date" | "time" | "location" };
 
 /** Find the position of the first date phrase in text (mirrors parseNaturalDate priority) */
 export const findDateSpan = (text: string): TextSpan | null => {
@@ -318,18 +318,60 @@ export const findTimeSpan = (text: string): TextSpan | null => {
   return null;
 };
 
-/** Find all date/time spans in text, sorted by position */
+/** Find the position of the "at {location}" phrase in text (mirrors parseNaturalLocation) */
+export const findLocationSpan = (text: string): TextSpan | null => {
+  if (!parseNaturalLocation(text)) return null;
+
+  const lower = text.toLowerCase();
+  const timeWords = /^(noon|midnight|night|\d{1,2}(:\d{2})?\s*(am|pm)?)\b/;
+  const atRe = /\bat\s+(.+?)(?:\s*[·|,]|\s+(?:on|at|around|from|with)\s|\s*$)/;
+  const m = lower.match(atRe);
+  if (!m || m.index === undefined) return null;
+
+  const candidate = m[1].trim();
+  if (timeWords.test(candidate)) return null;
+  if (candidate.length < 2) return null;
+
+  const atPrefix = lower.slice(m.index).match(/^at\s+/);
+  if (!atPrefix) return null;
+  const start = m.index;
+  const end = m.index + atPrefix[0].length + candidate.length;
+  return { start, end, type: "location" };
+};
+
+/** Find all date/time/location spans in text, sorted by position */
 export const findDateTimeSpans = (text: string): TextSpan[] => {
   const spans: TextSpan[] = [];
   const dateSpan = findDateSpan(text);
   if (dateSpan) spans.push(dateSpan);
   const timeSpan = findTimeSpan(text);
   if (timeSpan) spans.push(timeSpan);
-  // Remove overlaps: if spans overlap, keep only the first (date has priority)
+  // Remove overlaps between date and time: keep the first (date has priority)
   if (spans.length === 2) {
     const [a, b] = spans;
     if (a.start < b.end && b.start < a.end) {
       spans.pop();
+    }
+  }
+  // Add location span, trimming any overlap with date/time spans
+  const locSpan = findLocationSpan(text);
+  if (locSpan) {
+    let { start, end } = locSpan;
+    for (const s of spans) {
+      if (start < s.end && s.start < end) {
+        // Date/time span overlaps — trim location to end before it
+        if (s.start > start) {
+          end = s.start;
+        } else {
+          start = end; // fully overlapped, discard
+        }
+      }
+    }
+    // Trim trailing whitespace from adjusted span
+    const trimmed = text.slice(start, end).trimEnd();
+    end = start + trimmed.length;
+    if (end > start && trimmed.length >= 3) {
+      spans.push({ start, end, type: "location" });
     }
   }
   return spans.sort((a, b) => a.start - b.start);
