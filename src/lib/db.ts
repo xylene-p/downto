@@ -582,7 +582,7 @@ export async function getActiveChecks(): Promise<(InterestCheck & { author: Prof
       squads(id, archived_at, members:squad_members(id, role)),
       co_authors:check_co_authors(*, user:profiles!user_id(*))
     `)
-    .or(`expires_at.gt.${new Date().toISOString()},expires_at.is.null`)
+    .or(`expires_at.gt.${new Date().toISOString()},expires_at.is.null,event_date.gte.${new Date().toISOString().slice(0, 10)}`)
     .or(`event_date.gte.${new Date().toISOString().slice(0, 10)},event_date.is.null`)
     .order('created_at', { ascending: false });
 

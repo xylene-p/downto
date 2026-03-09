@@ -149,7 +149,7 @@ export default function FeedView({
   const [editModalCheck, setEditModalCheck] = useState<InterestCheck | null>(null);
 
   const visibleChecks = checks
-    .filter((c) => !hiddenCheckIds.has(c.id))
+    .filter((c) => !hiddenCheckIds.has(c.id) && c.expiresIn !== "expired")
     .sort((a, b) => {
       const tierOf = (c: InterestCheck) =>
         c.expiresIn !== "open" ? 0 : c.eventDate ? 1 : 2;
