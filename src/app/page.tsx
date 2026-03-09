@@ -968,6 +968,25 @@ export default function Home() {
               const freshSquads = await db.getSquads();
               squadsHook.hydrateSquads(freshSquads);
             }}
+            onKickMember={async (squadId, targetUserId) => {
+              const token = (await supabase.auth.getSession()).data.session?.access_token;
+              if (!token) return;
+              const res = await fetch('/api/squads/kick-member', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ squadId, userId: targetUserId }),
+              });
+              if (!res.ok) {
+                const data = await res.json();
+                showToast(data.error ?? 'Failed to kick member');
+                return;
+              }
+              const freshSquads = await db.getSquads();
+              squadsHook.hydrateSquads(freshSquads);
+            }}
             onAddMember={async (squadId, targetUserId) => {
               const token = (await supabase.auth.getSession()).data.session?.access_token;
               if (!token) return;
