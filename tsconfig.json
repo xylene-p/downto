@@ -19,9 +19,7 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "@components": ["./src/shared/components/*"],
-      "@features": ["./src/features/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": [
