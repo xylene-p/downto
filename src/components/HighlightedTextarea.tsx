@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState, type CSSProperties, type RefObject } from "react";
+import { useRef, useEffect, useState, useCallback, type CSSProperties, type RefObject } from "react";
 import type { TextSpan } from "@/lib/utils";
 
 interface HighlightedTextareaProps {
@@ -17,8 +17,8 @@ interface HighlightedTextareaProps {
 
 /**
  * Textarea with inline highlighting using CSS background-image gradients.
- * Positions highlights using `ch` units on the textarea itself —
- * no overlay, no dual rendering, no alignment issues.
+ * Uses ch units for positioning and measures charsPerLine from a textarea
+ * clone (not a span) to ensure wrapping matches across screen sizes.
  */
 const HighlightedTextarea = ({
   value,
@@ -35,54 +35,68 @@ const HighlightedTextarea = ({
   const ref = textareaRef ?? localRef;
   const [charsPerLine, setCharsPerLine] = useState(999);
 
-  const fontSize = style.fontSize ?? 13;
   const lineHeight = style.lineHeight ?? 1.5;
-  const fontFamily = style.fontFamily ?? "monospace";
-  const padding = style.padding ?? "14px 16px";
 
-  // Measure how many chars fit per line (for word-wrap calculation)
-  useEffect(() => {
-    const measure = () => {
-      const ta = ref.current;
-      if (!ta) return;
-      // Measure 1ch in pixels using a temporary element with same font
-      const span = document.createElement("span");
-      span.style.font = `${fontSize}px ${fontFamily}`;
-      span.style.visibility = "hidden";
-      span.style.position = "absolute";
-      span.style.whiteSpace = "pre";
-      span.textContent = "0";
-      document.body.appendChild(span);
-      const chPx = span.getBoundingClientRect().width;
-      document.body.removeChild(span);
-      if (chPx <= 0) return;
+  // Measure charsPerLine using a CLONE TEXTAREA — guarantees wrapping matches
+  const measureCharsPerLine = useCallback(() => {
+    const ta = ref.current;
+    if (!ta) return;
 
-      const cs = getComputedStyle(ta);
-      const contentW =
-        ta.clientWidth -
-        parseFloat(cs.paddingLeft) -
-        parseFloat(cs.paddingRight);
-      setCharsPerLine(Math.floor(contentW / chPx) || 999);
-    };
+    const clone = ta.cloneNode(true) as HTMLTextAreaElement;
+    clone.style.position = "fixed";
+    clone.style.left = "-9999px";
+    clone.style.top = "0";
+    clone.style.height = "auto";
+    clone.style.minHeight = "0";
+    clone.style.maxHeight = "none";
+    clone.style.overflow = "hidden";
+    clone.style.visibility = "hidden";
+    document.body.appendChild(clone);
 
-    if (document.fonts?.ready) {
-      document.fonts.ready.then(measure);
-    } else {
-      measure();
+    // Get single-line height
+    clone.value = "x";
+    const oneLineH = clone.scrollHeight;
+
+    // Binary search: find max chars that fit on one line
+    let lo = 1;
+    let hi = 200;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      clone.value = "x".repeat(mid);
+      if (clone.scrollHeight > oneLineH) {
+        hi = mid - 1;
+      } else {
+        lo = mid;
+      }
     }
-    const ro = new ResizeObserver(measure);
+
+    document.body.removeChild(clone);
+    setCharsPerLine(lo);
+  }, [ref]);
+
+  useEffect(() => {
+    const run = () => measureCharsPerLine();
+    if (document.fonts?.ready) {
+      document.fonts.ready.then(run);
+    } else {
+      run();
+    }
+    const ro = new ResizeObserver(run);
     if (ref.current) ro.observe(ref.current);
     return () => ro.disconnect();
-  }, [fontSize, fontFamily, ref]);
+  }, [measureCharsPerLine]);
 
   // Build CSS background layers for highlights
   const bgImages: string[] = [];
   const bgSizes: string[] = [];
   const bgPositions: string[] = [];
 
-  if (spans.length > 0) {
+  if (spans.length > 0 && charsPerLine < 999) {
     const lines = getWrappedLines(value, charsPerLine);
-    const lh = typeof lineHeight === "number" ? lineHeight : parseFloat(String(lineHeight));
+    const lh =
+      typeof lineHeight === "number"
+        ? lineHeight
+        : parseFloat(String(lineHeight));
 
     for (const span of spans) {
       for (let li = 0; li < lines.length; li++) {
@@ -113,10 +127,10 @@ const HighlightedTextarea = ({
       style={{
         width: style.width ?? "100%",
         height: style.height ?? 100,
-        fontFamily,
-        fontSize,
+        fontFamily: style.fontFamily ?? "monospace",
+        fontSize: style.fontSize ?? 13,
         lineHeight,
-        padding,
+        padding: style.padding ?? "14px 16px",
         letterSpacing: "normal",
         whiteSpace: "pre-wrap",
         wordWrap: "break-word",
@@ -158,6 +172,7 @@ function getWrappedLines(
       lines.push({ start: i, end });
       i = end;
     } else {
+      // Find last space within charsPerLine to break at a word boundary
       let breakAt = -1;
       for (let j = i + charsPerLine; j > i; j--) {
         if (text[j] === " ") {
@@ -166,9 +181,11 @@ function getWrappedLines(
         }
       }
       if (breakAt <= i) {
+        // No space found — force break at charsPerLine
         breakAt = i + charsPerLine;
       }
       lines.push({ start: i, end: breakAt });
+      // Skip the space at the break point (it's consumed by the line break)
       i = text[breakAt] === " " ? breakAt + 1 : breakAt;
     }
   }
