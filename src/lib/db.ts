@@ -846,6 +846,9 @@ export async function leaveSquad(squadId: string): Promise<void> {
     .eq('user_id', user.id);
 
   if (error) throw error;
+
+  // Auto-promote first waitlisted member if there's now room
+  await supabase.rpc('promote_waitlisted_member', { p_squad_id: squadId });
 }
 
 export async function createSquad(
