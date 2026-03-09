@@ -55,6 +55,8 @@ const HighlightedTextarea = ({
             background: "rgba(232,255,90,0.25)",
             color: "transparent",
             borderRadius: 3,
+            padding: 0,
+            margin: 0,
           }}
         >
           {value.slice(span.start, span.end)}
@@ -65,44 +67,51 @@ const HighlightedTextarea = ({
     if (cursor < value.length) {
       parts.push(<span key={`t${cursor}`}>{value.slice(cursor)}</span>);
     }
-    // Trailing newline/space so backdrop sizing matches textarea
+    // Trailing newline so backdrop sizing matches textarea
     parts.push(<span key="trail">{"\n"}</span>);
     return parts;
   };
 
-  // Shared text styles that must match exactly between textarea and backdrop
-  const textStyle: CSSProperties = {
-    fontFamily: style.fontFamily || "inherit",
-    fontSize: style.fontSize || 13,
-    lineHeight: style.lineHeight || 1.5,
-    padding: style.padding || "14px 16px",
-    letterSpacing: style.letterSpacing || "normal",
-    wordSpacing: style.wordSpacing || "normal",
+  // These must be identical on both backdrop and textarea
+  const sharedStyle: CSSProperties = {
+    fontFamily: style.fontFamily,
+    fontSize: style.fontSize ?? 13,
+    lineHeight: style.lineHeight ?? 1.5,
+    padding: style.padding ?? "14px 16px",
+    letterSpacing: style.letterSpacing ?? "normal",
+    wordSpacing: style.wordSpacing ?? "normal",
     whiteSpace: "pre-wrap",
     wordWrap: "break-word",
     overflowWrap: "break-word",
     boxSizing: "border-box",
+    margin: 0,
+    border: "none",
   };
 
   return (
     <div
       style={{
         position: "relative",
-        width: style.width || "100%",
-        height: style.height || 100,
+        width: style.width ?? "100%",
+        height: style.height ?? 100,
         background,
-        border: style.border || "none",
-        borderRadius: style.borderRadius || 12,
+        border: style.border ?? "none",
+        borderRadius: style.borderRadius ?? 12,
         overflow: "hidden",
       }}
     >
-      {/* Backdrop with highlights */}
+      {/* Backdrop with highlights — same size/font as textarea */}
       <div
         ref={backdropRef}
         style={{
-          ...textStyle,
+          ...sharedStyle,
           position: "absolute",
-          inset: 0,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: "100%",
+          height: "100%",
           color: "transparent",
           pointerEvents: "none",
           overflow: "hidden",
@@ -111,7 +120,7 @@ const HighlightedTextarea = ({
       >
         {buildHighlightedText()}
       </div>
-      {/* Actual textarea */}
+      {/* Actual textarea — transparent bg so highlights show through */}
       <textarea
         ref={textareaRef}
         value={value}
@@ -121,17 +130,18 @@ const HighlightedTextarea = ({
         maxLength={maxLength}
         placeholder={placeholder}
         style={{
-          ...textStyle,
-          position: "relative",
-          zIndex: 1,
+          ...sharedStyle,
+          position: "absolute",
+          top: 0,
+          left: 0,
           width: "100%",
           height: "100%",
+          zIndex: 1,
           background: "transparent",
-          border: "none",
-          color: style.color || "#fff",
+          color: style.color ?? "#fff",
           outline: "none",
           resize: "none",
-          margin: 0,
+          WebkitAppearance: "none",
         }}
       />
     </div>
