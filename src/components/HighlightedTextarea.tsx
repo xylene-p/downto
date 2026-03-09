@@ -37,23 +37,30 @@ const HighlightedTextarea = ({
     }
   }, [textareaRef]);
 
-  // Build highlighted HTML from value + spans
+  const textColor = style.color ?? "#fff";
+
+  // Build visible text with highlight marks — this is the ONLY visible text layer
   const buildHighlightedText = () => {
+    if (!value) return <span>{"\u00A0"}</span>;
     if (spans.length === 0) {
-      return <span>{value || "\u00A0"}</span>;
+      return <span style={{ color: textColor }}>{value}</span>;
     }
     const parts: React.ReactNode[] = [];
     let cursor = 0;
     for (const span of spans) {
       if (span.start > cursor) {
-        parts.push(<span key={`t${cursor}`}>{value.slice(cursor, span.start)}</span>);
+        parts.push(
+          <span key={`t${cursor}`} style={{ color: textColor }}>
+            {value.slice(cursor, span.start)}
+          </span>
+        );
       }
       parts.push(
         <mark
           key={`m${span.start}`}
           style={{
             background: "rgba(232,255,90,0.25)",
-            color: "transparent",
+            color: textColor,
             borderRadius: 3,
             padding: 0,
             margin: 0,
@@ -65,14 +72,17 @@ const HighlightedTextarea = ({
       cursor = span.end;
     }
     if (cursor < value.length) {
-      parts.push(<span key={`t${cursor}`}>{value.slice(cursor)}</span>);
+      parts.push(
+        <span key={`t${cursor}`} style={{ color: textColor }}>
+          {value.slice(cursor)}
+        </span>
+      );
     }
-    // Trailing newline so backdrop sizing matches textarea
     parts.push(<span key="trail">{"\n"}</span>);
     return parts;
   };
 
-  // Identical on both layers — any mismatch causes highlight drift
+  // Identical on both layers
   const sharedStyle: CSSProperties = {
     position: "absolute",
     top: 0,
@@ -108,19 +118,18 @@ const HighlightedTextarea = ({
         overflow: "hidden",
       }}
     >
-      {/* Backdrop — renders highlight marks behind the text */}
+      {/* Backdrop — the ONLY visible text layer, with highlight marks */}
       <div
         ref={backdropRef}
         style={{
           ...sharedStyle,
-          color: "transparent",
           pointerEvents: "none",
         }}
         aria-hidden
       >
         {buildHighlightedText()}
       </div>
-      {/* Textarea — transparent bg so highlights show through */}
+      {/* Textarea — invisible text, only provides input + cursor */}
       <textarea
         ref={textareaRef}
         value={value}
@@ -133,11 +142,13 @@ const HighlightedTextarea = ({
           ...sharedStyle,
           zIndex: 1,
           background: "transparent",
-          color: style.color ?? "#fff",
+          color: "transparent",
+          caretColor: textColor,
           outline: "none",
           resize: "none",
           WebkitAppearance: "none",
           MozAppearance: "none",
+          WebkitTextFillColor: "transparent",
         }}
       />
     </div>
