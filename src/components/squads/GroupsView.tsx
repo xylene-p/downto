@@ -360,10 +360,11 @@ const GroupsView = ({
             >
               <div style={{ display: "flex", alignItems: "center" }}>
                 {selectedSquad.members.slice(0, 4).map((m, idx) => {
-                  const hasConfirmFlow = selectedSquad.dateStatus === 'proposed' || selectedSquad.dateStatus === 'locked';
+                  const isLocked = selectedSquad.dateStatus === 'locked';
+                  const isProposed = selectedSquad.dateStatus === 'proposed';
                   const confirmResponse = m.userId ? dateConfirms.get(m.userId) : undefined;
-                  const isConfirmed = hasConfirmFlow && dateConfirms.size > 0 && confirmResponse === 'yes';
-                  const isPending = hasConfirmFlow && dateConfirms.size > 0 && confirmResponse !== 'yes';
+                  const isConfirmed = isLocked || (isProposed && dateConfirms.size > 0 && confirmResponse === 'yes');
+                  const isPending = isProposed && dateConfirms.size > 0 && confirmResponse !== 'yes';
                   const avatarBg = isConfirmed
                     ? color.accent
                     : isPending
@@ -1214,10 +1215,11 @@ const GroupsView = ({
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 20 }}>
                     <div style={{ display: "flex", alignItems: "center", marginBottom: 6 }}>
                       {selectedSquad.members.slice(0, 4).map((m, idx) => {
-                        const hasConfirmFlow = selectedSquad.dateStatus === 'proposed' || selectedSquad.dateStatus === 'locked';
+                        const isLocked = selectedSquad.dateStatus === 'locked';
+                        const isProposed = selectedSquad.dateStatus === 'proposed';
                         const confirmResponse = m.userId ? dateConfirms.get(m.userId) : undefined;
-                        const isConfirmed = hasConfirmFlow && dateConfirms.size > 0 && confirmResponse === 'yes';
-                        const isPending = hasConfirmFlow && dateConfirms.size > 0 && confirmResponse !== 'yes';
+                        const isConfirmed = isLocked || (isProposed && dateConfirms.size > 0 && confirmResponse === 'yes');
+                        const isPending = isProposed && dateConfirms.size > 0 && confirmResponse !== 'yes';
                         const avatarBg = isConfirmed
                           ? color.accent
                           : isPending
@@ -1356,10 +1358,11 @@ const GroupsView = ({
                   {/* Member list */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {selectedSquad.members.map((m) => {
-                      const hasConfirmFlow = selectedSquad.dateStatus === 'proposed' || selectedSquad.dateStatus === 'locked';
+                      const isLocked = selectedSquad.dateStatus === 'locked';
+                      const isProposed = selectedSquad.dateStatus === 'proposed';
                       const confirmResponse = m.userId ? dateConfirms.get(m.userId) : undefined;
-                      const isConfirmed = hasConfirmFlow && dateConfirms.size > 0 && confirmResponse === 'yes';
-                      const isGrayed = hasConfirmFlow && dateConfirms.size > 0 && !isConfirmed;
+                      const isConfirmed = isLocked || (isProposed && dateConfirms.size > 0 && confirmResponse === 'yes');
+                      const isGrayed = isProposed && dateConfirms.size > 0 && !isConfirmed;
                       return (
                       <div
                         key={m.name}
@@ -1402,7 +1405,7 @@ const GroupsView = ({
                         {m.name === "You" && (
                           <span style={{ fontFamily: font.mono, fontSize: 10, color: color.dim }}>you</span>
                         )}
-                        {hasConfirmFlow && dateConfirms.size > 0 && (
+                        {(isLocked || (isProposed && dateConfirms.size > 0)) && (
                           <span style={{ fontFamily: font.mono, fontSize: 10, color: isConfirmed ? color.accent : color.faint, marginLeft: "auto" }}>
                             {isConfirmed ? "down" : confirmResponse === 'no' ? "out" : "pending"}
                           </span>

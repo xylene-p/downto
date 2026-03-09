@@ -66,6 +66,31 @@ UPDATE public.profiles SET onboarded = true WHERE id IN (
   'b2222222-2222-2222-2222-222222222222'
 );
 
+-- Users 3-18: extra test users for response volume testing
+DO $$
+DECLARE
+  names TEXT[] := ARRAY['Devon','Nickon','Marco','Jess','Alex','Mia','Leo','Zoe','Finn','Sage','Kai','Luna','River','Nova','Blake','Quinn'];
+  i INT;
+  uid UUID;
+  uname TEXT;
+BEGIN
+  FOR i IN 1..16 LOOP
+    uid := ('cc' || lpad(i::text, 6, '0') || '-0000-0000-0000-000000000000')::uuid;
+    uname := lower(names[i]);
+    INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change, email_change_confirm_status)
+    VALUES (uid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', uname || '@test.com', crypt('testpass123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}'::jsonb, jsonb_build_object('username', uname, 'display_name', names[i]), now(), now(), '', '', '', '', 0)
+    ON CONFLICT (id) DO NOTHING;
+    INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at)
+    VALUES (uid, uid, jsonb_build_object('sub', uid::text, 'email', uname || '@test.com'), 'email', uid::text, now(), now(), now())
+    ON CONFLICT DO NOTHING;
+    UPDATE public.profiles SET onboarded = true WHERE id = uid;
+    -- Make friends with Kat
+    INSERT INTO public.friendships (requester_id, addressee_id, status)
+    VALUES ('a1111111-1111-1111-1111-111111111111', uid, 'accepted')
+    ON CONFLICT DO NOTHING;
+  END LOOP;
+END $$;
+
 -- ─── Friendship (accepted) ───────────────────────────────────────────────────
 
 INSERT INTO public.friendships (id, requester_id, addressee_id, status)
@@ -115,6 +140,82 @@ VALUES (
   now() + interval '24 hours'
 ) ON CONFLICT (id) DO NOTHING;
 
+-- ─── More interest checks (for testing comments) ──────────────────────────────
+
+-- Kat's check
+INSERT INTO public.interest_checks (id, author_id, text, expires_at)
+VALUES (
+  'c2222222-2222-2222-2222-222222222222',
+  'a1111111-1111-1111-1111-111111111111',
+  'LNY parade this weekend — who wants to go?',
+  now() + interval '48 hours'
+) ON CONFLICT (id) DO NOTHING;
+
+-- Sara's check with no expiry
+INSERT INTO public.interest_checks (id, author_id, text, expires_at)
+VALUES (
+  'c3333333-3333-3333-3333-333333333333',
+  'b2222222-2222-2222-2222-222222222222',
+  'looking for a group to try that new ramen spot in the east village',
+  NULL
+) ON CONFLICT (id) DO NOTHING;
+
+-- ─── Responses: 15 down + 3 maybe on Sara's drinks check ──────────────────────
+
+INSERT INTO public.check_responses (check_id, user_id, response) VALUES
+  ('c1111111-1111-1111-1111-111111111111', 'a1111111-1111-1111-1111-111111111111', 'down'),
+  ('c1111111-1111-1111-1111-111111111111', 'cc000001-0000-0000-0000-000000000000', 'down'),
+  ('c1111111-1111-1111-1111-111111111111', 'cc000002-0000-0000-0000-000000000000', 'down'),
+  ('c1111111-1111-1111-1111-111111111111', 'cc000003-0000-0000-0000-000000000000', 'down'),
+  ('c1111111-1111-1111-1111-111111111111', 'cc000004-0000-0000-0000-000000000000', 'down'),
+  ('c1111111-1111-1111-1111-111111111111', 'cc000005-0000-0000-0000-000000000000', 'down'),
+  ('c1111111-1111-1111-1111-111111111111', 'cc000006-0000-0000-0000-000000000000', 'down'),
+  ('c1111111-1111-1111-1111-111111111111', 'cc000007-0000-0000-0000-000000000000', 'down'),
+  ('c1111111-1111-1111-1111-111111111111', 'cc000008-0000-0000-0000-000000000000', 'down'),
+  ('c1111111-1111-1111-1111-111111111111', 'cc000009-0000-0000-0000-000000000000', 'down'),
+  ('c1111111-1111-1111-1111-111111111111', 'cc000010-0000-0000-0000-000000000000', 'down'),
+  ('c1111111-1111-1111-1111-111111111111', 'cc000011-0000-0000-0000-000000000000', 'down'),
+  ('c1111111-1111-1111-1111-111111111111', 'cc000012-0000-0000-0000-000000000000', 'down'),
+  ('c1111111-1111-1111-1111-111111111111', 'cc000013-0000-0000-0000-000000000000', 'down'),
+  ('c1111111-1111-1111-1111-111111111111', 'cc000014-0000-0000-0000-000000000000', 'maybe'),
+  ('c1111111-1111-1111-1111-111111111111', 'cc000015-0000-0000-0000-000000000000', 'maybe'),
+  ('c1111111-1111-1111-1111-111111111111', 'cc000016-0000-0000-0000-000000000000', 'maybe')
+ON CONFLICT DO NOTHING;
+
+-- ─── Sample comments ──────────────────────────────────────────────────────────
+
+-- Comments on Sara's drinks check
+INSERT INTO public.check_comments (check_id, user_id, text, created_at) VALUES
+  ('c1111111-1111-1111-1111-111111111111', 'a1111111-1111-1111-1111-111111111111', 'where were you thinking?', now() - interval '2 hours'),
+  ('c1111111-1111-1111-1111-111111111111', 'b2222222-2222-2222-2222-222222222222', 'maybe that new bar on orchard st', now() - interval '1 hour 50 minutes'),
+  ('c1111111-1111-1111-1111-111111111111', 'a1111111-1111-1111-1111-111111111111', 'oh wait the one with the rooftop?? im so down', now() - interval '1 hour 45 minutes')
+ON CONFLICT DO NOTHING;
+
+-- Comment on Kat's parade check
+INSERT INTO public.check_comments (check_id, user_id, text, created_at) VALUES
+  ('c2222222-2222-2222-2222-222222222222', 'b2222222-2222-2222-2222-222222222222', 'which one? the one on saturday was way better last year', now() - interval '30 minutes')
+ON CONFLICT DO NOTHING;
+
+-- ─── Puzzle Pints check (locked in, with squad) ────────────────────────────
+
+INSERT INTO public.interest_checks (id, author_id, text, expires_at, event_date, event_time, date_flexible, time_flexible)
+VALUES (
+  'c4444444-4444-4444-4444-444444444444',
+  'a1111111-1111-1111-1111-111111111111',
+  'puzzle pints this week?',
+  (CURRENT_DATE + 2)::date::timestamp + interval '23 hours 59 minutes',
+  CURRENT_DATE + 2,
+  '6 PM',
+  false,
+  false
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.check_responses (check_id, user_id, response) VALUES
+  ('c4444444-4444-4444-4444-444444444444', 'a1111111-1111-1111-1111-111111111111', 'down'),
+  ('c4444444-4444-4444-4444-444444444444', 'b2222222-2222-2222-2222-222222222222', 'down'),
+  ('c4444444-4444-4444-4444-444444444444', 'cc000001-0000-0000-0000-000000000000', 'down')
+ON CONFLICT DO NOTHING;
+
 -- ─── Squad with messages ─────────────────────────────────────────────────────
 
 INSERT INTO public.squads (id, name, check_id, created_by)
@@ -133,4 +234,27 @@ ON CONFLICT DO NOTHING;
 INSERT INTO public.messages (squad_id, sender_id, text, created_at) VALUES
   ('d1111111-1111-1111-1111-111111111111', 'b2222222-2222-2222-2222-222222222222', 'hey! where should we meet?', now() - interval '10 minutes'),
   ('d1111111-1111-1111-1111-111111111111', 'a1111111-1111-1111-1111-111111111111', 'how about the lobby at 9?', now() - interval '5 minutes')
+ON CONFLICT DO NOTHING;
+
+-- ─── Puzzle Pints squad (locked date) ──────────────────────────────────────
+
+INSERT INTO public.squads (id, name, check_id, created_by, locked_date, date_status, expires_at)
+VALUES (
+  'd2222222-2222-2222-2222-222222222222',
+  'Puzzle Pints Crew',
+  'c4444444-4444-4444-4444-444444444444',
+  'a1111111-1111-1111-1111-111111111111',
+  CURRENT_DATE + 2,
+  'locked',
+  (CURRENT_DATE + 3)::date::timestamp + interval '23 hours 59 minutes'
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.squad_members (squad_id, user_id) VALUES
+  ('d2222222-2222-2222-2222-222222222222', 'a1111111-1111-1111-1111-111111111111'),
+  ('d2222222-2222-2222-2222-222222222222', 'b2222222-2222-2222-2222-222222222222'),
+  ('d2222222-2222-2222-2222-222222222222', 'cc000001-0000-0000-0000-000000000000')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.messages (squad_id, sender_id, text, is_system, created_at) VALUES
+  ('d2222222-2222-2222-2222-222222222222', NULL, 'Kat locked in ' || to_char(CURRENT_DATE + 2, 'Dy, Mon DD') || ' at 6 PM', true, now() - interval '2 minutes')
 ON CONFLICT DO NOTHING;
