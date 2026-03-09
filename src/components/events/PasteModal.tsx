@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { font, color } from "@/lib/styles";
 import type { ScrapedEvent } from "@/lib/ui-types";
-import { parseNaturalDate, parseNaturalTime, parseNaturalLocation, parseDateToISO, sanitize } from "@/lib/utils";
+import { parseNaturalDate, parseNaturalTime, parseNaturalLocation, parseDateToISO, sanitize, stripDateTimeText } from "@/lib/utils";
 import { logWarn } from "@/lib/logger";
 import * as db from "@/lib/db";
 
@@ -1241,7 +1241,8 @@ const AddModal = ({
                       m === f.name.split(' ')[0]?.toLowerCase()
                     ))
                     .map(f => f.id);
-                  onInterestCheck(sanitize(idea, 280), checkTimer, eventDate, squadSize === 0 ? 999 : squadSize, checkMovie ?? undefined, eventTime, !dateLocked, !timeLocked, taggedIds.length > 0 ? taggedIds : undefined);
+                  const title = sanitize(stripDateTimeText(idea), 280);
+                  onInterestCheck(title, checkTimer, eventDate, squadSize === 0 ? 999 : squadSize, checkMovie ?? undefined, eventTime, !dateLocked, !timeLocked, taggedIds.length > 0 ? taggedIds : undefined);
                   onClose();
                 }
               }}

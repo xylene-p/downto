@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { font, color } from "@/lib/styles";
-import { parseNaturalDate, parseNaturalTime, parseNaturalLocation, parseDateToISO, sanitize } from "@/lib/utils";
+import { parseNaturalDate, parseNaturalTime, parseNaturalLocation, parseDateToISO, sanitize, stripDateTimeText } from "@/lib/utils";
 import Grain from "./Grain";
 
 const FirstCheckScreen = ({
@@ -176,6 +176,10 @@ const FirstCheckScreen = ({
             >
               <span
                 onClick={() => {
+                  if (chip.key === "location") {
+                    if (hasValue) chip.setLocked(!chip.locked);
+                    return;
+                  }
                   if (!hasValue) setEditingChip(chip.key);
                   else if (chip.locked) chip.setLocked(false);
                   else setEditingChip(chip.key);
@@ -303,7 +307,8 @@ const FirstCheckScreen = ({
               ? (manualDate ? parseDateToISO(manualDate) : null)
               : (detectedDate?.iso ?? null);
             const eventTime = manualTime !== null ? (manualTime || null) : (detectedTime ?? null);
-            onComplete(sanitize(idea, 280), checkTimer, eventDate, squadSize === 0 ? 999 : squadSize, eventTime, !dateLocked, !timeLocked);
+            const title = sanitize(stripDateTimeText(idea), 280);
+            onComplete(title, checkTimer, eventDate, squadSize === 0 ? 999 : squadSize, eventTime, !dateLocked, !timeLocked);
           }
         }}
         disabled={!idea.trim()}
