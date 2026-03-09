@@ -133,6 +133,14 @@ const GroupsView = ({
     return () => { onChatOpen?.(false); };
   }, [chatVisible, onChatOpen]);
 
+  // Lock body scroll when chat overlay is visible
+  useEffect(() => {
+    if (chatVisible) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [chatVisible]);
+
   // Load date confirm status when entering a squad with a proposed date
   useEffect(() => {
     if (!selectedSquad?.id || selectedSquad.dateStatus !== 'proposed' || !userId) {
@@ -272,6 +280,7 @@ const GroupsView = ({
           right: 0,
           background: color.bg,
           zIndex: 60,
+          overflow: "hidden",
           transform: closing ? "translateX(100%)" : `translateX(${dragX}px)`,
           transition: closing ? "transform 0.25s ease-in" : (dragX === 0 ? "transform 0.3s ease-out" : "none"),
         }}
@@ -1200,6 +1209,8 @@ const GroupsView = ({
                 padding: "24px 20px",
                 maxWidth: 300,
                 width: "90%",
+                maxHeight: "70vh",
+                overflowY: "auto",
               }}
             >
               {squadPopupView === 'menu' ? (
