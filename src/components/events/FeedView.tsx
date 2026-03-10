@@ -106,6 +106,7 @@ export interface FeedViewProps {
   onUnhideCheck: (checkId: string) => void;
   acceptCoAuthorTag: (checkId: string) => Promise<void>;
   declineCoAuthorTag: (checkId: string) => Promise<void>;
+  onViewProfile?: (userId: string) => void;
 }
 
 export default function FeedView({
@@ -144,6 +145,7 @@ export default function FeedView({
   onUnhideCheck,
   acceptCoAuthorTag,
   declineCoAuthorTag,
+  onViewProfile,
 }: FeedViewProps) {
   const [showHidden, setShowHidden] = useState(false);
   const [expandedCheckId, setExpandedCheckId] = useState<string | null>(null);
@@ -357,7 +359,15 @@ export default function FeedView({
                             marginBottom: 10,
                           }}
                         >
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <div
+                            style={{ display: "flex", alignItems: "center", gap: 8, cursor: !check.isYours && check.authorId ? "pointer" : undefined }}
+                            onClick={(e) => {
+                              if (!check.isYours && check.authorId && onViewProfile) {
+                                e.stopPropagation();
+                                onViewProfile(check.authorId);
+                              }
+                            }}
+                          >
                             <div
                               style={{
                                 width: 28,
@@ -1013,7 +1023,15 @@ export default function FeedView({
                           >
                             <div style={{ padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                                <div
+                                  style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, cursor: check.authorId ? "pointer" : undefined }}
+                                  onClick={(e) => {
+                                    if (check.authorId && onViewProfile) {
+                                      e.stopPropagation();
+                                      onViewProfile(check.authorId);
+                                    }
+                                  }}
+                                >
                                   <div
                                     style={{
                                       width: 24,

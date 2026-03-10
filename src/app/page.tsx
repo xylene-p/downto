@@ -838,6 +838,7 @@ export default function Home() {
             onUnhideCheck={checksHook.unhideCheck}
             acceptCoAuthorTag={checksHook.acceptCoAuthorTag}
             declineCoAuthorTag={checksHook.declineCoAuthorTag}
+            onViewProfile={(uid) => setViewingUserId(uid)}
           />
         )}
         {feedLoaded && tab === "calendar" && (
