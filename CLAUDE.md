@@ -70,6 +70,11 @@ Use `color.faint` for the whole line, or per-segment coloring (e.g. red for urge
 - `npm run dev:prod` — cloud Supabase (`.env.local`, for testing with real data)
 - Production env vars are set in Vercel
 
+### Worktree setup
+After creating a worktree, always run these steps before doing anything else:
+1. Copy env files: `cp /Users/katsu/downto/.env.local <worktree>/ && cp /Users/katsu/downto/.env.development.local <worktree>/`
+2. Install dependencies: `npm install` (from within the worktree)
+
 ## Workflow
 - Bugs and feature requests are tracked in [GitHub Issues](https://github.com/xylene-p/downto/issues).
 - Work on the next highest priority issue unless I say otherwise.
