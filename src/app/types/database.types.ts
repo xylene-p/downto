@@ -34,6 +34,55 @@ export type Database = {
   }
   public: {
     Tables: {
+      check_co_authors: {
+        Row: {
+          check_id: string
+          created_at: string | null
+          id: string
+          invited_by: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          check_id: string
+          created_at?: string | null
+          id?: string
+          invited_by: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          check_id?: string
+          created_at?: string | null
+          id?: string
+          invited_by?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "check_co_authors_check_id_fkey"
+            columns: ["check_id"]
+            isOneToOne: false
+            referencedRelation: "interest_checks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "check_co_authors_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "check_co_authors_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       check_responses: {
         Row: {
           check_id: string
@@ -122,6 +171,7 @@ export type Database = {
           image_url: string | null
           is_public: boolean | null
           letterboxd_url: string | null
+          movie_metadata: Json | null
           neighborhood: string | null
           time_display: string | null
           title: string
@@ -140,6 +190,7 @@ export type Database = {
           image_url?: string | null
           is_public?: boolean | null
           letterboxd_url?: string | null
+          movie_metadata?: Json | null
           neighborhood?: string | null
           time_display?: string | null
           title: string
@@ -158,6 +209,7 @@ export type Database = {
           image_url?: string | null
           is_public?: boolean | null
           letterboxd_url?: string | null
+          movie_metadata?: Json | null
           neighborhood?: string | null
           time_display?: string | null
           title?: string
@@ -256,38 +308,47 @@ export type Database = {
         Row: {
           author_id: string
           created_at: string | null
+          date_flexible: boolean
           event_date: string | null
           event_time: string | null
           expires_at: string | null
           id: string
+          last_rallied_at: string | null
           letterboxd_url: string | null
           max_squad_size: number
           movie_metadata: Json | null
           text: string
+          time_flexible: boolean
         }
         Insert: {
           author_id: string
           created_at?: string | null
+          date_flexible?: boolean
           event_date?: string | null
           event_time?: string | null
           expires_at?: string | null
           id?: string
+          last_rallied_at?: string | null
           letterboxd_url?: string | null
           max_squad_size?: number
           movie_metadata?: Json | null
           text: string
+          time_flexible?: boolean
         }
         Update: {
           author_id?: string
           created_at?: string | null
+          date_flexible?: boolean
           event_date?: string | null
           event_time?: string | null
           expires_at?: string | null
           id?: string
+          last_rallied_at?: string | null
           letterboxd_url?: string | null
           max_squad_size?: number
           movie_metadata?: Json | null
           text?: string
+          time_flexible?: boolean
         }
         Relationships: [
           {
@@ -304,6 +365,7 @@ export type Database = {
           created_at: string | null
           id: string
           is_system: boolean | null
+          message_type: string | null
           sender_id: string | null
           squad_id: string
           text: string
@@ -312,6 +374,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_system?: boolean | null
+          message_type?: string | null
           sender_id?: string | null
           squad_id: string
           text: string
@@ -320,6 +383,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_system?: boolean | null
+          message_type?: string | null
           sender_id?: string | null
           squad_id?: string
           text?: string
@@ -570,22 +634,77 @@ export type Database = {
           },
         ]
       }
+      squad_date_confirms: {
+        Row: {
+          created_at: string | null
+          id: string
+          message_id: string
+          responded_at: string | null
+          response: string | null
+          squad_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message_id: string
+          responded_at?: string | null
+          response?: string | null
+          squad_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message_id?: string
+          responded_at?: string | null
+          response?: string | null
+          squad_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "squad_date_confirms_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "squad_date_confirms_squad_id_fkey"
+            columns: ["squad_id"]
+            isOneToOne: false
+            referencedRelation: "squads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "squad_date_confirms_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       squad_members: {
         Row: {
           id: string
           joined_at: string | null
+          role: string
           squad_id: string
           user_id: string
         }
         Insert: {
           id?: string
           joined_at?: string | null
+          role?: string
           squad_id: string
           user_id: string
         }
         Update: {
           id?: string
           joined_at?: string | null
+          role?: string
           squad_id?: string
           user_id?: string
         }
@@ -613,6 +732,7 @@ export type Database = {
           check_id: string | null
           created_at: string | null
           created_by: string
+          date_status: string | null
           event_id: string | null
           expires_at: string | null
           grace_started_at: string | null
@@ -629,6 +749,7 @@ export type Database = {
           check_id?: string | null
           created_at?: string | null
           created_by: string
+          date_status?: string | null
           event_id?: string | null
           expires_at?: string | null
           grace_started_at?: string | null
@@ -645,6 +766,7 @@ export type Database = {
           check_id?: string | null
           created_at?: string | null
           created_by?: string
+          date_status?: string | null
           event_id?: string | null
           expires_at?: string | null
           grace_started_at?: string | null
@@ -679,6 +801,35 @@ export type Database = {
           },
         ]
       }
+      version_pings: {
+        Row: {
+          build_id: string
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          build_id: string
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          build_id?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "version_pings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -691,6 +842,18 @@ export type Database = {
           via_friend_name: string
         }[]
       }
+      has_down_response: {
+        Args: { p_check_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_active_squad_member: {
+        Args: { p_squad_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_check_author_or_coauthor: {
+        Args: { p_check_id: string; p_user_id: string }
+        Returns: boolean
+      }
       is_friend_or_fof: {
         Args: { p_author: string; p_viewer: string }
         Returns: boolean
@@ -699,7 +862,17 @@ export type Database = {
         Args: { p_squad_id: string; p_user_id: string }
         Returns: boolean
       }
+      join_squad_if_room: { Args: { p_squad_id: string }; Returns: Json }
       process_squad_expiry: { Args: never; Returns: undefined }
+      promote_from_waitlist: {
+        Args: {
+          p_check_id: string
+          p_confirm_message_id: string
+          p_squad_id: string
+        }
+        Returns: string
+      }
+      rally_check: { Args: { p_check_id: string }; Returns: Json }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }

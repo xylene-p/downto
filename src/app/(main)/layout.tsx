@@ -12,14 +12,14 @@ export default async function ProtectedLayout({
   children: React.ReactNode;
 }) {
   const user = await getUser();
-  const notificationCount = await getUnreadCount();
+  const unreadCount = await getUnreadCount({ userId: user?.id });
 
   return (
     <AuthProvider initialUser={user}>
       <ModalProvider>
         <header className="sticky top-0 z-50 flex items-center justify-between bg-linear-to-b from-neutral-950 from-80% px-4 pt-5 pb-4">
           <DownToLogo />
-          <HeaderActions notificationCount={notificationCount} />
+          <HeaderActions unreadCount={unreadCount} />
         </header>
 
         <main className="flex-1 px-4">{children}</main>
