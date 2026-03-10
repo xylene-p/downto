@@ -4,6 +4,7 @@
 import cn from '@/lib/tailwindMerge';
 import { formatTimeAgo } from '@/lib/utils';
 import { Notification, NotificationTypes } from '../types';
+import { redirect } from 'next/navigation';
 
 const notificationTypeMap = {
   [NotificationTypes.CHECK_RESPONSE]: { icon: '🔥', color: 'bg-dt/13' },
@@ -23,9 +24,16 @@ export default function NotificationItem({
 }) {
   const handleClick = () => {
     switch (notification.type) {
+      case NotificationTypes.CHECK_RESPONSE:
+      case NotificationTypes.CHECK_TAG:
+      case NotificationTypes.DATE_CONFIRM:
+        redirect('/feed');
+      case NotificationTypes.FRIEND_ACCEPTED:
       case NotificationTypes.FRIEND_CHECK:
+      case NotificationTypes.FRIEND_REQUEST:
       case NotificationTypes.SQUAD_INVITE:
-      case NotificationTypes.SQUAD_INVITE:
+      case NotificationTypes.SQUAD_MESSAGE:
+        redirect('/groups');
       default:
     }
   };
