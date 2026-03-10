@@ -1,5 +1,7 @@
 import DownToLogo from '@/shared/components/DownToLogo';
 
+export const dynamic = 'force-dynamic';
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex-1 px-6">
