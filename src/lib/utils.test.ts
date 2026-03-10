@@ -201,8 +201,14 @@ describe("parseNaturalDate", () => {
     expect(parseNaturalDate("just vibing")).toBeNull();
   });
 
-  it('does not parse "sun" as Sunday in natural text', () => {
+  it('does not parse "the sun" or "a sun" as Sunday', () => {
     expect(parseNaturalDate("bask in the sun and play mahjong in prospect park")).toBeNull();
+    expect(parseNaturalDate("what a sun")).toBeNull();
+  });
+
+  it('parses bare "sun" as Sunday when not preceded by an article', () => {
+    expect(parseNaturalDate("let's go sun")?.iso).toBe("2026-03-01");
+    expect(parseNaturalDate("on sun")?.iso).toBe("2026-03-01");
   });
 
   it('still parses "sunday" and "this sun" / "next sun"', () => {
