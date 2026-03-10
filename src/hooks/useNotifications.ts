@@ -27,6 +27,7 @@ interface UseNotificationsParams {
 export function useNotifications({ userId, isDemoMode, onUnreadSquadIds }: UseNotificationsParams) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadSquadCount, setUnreadSquadCount] = useState(0);
   const [hasUnreadSquadMessage, setHasUnreadSquadMessage] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
@@ -42,9 +43,12 @@ export function useNotifications({ userId, isDemoMode, onUnreadSquadIds }: UseNo
       ]);
       setNotifications(notifs);
       setUnreadCount(count);
+      setUnreadSquadCount(unreadSquadIds.length);
       if (unreadSquadIds.length > 0) {
         setHasUnreadSquadMessage(true);
         onUnreadSquadIdsRef.current?.(unreadSquadIds);
+      } else {
+        setHasUnreadSquadMessage(false);
       }
     } catch (err) {
       logWarn("loadNotifications", "Failed to load notifications", { error: err });
@@ -60,15 +64,16 @@ export function useNotifications({ userId, isDemoMode, onUnreadSquadIds }: UseNo
     loadNotificationsRef.current();
   }, [isDemoMode, userId]);
 
-  // Sync unread count to PWA app badge
+  // Sync total unread count to PWA app badge (bell + squad messages)
   useEffect(() => {
     if (!("setAppBadge" in navigator)) return;
-    if (unreadCount > 0) {
-      navigator.setAppBadge(unreadCount).catch(() => {});
+    const total = unreadCount + unreadSquadCount;
+    if (total > 0) {
+      navigator.setAppBadge(total).catch(() => {});
     } else {
       navigator.clearAppBadge().catch(() => {});
     }
-  }, [unreadCount]);
+  }, [unreadCount, unreadSquadCount]);
 
   // Reload notifications on app focus
   useEffect(() => {
@@ -87,6 +92,8 @@ export function useNotifications({ userId, isDemoMode, onUnreadSquadIds }: UseNo
     setNotifications,
     unreadCount,
     setUnreadCount,
+    unreadSquadCount,
+    setUnreadSquadCount,
     hasUnreadSquadMessage,
     setHasUnreadSquadMessage,
     notificationsOpen,

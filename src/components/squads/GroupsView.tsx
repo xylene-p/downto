@@ -80,6 +80,7 @@ const GroupsView = ({
   onAddMember,
   onSetMemberRole,
   onKickMember,
+  onSquadRead,
 }: {
   squads: Squad[];
   onSquadUpdate: (squadsOrUpdater: Squad[] | ((prev: Squad[]) => Squad[])) => void;
@@ -98,6 +99,7 @@ const GroupsView = ({
   onAddMember?: (squadId: string, userId: string) => Promise<void>;
   onSetMemberRole?: (squadId: string, userId: string, role: 'member' | 'waitlist') => Promise<void>;
   onKickMember?: (squadId: string, userId: string) => Promise<void>;
+  onSquadRead?: () => void;
 }) => {
   const onSquadUpdateRef = useRef(onSquadUpdate);
   onSquadUpdateRef.current = onSquadUpdate;
@@ -1951,6 +1953,7 @@ const GroupsView = ({
               if (g.hasUnread) {
                 onSquadUpdate((prev) => prev.map((s) => s.id === g.id ? { ...s, hasUnread: false } : s));
                 db.markSquadNotificationsRead(g.id).catch(() => {});
+                onSquadRead?.();
               }
               // Dismiss push notifications for this squad
               if ("serviceWorker" in navigator) {
