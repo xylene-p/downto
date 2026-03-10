@@ -1,6 +1,8 @@
 'use client';
 
+import AddCheckModal from '@/features/checks/components/AddCheckModal';
 import IconButton from '@/shared/components/IconButton';
+import { useModal } from '../../providers/ModalProvider';
 
 const BellSvgIcon = (
   <svg
@@ -14,20 +16,26 @@ const BellSvgIcon = (
 );
 
 export default function HeaderActions({
-  notificationCount,
+  unreadCount,
 }: {
-  notificationCount: number;
+  unreadCount: number;
 }) {
+  const { openModal, closeModal } = useModal();
+
+  const openAddCheckModal = () => {
+    openModal(<AddCheckModal closeModal={closeModal} />);
+  };
+
   return (
     <div className="flex items-center gap-2.5">
       <IconButton
         type="stroke"
-        badge={!!notificationCount}
-        badgeCount={notificationCount}
+        badge={!!unreadCount}
+        badgeCount={unreadCount}
         onClick={() => {}}
         icon={BellSvgIcon}
       />
-      <IconButton type="fill" onClick={() => {}} icon="+" />
+      <IconButton type="fill" onClick={openAddCheckModal} icon="+" />
     </div>
   );
 }
