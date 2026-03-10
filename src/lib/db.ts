@@ -977,6 +977,17 @@ export function subscribeToMessages(
     .subscribe();
 }
 
+export async function getSquadMessages(squadId: string): Promise<Message[]> {
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*, sender:profiles!sender_id(*)')
+    .eq('squad_id', squadId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
 // ============================================================================
 // SEARCH
 // ============================================================================

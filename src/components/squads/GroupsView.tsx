@@ -5,7 +5,7 @@ import * as db from "@/lib/db";
 import { font, color } from "@/lib/styles";
 import type { Squad } from "@/lib/ui-types";
 import { logError } from "@/lib/logger";
-import { parseNaturalDate, parseNaturalTime, parseDateToISO } from "@/lib/utils";
+import { parseNaturalDate, parseNaturalTime, parseDateToISO, formatTimeAgo } from "@/lib/utils";
 
 const formatExpiryShort = (expiresAt?: string): string | null => {
   if (!expiresAt) return null;
@@ -163,6 +163,28 @@ const GroupsView = ({
       setDateConfirmStatus(mine.response ?? 'pending');
     }).catch(() => {});
   }, [selectedSquad?.id, selectedSquad?.dateStatus, userId]);
+
+  // Fetch fresh messages when chat opens (covers gap before realtime subscribes)
+  useEffect(() => {
+    if (!selectedSquad?.id) return;
+    let stale = false;
+    db.getSquadMessages(selectedSquad.id).then((raw) => {
+      if (stale) return;
+      const msgs = raw.map((msg) => ({
+        sender: msg.is_system || !msg.sender_id ? "system" : (msg.sender_id === userId ? "You" : (msg.sender?.display_name ?? "Unknown")),
+        text: msg.text,
+        time: formatTimeAgo(new Date(msg.created_at)),
+        isYou: msg.sender_id === userId,
+        ...(msg.message_type === 'date_confirm' ? { messageType: 'date_confirm' as const, messageId: msg.id } : {}),
+      }));
+      const last = msgs.length > 0 ? msgs[msgs.length - 1] : null;
+      setSelectedSquad((prev) => {
+        if (!prev || prev.id !== selectedSquad.id) return prev;
+        return { ...prev, messages: msgs, lastMsg: last ? (last.sender === "system" ? last.text : `${last.sender}: ${last.text}`) : prev.lastMsg };
+      });
+    }).catch(() => {});
+    return () => { stale = true; };
+  }, [selectedSquad?.id, userId]);
 
   // Subscribe to realtime messages for the selected squad
   useEffect(() => {
