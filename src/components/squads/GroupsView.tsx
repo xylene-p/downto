@@ -7,6 +7,34 @@ import type { Squad } from "@/lib/ui-types";
 import { logError } from "@/lib/logger";
 import { parseNaturalDate, parseNaturalTime, parseDateToISO, formatTimeAgo } from "@/lib/utils";
 
+const URL_RE = /(https?:\/\/[^\s<]+)/;
+
+/** Split text into plain strings and clickable link elements */
+const linkify = (text: string, isDark: boolean): React.ReactNode => {
+  const parts = text.split(URL_RE);
+  if (parts.length === 1) return text;
+  return parts.map((part, i) =>
+    URL_RE.test(part) ? (
+      <a
+        key={i}
+        href={part}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          color: isDark ? "#000" : color.accent,
+          textDecoration: "underline",
+          textUnderlineOffset: 2,
+          wordBreak: "break-all",
+        }}
+      >
+        {part.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
+      </a>
+    ) : (
+      part
+    )
+  );
+};
+
 const formatExpiryShort = (expiresAt?: string): string | null => {
   if (!expiresAt) return null;
   const msRemaining = new Date(expiresAt).getTime() - Date.now();
@@ -1209,7 +1237,7 @@ const GroupsView = ({
                     lineHeight: 1.4,
                   }}
                 >
-                  {msg.text}
+                  {linkify(msg.text, !!msg.isYou)}
                 </div>
                 {isLastInGroup && (
                   <span
