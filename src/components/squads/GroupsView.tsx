@@ -768,21 +768,25 @@ const GroupsView = ({
                 <button
                   onClick={async () => {
                     if (onKickMember) {
+                      // Capture target and dismiss dialog immediately to prevent double-tap
+                      const target = kickTarget;
+                      setKickTarget(null);
                       try {
-                        await onKickMember(selectedSquad.id, kickTarget.userId);
-                        // Optimistic: remove from both members and waitlistedMembers
-                        const updated = {
-                          ...selectedSquad,
-                          members: selectedSquad.members.filter((x) => x.userId !== kickTarget.userId),
-                          waitlistedMembers: (selectedSquad.waitlistedMembers ?? []).filter((x) => x.userId !== kickTarget.userId),
-                        };
-                        setSelectedSquad(updated);
-                        onSquadUpdate((prev: Squad[]) => prev.map((s) => s.id === selectedSquad.id ? updated : s));
+                        await onKickMember(selectedSquad.id, target.userId);
+                        // Use functional updates to avoid overwriting realtime system messages
+                        const stripKicked = (s: Squad) => ({
+                          ...s,
+                          members: s.members.filter((x) => x.userId !== target.userId),
+                          waitlistedMembers: (s.waitlistedMembers ?? []).filter((x) => x.userId !== target.userId),
+                        });
+                        setSelectedSquad((prev) => prev ? stripKicked(prev) : prev);
+                        onSquadUpdate((prev: Squad[]) => prev.map((s) => s.id === selectedSquad.id ? stripKicked(s) : s));
                       } catch (err) {
                         logError("kickMember", err, { squadId: selectedSquad.id });
                       }
+                    } else {
+                      setKickTarget(null);
                     }
-                    setKickTarget(null);
                   }}
                   style={{
                     flex: 1,
