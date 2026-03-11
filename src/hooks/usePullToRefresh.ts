@@ -98,7 +98,12 @@ export function usePullToRefresh({
     isPulling.current = false;
     if (pullOffsetRef.current > 60) {
       isAnimatingRef.current = true;
-      applyPullOffset(60);
+      // Smooth spring to spinner position
+      if (innerRef.current) {
+        innerRef.current.style.transition = "transform 0.3s ease-out";
+        innerRef.current.style.transform = "translateY(60px)";
+      }
+      pullOffsetRef.current = 60;
       if (spinnerRef.current) {
         spinnerRef.current.style.transform = "";
         spinnerRef.current.style.animation = "spin 0.8s linear infinite";
