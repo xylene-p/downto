@@ -61,6 +61,11 @@
     -webkit-user-select: none;
   }
 
+  img {
+    -webkit-touch-callout: none;
+    pointer-events: none;
+  }
+
   input,
   textarea,
   [contenteditable="true"] {

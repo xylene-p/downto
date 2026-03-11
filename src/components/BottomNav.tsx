@@ -111,26 +111,32 @@ const BottomNav = ({
               background: "none",
               border: "none",
               cursor: "pointer",
-              padding: "14px 0",
+              padding: "8px 0",
               position: "relative",
               zIndex: 1,
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
+              gap: 2,
             }}
           >
+            <span style={{ fontSize: 13, lineHeight: 1 }}>
+              {tabIcons[t]}
+            </span>
             <span
               style={{
                 fontFamily: font.mono,
-                fontSize: 10,
+                fontSize: 9,
                 lineHeight: 1,
+                marginTop: 5,
                 textTransform: "uppercase",
-                letterSpacing: "0.12em",
+                letterSpacing: "0.08em",
                 color: tab === t ? color.accent : color.faint,
                 fontWeight: tab === t ? 700 : 400,
               }}
             >
-              {tabIcons[t]} {tabLabels[t]}
+              {tabLabels[t]}
             </span>
             {t === "groups" && hasGroupsUnread && (
               <div

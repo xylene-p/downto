@@ -775,7 +775,7 @@ export default function Home() {
           ref={spinnerWrapRef}
           style={{
             position: "absolute",
-            top: -38,
+            top: -50,
             left: 0,
             right: 0,
             display: "flex",
