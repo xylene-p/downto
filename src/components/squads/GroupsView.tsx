@@ -125,7 +125,6 @@ const GroupsView = ({
   const [confirmLoading, setConfirmLoading] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [chatHeight, setChatHeight] = useState<string>("100dvh");
-  const [chatTop, setChatTop] = useState(0);
 
   // Track visual viewport so the chat stays visible when the iOS keyboard opens
   useEffect(() => {
@@ -334,7 +333,7 @@ const GroupsView = ({
           flexDirection: "column",
           height: chatHeight,
           position: "fixed",
-          top: chatTop,
+          top: 0,
           left: 0,
           right: 0,
           background: color.bg,
