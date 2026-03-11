@@ -30,6 +30,7 @@ export default function CheckCard({ check }: { check: InterestCheck }) {
         'bg-neutral-925 border-neutral-900': !isAuthor,
         'bg-dt/5 border-dt/20': isAuthor,
       })}
+      id={`check-${id}`}
     >
       <div className="mb-2.5 flex items-start justify-between">
         <div className="flex items-center gap-2">
@@ -59,7 +60,7 @@ export default function CheckCard({ check }: { check: InterestCheck }) {
         </p>
       </div>
       <div className="flex justify-between">
-        <CheckResponses responses={responses} />
+        <CheckResponses checkId={id} responses={responses} />
         {!isAuthor && (
           <CheckActions checkId={id} response={currentUserResponse} />
         )}
