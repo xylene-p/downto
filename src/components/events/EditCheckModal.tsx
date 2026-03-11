@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { font, color } from "@/lib/styles";
-import { parseNaturalDate, parseNaturalTime } from "@/lib/utils";
+import { parseNaturalDate, parseNaturalTime, parseNaturalLocation, parseDateToISO } from "@/lib/utils";
 import type { InterestCheck } from "@/lib/ui-types";
 import { useModalTransition } from "@/hooks/useModalTransition";
 
@@ -32,11 +32,13 @@ const EditCheckModal = ({
   onRemoveTag?: (checkId: string, userId: string) => Promise<void>;
 }) => {
   const [text, setText] = useState("");
-  const [dateDismissed, setDateDismissed] = useState(false);
-  const [timeDismissed, setTimeDismissed] = useState(false);
+  const [manualDate, setManualDate] = useState<string | null>(null);
+  const [manualTime, setManualTime] = useState<string | null>(null);
+  const [manualLocation, setManualLocation] = useState<string | null>(null);
   const [dateLocked, setDateLocked] = useState(false);
   const [timeLocked, setTimeLocked] = useState(false);
-  const [hasToggledLock, setHasToggledLock] = useState(false);
+  const [locationLocked, setLocationLocked] = useState(false);
+  const [editingChip, setEditingChip] = useState<"date" | "time" | "location" | null>(null);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIdx, setMentionIdx] = useState(-1);
   const { visible, entering, closing, close } = useModalTransition(open, onClose);
@@ -49,11 +51,13 @@ const EditCheckModal = ({
   useEffect(() => {
     if (check && open) {
       setText(check.text);
-      setDateDismissed(false);
-      setTimeDismissed(false);
+      setManualDate(check.eventDateLabel || check.eventDate || null);
+      setManualTime(check.eventTime || null);
+      setManualLocation(null);
       setDateLocked(!check.dateFlexible);
       setTimeLocked(!check.timeFlexible);
-      setHasToggledLock(false);
+      setLocationLocked(false);
+      setEditingChip(null);
       setMentionQuery(null);
       setMentionIdx(-1);
     }
@@ -89,12 +93,7 @@ const EditCheckModal = ({
 
   const detectedDate = text ? parseNaturalDate(text) : null;
   const detectedTime = text ? parseNaturalTime(text) : null;
-
-  // Fall back to the check's existing date/time when parsing doesn't detect anything
-  const existingDate = check.eventDate ? { label: check.eventDateLabel || check.eventDate, iso: check.eventDate } : null;
-  const existingTime = check.eventTime || null;
-  const effectiveDate = detectedDate || existingDate;
-  const effectiveTime = detectedTime || existingTime;
+  const detectedLocation = text ? parseNaturalLocation(text) : null;
 
   const handleSave = () => {
     const trimmed = text.trim();
@@ -113,11 +112,18 @@ const EditCheckModal = ({
     const existingIds = new Set((check.coAuthors ?? []).map(ca => ca.userId));
     const newTagIds = taggedIds.filter(id => !existingIds.has(id));
 
+    // Resolve date: manual > detected > existing check > null
+    const resolvedDateLabel = manualDate || detectedDate?.label || check.eventDateLabel || null;
+    const resolvedDateISO = manualDate
+      ? (parseNaturalDate(manualDate)?.iso || parseDateToISO(manualDate) || check.eventDate || null)
+      : (detectedDate?.iso || check.eventDate || null);
+    const resolvedTime = manualTime || detectedTime || check.eventTime || null;
+
     onSave({
       text: trimmed,
-      eventDate: !dateDismissed && effectiveDate ? effectiveDate.iso : null,
-      eventDateLabel: !dateDismissed && effectiveDate ? effectiveDate.label : null,
-      eventTime: !timeDismissed && effectiveTime ? effectiveTime : null,
+      eventDate: resolvedDateISO,
+      eventDateLabel: resolvedDateLabel,
+      eventTime: resolvedTime,
       dateFlexible: !dateLocked,
       timeFlexible: !timeLocked,
       taggedFriendIds: newTagIds.length > 0 ? newTagIds : undefined,
@@ -193,8 +199,6 @@ const EditCheckModal = ({
               onChange={(e) => {
                 const val = e.target.value.slice(0, 280);
                 setText(val);
-                setDateDismissed(false);
-                setTimeDismissed(false);
                 // Detect @mention
                 const cursor = e.target.selectionStart ?? val.length;
                 const before = val.slice(0, cursor);
@@ -274,84 +278,157 @@ const EditCheckModal = ({
             })()}
           </div>
 
-          {/* Auto-detected date/time chips */}
-          {((effectiveDate && !dateDismissed) || (effectiveTime && !timeDismissed)) && (
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
-              {effectiveDate && !dateDismissed && (
+          {/* Date / Time / Location chips — always visible */}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+            {([
+              {
+                key: "date" as const,
+                placeholder: "date?",
+                detected: detectedDate?.label ?? null,
+                manual: manualDate,
+                setManual: setManualDate,
+                locked: dateLocked,
+                setLocked: setDateLocked,
+              },
+              {
+                key: "time" as const,
+                placeholder: "time?",
+                detected: detectedTime ?? null,
+                manual: manualTime,
+                setManual: setManualTime,
+                locked: timeLocked,
+                setLocked: setTimeLocked,
+              },
+              {
+                key: "location" as const,
+                placeholder: "location?",
+                detected: detectedLocation ?? null,
+                manual: manualLocation,
+                setManual: setManualLocation,
+                locked: locationLocked,
+                setLocked: setLocationLocked,
+              },
+            ] as const).map((chip) => {
+              const value = chip.manual !== null ? chip.manual : chip.detected;
+              const hasValue = !!value;
+              const isEditing = editingChip === chip.key;
+
+              if (isEditing) {
+                const validate = (v: string): string | null => {
+                  if (!v) return "";
+                  if (chip.key === "date") {
+                    const parsed = parseNaturalDate(v);
+                    if (parsed) return parsed.label;
+                    if (parseDateToISO(v)) return v;
+                    return null;
+                  }
+                  if (chip.key === "time") {
+                    const parsed = parseNaturalTime(v);
+                    if (parsed) return parsed;
+                    return null;
+                  }
+                  return v;
+                };
+                return (
+                  <input
+                    key={chip.key}
+                    autoFocus
+                    placeholder={chip.key === "date" ? "e.g. friday, mar 7" : chip.key === "time" ? "e.g. 7pm, noon" : "e.g. Jollibee"}
+                    defaultValue={value ?? ""}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      const result = validate(v);
+                      if (result !== null) {
+                        chip.setManual(result);
+                        setEditingChip(null);
+                      } else {
+                        e.target.style.borderColor = "#ff4444";
+                        setTimeout(() => {
+                          e.target.style.borderColor = color.accent;
+                        }, 800);
+                        e.target.focus();
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        (e.target as HTMLInputElement).blur();
+                      }
+                      if (e.key === "Escape") {
+                        setEditingChip(null);
+                      }
+                    }}
+                    style={{
+                      padding: "6px 10px",
+                      background: "rgba(232,255,90,0.08)",
+                      border: `1px solid ${color.accent}`,
+                      borderRadius: 8,
+                      fontFamily: font.mono,
+                      fontSize: 11,
+                      color: color.accent,
+                      fontWeight: 600,
+                      outline: "none",
+                      width: 120,
+                      transition: "border-color 0.2s",
+                    }}
+                  />
+                );
+              }
+
+              return (
                 <div
-                  onClick={() => { setDateLocked((v) => !v); setHasToggledLock(true); }}
+                  key={chip.key}
+                  onClick={() => setEditingChip(chip.key)}
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 6,
+                    gap: 4,
                     padding: "6px 10px",
-                    background: dateLocked ? "rgba(232,255,90,0.08)" : "transparent",
+                    background: "rgba(232,255,90,0.08)",
                     borderRadius: 8,
-                    border: dateLocked ? "1px solid rgba(232,255,90,0.2)" : "1px dashed rgba(232,255,90,0.35)",
+                    border: "1px solid rgba(232,255,90,0.2)",
                     cursor: "pointer",
                   }}
                 >
-                  <span style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600 }}>
-                    📅 {effectiveDate.label}
-                  </span>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setDateDismissed(true); }}
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      chip.setLocked(!chip.locked);
+                    }}
                     style={{
-                      background: "none",
-                      border: "none",
-                      color: color.dim,
                       fontFamily: font.mono,
-                      fontSize: 13,
+                      fontSize: 11,
+                      color: hasValue ? color.accent : color.dim,
+                      fontWeight: 600,
+                      userSelect: "none",
                       cursor: "pointer",
-                      padding: "0 2px",
-                      lineHeight: 1,
                     }}
                   >
-                    ×
-                  </button>
-                </div>
-              )}
-              {effectiveTime && !timeDismissed && (
-                <div
-                  onClick={() => { setTimeLocked((v) => !v); setHasToggledLock(true); }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "6px 10px",
-                    background: timeLocked ? "rgba(232,255,90,0.08)" : "transparent",
-                    borderRadius: 8,
-                    border: timeLocked ? "1px solid rgba(232,255,90,0.2)" : "1px dashed rgba(232,255,90,0.35)",
-                    cursor: "pointer",
-                  }}
-                >
-                  <span style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600 }}>
-                    🕐 {effectiveTime}
+                    {hasValue ? value : chip.placeholder}
                   </span>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setTimeDismissed(true); }}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: color.dim,
-                      fontFamily: font.mono,
-                      fontSize: 13,
-                      cursor: "pointer",
-                      padding: "0 2px",
-                      lineHeight: 1,
-                    }}
-                  >
-                    ×
-                  </button>
+                  {!chip.locked && (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        chip.setLocked(true);
+                      }}
+                      style={{
+                        padding: "1px 6px",
+                        background: "rgba(232,255,90,0.15)",
+                        borderRadius: 4,
+                        fontFamily: font.mono,
+                        fontSize: 9,
+                        color: color.accent,
+                        cursor: "pointer",
+                      }}
+                    >
+                      flexible
+                    </span>
+                  )}
                 </div>
-              )}
-              {!hasToggledLock && (
-                <div style={{ width: "100%", fontFamily: font.mono, fontSize: 9, color: color.faint, marginTop: 2 }}>
-                  tap to lock in · dashed = flexible
-                </div>
-              )}
-            </div>
-          )}
+              );
+            })}
+          </div>
         </div>
 
         {/* Save button */}
