@@ -1951,7 +1951,7 @@ const GroupsView = ({
           <div
             key={g.id}
             onClick={() => {
-              setSelectedSquad(g);
+              setSelectedSquad({ ...g, hasUnread: false });
               if (g.hasUnread) {
                 onSquadUpdate((prev) => prev.map((s) => s.id === g.id ? { ...s, hasUnread: false } : s));
                 db.markSquadNotificationsRead(g.id).catch(() => {});
