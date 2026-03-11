@@ -32,7 +32,7 @@ const AddModal = ({
   defaultMode?: "paste" | "idea" | "manual" | null;
   friends?: { id: string; name: string; avatar: string }[];
 }) => {
-  const { visible, closing, close } = useModalTransition(open, onClose);
+  const { visible, entering, closing, close } = useModalTransition(open, onClose);
   const [mode, setMode] = useState<"paste" | "idea" | "manual">("idea");
   const [url, setUrl] = useState("");
   const [idea, setIdea] = useState("");
@@ -221,10 +221,10 @@ const AddModal = ({
           position: "absolute",
           inset: 0,
           background: "rgba(0,0,0,0.7)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-          opacity: closing ? 0 : 1,
-          transition: "opacity 0.25s ease",
+          backdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
+          WebkitBackdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
+          opacity: (entering || closing) ? 0 : 1,
+          transition: "opacity 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease",
         }}
       />
       <div
@@ -242,7 +242,7 @@ const AddModal = ({
           padding: "0 24px calc(24px + env(safe-area-inset-bottom, 0px))",
           animation: closing ? "none" : "slideUp 0.3s ease-out",
           transform: closing ? "translateY(100%)" : undefined,
-          transition: closing ? "transform 0.25s ease-in" : (dragging.current ? "none" : "transform 0.2s ease-out"),
+          transition: closing ? "transform 0.2s ease-in" : (dragging.current ? "none" : "transform 0.2s ease-out"),
         }}
       >
         <div

@@ -1,34 +1,33 @@
 import { useState, useEffect, useRef } from "react";
 
 /**
- * Manages open → visible → closing → unmounted lifecycle for modals.
- * Returns `visible` (should render), `closing` (animate out), and `close()`.
- *
- * Usage:
- *   const { visible, closing, close } = useModalTransition(open, onClose, 250);
- *   if (!visible) return null;
- *   // Use `closing` to drive exit animations (backdrop fade, panel slide)
+ * Manages open → entering → idle → closing → unmounted lifecycle for modals.
+ * Returns `visible` (should render), `entering` (fade in), `closing` (fade out), and `close()`.
  */
 export function useModalTransition(
   open: boolean,
   onClose: () => void,
-  duration = 250,
+  closeDuration = 200,
 ) {
   const [visible, setVisible] = useState(false);
+  const [entering, setEntering] = useState(false);
   const [closing, setClosing] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     if (open) {
       setVisible(true);
-      setClosing(false);
+      setEntering(true);
+      // Let first frame render with entering=true, then flip to false to trigger transition
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setEntering(false));
+      });
     } else if (visible && !closing) {
-      // Parent set open=false without calling close() — trigger close animation
       setClosing(true);
       timerRef.current = setTimeout(() => {
         setVisible(false);
         setClosing(false);
-      }, duration);
+      }, closeDuration);
     }
     return () => clearTimeout(timerRef.current);
   }, [open]);
@@ -40,8 +39,8 @@ export function useModalTransition(
       setVisible(false);
       setClosing(false);
       onClose();
-    }, duration);
+    }, closeDuration);
   };
 
-  return { visible, closing, close };
+  return { visible, entering, closing, close };
 }

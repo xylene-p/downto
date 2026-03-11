@@ -21,7 +21,7 @@ const EditEventModal = ({
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [vibeText, setVibeText] = useState("");
-  const { visible, closing, close } = useModalTransition(open, onClose);
+  const { visible, entering, closing, close } = useModalTransition(open, onClose);
   const touchStartY = useRef(0);
   const [dragOffset, setDragOffset] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -105,10 +105,10 @@ const EditEventModal = ({
           position: "absolute",
           inset: 0,
           background: "rgba(0,0,0,0.7)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-          opacity: closing ? 0 : 1,
-          transition: "opacity 0.25s ease",
+          backdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
+          WebkitBackdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
+          opacity: (entering || closing) ? 0 : 1,
+          transition: "opacity 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease",
         }}
       />
       <div

@@ -39,7 +39,7 @@ const EditCheckModal = ({
   const [hasToggledLock, setHasToggledLock] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIdx, setMentionIdx] = useState(-1);
-  const { visible, closing, close } = useModalTransition(open, onClose);
+  const { visible, entering, closing, close } = useModalTransition(open, onClose);
   const touchStartY = useRef(0);
   const [dragOffset, setDragOffset] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -141,10 +141,10 @@ const EditCheckModal = ({
           position: "absolute",
           inset: 0,
           background: "rgba(0,0,0,0.7)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-          opacity: closing ? 0 : 1,
-          transition: "opacity 0.25s ease",
+          backdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
+          WebkitBackdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
+          opacity: (entering || closing) ? 0 : 1,
+          transition: "opacity 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease",
         }}
       />
       <div
@@ -160,7 +160,7 @@ const EditCheckModal = ({
           flexDirection: "column",
           animation: closing ? undefined : "slideUp 0.3s ease-out",
           transform: closing ? "translateY(100%)" : `translateY(${dragOffset}px)`,
-          transition: closing ? "transform 0.25s ease-in" : (dragOffset === 0 ? "transform 0.2s ease-out" : "none"),
+          transition: closing ? "transform 0.2s ease-in" : (dragOffset === 0 ? "transform 0.2s ease-out" : "none"),
         }}
       >
         {/* Drag handle */}
