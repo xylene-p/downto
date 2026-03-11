@@ -227,6 +227,9 @@ BEGIN
   DELETE FROM public.squad_members
   WHERE squad_id = v_squad_id AND user_id = v_user_id;
 
+  -- If the row was already gone (e.g. leave_squad RPC ran first), skip the message
+  IF NOT FOUND THEN RETURN COALESCE(NEW, OLD); END IF;
+
   SELECT p.display_name INTO v_display_name
   FROM public.profiles p WHERE p.id = v_user_id;
 
@@ -292,6 +295,8 @@ BEGIN
   DELETE FROM public.squad_members
   WHERE squad_id = v_squad_id AND user_id = OLD.user_id;
 
+  IF NOT FOUND THEN RETURN OLD; END IF;
+
   SELECT p.display_name INTO v_display_name
   FROM public.profiles p WHERE p.id = OLD.user_id;
 
@@ -352,6 +357,8 @@ BEGIN
       DELETE FROM public.squad_members
       WHERE squad_id = v_squad.id AND user_id = OLD.user_id;
 
+      IF NOT FOUND THEN CONTINUE; END IF;
+
       v_msg := replace(pick_random(v_leave_messages), '{name}', coalesce(v_display_name, 'Someone'));
 
       INSERT INTO public.messages (squad_id, sender_id, text, is_system)
@@ -373,5 +380,88 @@ BEGIN
   END IF;
 
   RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- ─── Leave squad RPC (manual leave from UI) ──────────────────────────────────
+-- Handles the delete + system message + remaining-member check atomically.
+-- Needed because after deleting their own squad_members row, the user can't
+-- insert a system message (RLS blocks it).
+CREATE OR REPLACE FUNCTION public.leave_squad(p_squad_id UUID)
+RETURNS VOID AS $$
+DECLARE
+  v_user_id UUID := auth.uid();
+  v_display_name TEXT;
+  v_remaining INT;
+  v_msg TEXT;
+  v_check_id UUID;
+  v_event_id UUID;
+  v_leave_messages TEXT[] := ARRAY[
+    '{name} left the squad',
+    '{name} ghosted. classic {name} behavior honestly',
+    '{name} said "something came up" lmaooo sure',
+    'and just like that… {name} is gone. alexa play see you again',
+    '{name} left. pour one out',
+    '{name} pulled an irish goodbye and we''re not even irish',
+    'rip {name}''s commitment. cause of death: being {name}',
+    '{name} chose peace and violence at the same time by leaving',
+    '{name} left the squad. their loss genuinely',
+    'not {name} actually leaving omg'
+  ];
+  v_last_one_messages TEXT[] := ARRAY[
+    'it''s just you now. squad of one is lowkey sad. invite someone or this dissolves',
+    'everyone else bounced. you''re the last one here and the vibes are tragic',
+    'solo squad. party of one. find your people before this expires fr',
+    'literally everyone left. you''re the main character but like in a horror movie'
+  ];
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  -- Remove the member
+  DELETE FROM public.squad_members
+  WHERE squad_id = p_squad_id AND user_id = v_user_id;
+
+  IF NOT FOUND THEN RETURN; END IF;
+
+  -- Also un-down from the associated check or event so it leaves their calendar
+  SELECT s.check_id, s.event_id INTO v_check_id, v_event_id
+  FROM public.squads s WHERE s.id = p_squad_id;
+
+  IF v_check_id IS NOT NULL THEN
+    DELETE FROM public.check_responses
+    WHERE check_id = v_check_id AND user_id = v_user_id;
+  END IF;
+
+  IF v_event_id IS NOT NULL THEN
+    UPDATE public.saved_events
+    SET is_down = false
+    WHERE event_id = v_event_id AND user_id = v_user_id;
+  END IF;
+
+  -- Get display name and post leave message
+  SELECT display_name INTO v_display_name
+  FROM public.profiles WHERE id = v_user_id;
+
+  v_msg := replace(pick_random(v_leave_messages), '{name}', coalesce(v_display_name, 'Someone'));
+
+  INSERT INTO public.messages (squad_id, sender_id, text, is_system)
+  VALUES (p_squad_id, NULL, v_msg, TRUE);
+
+  -- Check remaining members
+  SELECT COUNT(*) INTO v_remaining
+  FROM public.squad_members WHERE squad_id = p_squad_id;
+
+  IF v_remaining = 1 THEN
+    INSERT INTO public.messages (squad_id, sender_id, text, is_system)
+    VALUES (p_squad_id, NULL, pick_random(v_last_one_messages), TRUE);
+  ELSIF v_remaining = 0 THEN
+    DELETE FROM public.squads WHERE id = p_squad_id;
+  END IF;
+
+  -- Auto-promote first waitlisted member
+  PERFORM public.promote_waitlisted_member(p_squad_id);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
