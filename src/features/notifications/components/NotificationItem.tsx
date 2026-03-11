@@ -4,7 +4,8 @@
 import cn from '@/lib/tailwindMerge';
 import { formatTimeAgo } from '@/lib/utils';
 import { Notification, NotificationTypes } from '../types';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 const notificationTypeMap = {
   [NotificationTypes.CHECK_RESPONSE]: { icon: '🔥', color: 'bg-dt/13' },
@@ -19,33 +20,36 @@ const notificationTypeMap = {
 
 export default function NotificationItem({
   notification,
-  onItemClick,
+  closeModal,
 }: {
   notification: Notification;
-  onItemClick: () => void;
+  closeModal: () => void;
 }) {
-  const handleClick = () => {
-    onItemClick();
+  const router = useRouter();
+
+  const getRedirectUrl = () => {
     switch (notification.type) {
       case NotificationTypes.CHECK_RESPONSE:
       case NotificationTypes.CHECK_TAG:
       case NotificationTypes.DATE_CONFIRM:
-        redirect('/feed');
+        return '/feed';
       case NotificationTypes.FRIEND_ACCEPTED:
       case NotificationTypes.FRIEND_CHECK:
       case NotificationTypes.FRIEND_REQUEST:
       case NotificationTypes.SQUAD_INVITE:
       case NotificationTypes.SQUAD_MESSAGE:
-        redirect('/groups');
+        return '/groups';
       default:
+        return '/feed';
     }
   };
 
   return (
-    <div
+    <Link
       key={notification.id}
-      onClick={handleClick}
       className="flex cursor-pointer gap-3 py-3.5"
+      href={getRedirectUrl()}
+      onNavigate={closeModal}
     >
       <div
         className={cn(
@@ -64,6 +68,6 @@ export default function NotificationItem({
           </span>
         )}
       </div>
-    </div>
+    </Link>
   );
 }

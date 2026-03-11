@@ -15,11 +15,7 @@ export default function NotificationsModal({
       header={<h2 className="font-serif text-xl text-white">Notifications</h2>}
     >
       {notifications.map((n) => (
-        <NotificationItem
-          notification={n}
-          onItemClick={closeModal}
-          key={n.id}
-        />
+        <NotificationItem notification={n} closeModal={closeModal} key={n.id} />
       ))}
     </BottomSheetModal>
   );
