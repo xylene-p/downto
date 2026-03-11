@@ -9,7 +9,7 @@ export const NotificationTypes = {
   CHECK_RESPONSE: 'check_response',
   CHECK_TAG: 'check_tag',
   DATE_CONFIRM: 'date_confirm',
-  FRIEND_ACCEPTED: 'friend_accepted,',
+  FRIEND_ACCEPTED: 'friend_accepted',
   FRIEND_CHECK: 'friend_check',
   FRIEND_REQUEST: 'friend_request',
   SQUAD_INVITE: 'squad_invite',
