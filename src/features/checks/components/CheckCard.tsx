@@ -39,10 +39,9 @@ export default function CheckCard({ check }: { check: InterestCheck }) {
         'bg-neutral-925 border-neutral-900': !isAuthor,
         'bg-dt/5 border-dt/20': isAuthor,
       })}
-      id={`check-${id}`}
     >
       {expiryPercent > 0 && (
-        <div className="relative h-0.75 bg-neutral-900">
+        <div className="relative top-0 h-0.75 bg-neutral-900">
           <div
             className={cn('absolute top-0 left-0 h-full', {
               'bg-green-400': 50 <= expiryPercent && expiryPercent < 100,
@@ -92,6 +91,7 @@ export default function CheckCard({ check }: { check: InterestCheck }) {
             <CheckActions checkId={id} response={currentUserResponse} />
           )}
         </div>
+        <div id={`check-${id}:responses-root`}></div>
       </div>
     </div>
   );
