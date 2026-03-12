@@ -313,9 +313,9 @@ const GroupsView = ({
   const handleTouchEnd = () => {
     if (dragX > 120) {
       setClosing(true);
+      onBack?.();
       setTimeout(() => {
         setSelectedSquad(null);
-        onBack?.();
         setClosing(false);
         setDragX(0);
       }, 250);
