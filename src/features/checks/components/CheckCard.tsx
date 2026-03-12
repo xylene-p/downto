@@ -9,13 +9,12 @@ import CheckActions from './CheckActions';
 import {
   formatEventDateTime,
   formatExpiresAt,
-  getExpiryPercent,
+  getDistanceToExpire,
 } from '../utils';
+import { useEffect, useState } from 'react';
 
-export default function CheckCard({ check }: { check: InterestCheck }) {
-  const { user } = useAuth();
-
-  const {
+export default function CheckCard({
+  check: {
     responses,
     id,
     author_id: authorId,
@@ -25,13 +24,42 @@ export default function CheckCard({ check }: { check: InterestCheck }) {
     author,
     event_date: eventDate,
     event_time: eventTime,
-  } = check;
+  },
+}: {
+  check: InterestCheck;
+}) {
+  const { user } = useAuth();
+  const [distanceToExpire, setDistanceToExpire] = useState(
+    getDistanceToExpire(expiresAt)
+  );
+  const totalDistance = createdAt
+    ? getDistanceToExpire(expiresAt, createdAt)
+    : 0;
+  const expiryPercent =
+    totalDistance > 0
+      ? Math.floor((distanceToExpire / totalDistance) * 100)
+      : 0;
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setDistanceToExpire((prev) => {
+        if (prev == 0) {
+          clearInterval(intervalId);
+          return 0;
+        } else {
+          return getDistanceToExpire(expiresAt);
+        }
+      });
+    }, 60000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
 
   const isAuthor = authorId == user.id;
   const currentUserResponse =
     responses.find((r) => r.user_id === user.id)?.response ?? null;
-
-  const expiryPercent = getExpiryPercent({ expiresAt, createdAt });
 
   return (
     <div
