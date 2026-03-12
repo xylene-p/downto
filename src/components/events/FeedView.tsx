@@ -4,6 +4,7 @@ import React, { useState, useRef } from "react";
 import * as db from "@/lib/db";
 import type { Profile } from "@/lib/types";
 import { font, color } from "@/lib/styles";
+import { toLocalISODate } from "@/lib/utils";
 import type { Event, InterestCheck, Friend } from "@/lib/ui-types";
 import EventCard from "@/components/events/EventCard";
 import EditCheckModal from "@/components/events/EditCheckModal";
@@ -277,6 +278,12 @@ export default function FeedView({
       return 0;
     });
   const hiddenChecks = checks.filter((c) => hiddenCheckIds.has(c.id));
+
+  // Checks the user responded to with today's date — shown in Tonight tab
+  const today = toLocalISODate(new Date());
+  const tonightChecks = checks.filter(
+    (c) => c.eventDate === today && (myCheckResponses[c.id] || c.isYours)
+  );
   return (
     <>
           <div style={{ padding: "0 16px", animation: "fadeIn 0.3s ease" }}>
@@ -1439,7 +1446,129 @@ export default function FeedView({
               </>
             ) : (
               <>
+                {/* Tonight checks — checks user responded to with today's date */}
+                {tonightChecks.length > 0 && (
+                  <div style={{ marginBottom: 24 }}>
+                    <div
+                      style={{
+                        fontFamily: font.mono,
+                        fontSize: 10,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.15em",
+                        color: color.dim,
+                        marginBottom: 12,
+                        padding: "0 4px",
+                      }}
+                    >
+                      Your plans
+                    </div>
+                    {tonightChecks.map((check) => {
+                      const myResponse = myCheckResponses[check.id];
+                      return (
+                        <div
+                          key={check.id}
+                          style={{
+                            background: check.isYours ? "rgba(232,255,90,0.05)" : color.card,
+                            borderRadius: 14,
+                            padding: 14,
+                            marginBottom: 8,
+                            border: `1px solid ${check.isYours ? "rgba(232,255,90,0.2)" : color.border}`,
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                            <div
+                              style={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: "50%",
+                                background: check.isYours ? color.accent : color.borderLight,
+                                color: check.isYours ? "#000" : color.dim,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontFamily: font.mono,
+                                fontSize: 11,
+                                fontWeight: 700,
+                              }}
+                            >
+                              {check.author[0]}
+                            </div>
+                            <span style={{ fontFamily: font.mono, fontSize: 11, color: check.isYours ? color.accent : color.muted }}>
+                              {check.author}
+                            </span>
+                          </div>
+                          <div
+                            style={{
+                              fontFamily: font.serif,
+                              fontSize: 18,
+                              color: color.text,
+                              lineHeight: 1.3,
+                              marginBottom: 8,
+                            }}
+                          >
+                            {check.text}
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <div style={{ fontFamily: font.mono, fontSize: 10, color: color.faint }}>
+                              {check.eventTime ?? "tonight"}
+                              {check.responses.length > 0 && ` · ${check.responses.length} ${check.responses.length === 1 ? "response" : "responses"}`}
+                            </div>
+                            {myResponse && (
+                              <div
+                                style={{
+                                  fontFamily: font.mono,
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.08em",
+                                  color: myResponse === "down" ? color.accent : color.muted,
+                                }}
+                              >
+                                {myResponse === "down" ? "✓ Down" : "✓ Maybe"}
+                              </div>
+                            )}
+                          </div>
+                          {check.squadId && (
+                            <button
+                              onClick={() => onNavigateToGroups(check.squadId)}
+                              style={{
+                                marginTop: 8,
+                                background: "transparent",
+                                border: `1px solid ${color.borderMid}`,
+                                borderRadius: 12,
+                                padding: "6px 12px",
+                                fontFamily: font.mono,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                color: color.accent,
+                                cursor: "pointer",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.08em",
+                              }}
+                            >
+                              Open Squad →
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Public tonight events */}
                 <div style={{ padding: "0 4px", marginBottom: 20 }}>
+                  <div
+                    style={{
+                      fontFamily: font.mono,
+                      fontSize: 10,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.15em",
+                      color: color.dim,
+                      marginBottom: 4,
+                    }}
+                  >
+                    Out tonight
+                  </div>
                   <p
                     style={{
                       fontFamily: font.mono,
@@ -1451,7 +1580,7 @@ export default function FeedView({
                     public events happening tonight in Brooklyn
                   </p>
                 </div>
-                {tonightEvents.length === 0 ? (
+                {tonightEvents.length === 0 && tonightChecks.length === 0 ? (
                   <div
                     style={{
                       padding: "40px 20px",
@@ -1466,7 +1595,7 @@ export default function FeedView({
                         marginBottom: 8,
                       }}
                     >
-                      No events tonight yet
+                      Nothing tonight yet
                     </div>
                     <p
                       style={{
