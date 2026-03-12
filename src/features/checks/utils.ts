@@ -31,23 +31,20 @@ export function formatEventDateTime({
   );
 }
 
-export function getExpiryPercent({
-  expiresAt,
-  createdAt,
-}: {
-  expiresAt: string | null;
-  createdAt: string | null;
-}): number {
-  if (!expiresAt || !createdAt) {
+export function getDistanceToExpire(
+  expiresAt: string | null,
+  startedAt?: string
+) {
+  if (!expiresAt) {
     return 0;
   }
 
-  const now = new Date();
-  const created = new Date(createdAt);
-  const expires = new Date(expiresAt);
+  let start = new Date();
+  if (startedAt) {
+    start = new Date(startedAt);
+  }
 
-  const duration = expires.getTime() - created.getTime();
-  const remaining = expires.getTime() - now.getTime();
+  const end = new Date(expiresAt);
 
-  return 100 - Math.min(100, Math.floor((remaining / duration) * 100));
+  return end.getTime() - start.getTime();
 }
