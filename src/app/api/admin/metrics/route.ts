@@ -2,10 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase-admin';
 import { authenticateRequest, isAuthError } from '@/lib/api-auth';
 
+function toLocalDate(isoTimestamp: string, tz: string): string {
+  try {
+    return new Date(isoTimestamp).toLocaleDateString('en-CA', { timeZone: tz });
+  } catch {
+    return isoTimestamp.slice(0, 10);
+  }
+}
+
 export async function GET(request: NextRequest) {
   const auth = await authenticateRequest(request);
   if (isAuthError(auth)) return auth.error;
   const { user } = auth;
+
+  const tz = request.nextUrl.searchParams.get('tz') || 'America/New_York';
 
   // Check admin
   if (user.id !== process.env.ADMIN_USER_ID) {
@@ -25,6 +35,7 @@ export async function GET(request: NextRequest) {
     admin.from('profiles').select('*', { count: 'exact', head: true }).eq('onboarded', false),
     admin.from('profiles')
       .select('username, display_name, created_at, onboarded')
+      .not('created_at', 'is', null)
       .order('created_at', { ascending: false })
       .limit(20),
     admin.from('profiles')
@@ -50,11 +61,11 @@ export async function GET(request: NextRequest) {
       .limit(50000),
   ]);
 
-  // Compute DAU from version_pings (30 days)
+  // Compute DAU from version_pings (30 days), grouped by local date
   const dauSets: Record<string, Set<string>> = {};
   if (dauPingsRes.data) {
     for (const row of dauPingsRes.data) {
-      const date = row.created_at.slice(0, 10);
+      const date = toLocalDate(row.created_at, tz);
       if (!dauSets[date]) dauSets[date] = new Set();
       dauSets[date].add(row.user_id);
     }
@@ -64,11 +75,11 @@ export async function GET(request: NextRequest) {
     dauByDate[date] = users.size;
   }
 
-  // Group signups by date
+  // Group signups by local date
   const signupsByDate: Record<string, number> = {};
   if (signupsRes.data) {
     for (const row of signupsRes.data) {
-      const date = row.created_at.slice(0, 10); // YYYY-MM-DD
+      const date = toLocalDate(row.created_at, tz);
       signupsByDate[date] = (signupsByDate[date] || 0) + 1;
     }
   }
