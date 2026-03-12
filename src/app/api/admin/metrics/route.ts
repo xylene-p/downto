@@ -142,6 +142,69 @@ export async function GET(request: NextRequest) {
     }))
     .sort((a, b) => b.latestPing.localeCompare(a.latestPing));
 
+  // Engagement metrics (7d)
+  const [checksRes, responsesRes, commentsRes, messagesRes] = await Promise.all([
+    admin.from('interest_checks')
+      .select('author_id, created_at')
+      .gte('created_at', since7d)
+      .limit(10000),
+    admin.from('check_responses')
+      .select('user_id, created_at')
+      .gte('created_at', since7d)
+      .limit(10000),
+    admin.from('check_comments')
+      .select('user_id, created_at')
+      .gte('created_at', since7d)
+      .limit(10000),
+    admin.from('messages')
+      .select('sender_id, created_at, is_system')
+      .gte('created_at', since7d)
+      .eq('is_system', false)
+      .limit(10000),
+  ]);
+
+  // Active users (opened app in last 7d)
+  const activeUserIds = new Set<string>();
+  if (versionPingsRes.data) {
+    for (const row of versionPingsRes.data) {
+      activeUserIds.add(row.user_id);
+    }
+  }
+
+  // Engaged users (did something in last 7d)
+  const engagedUserIds = new Set<string>();
+  if (checksRes.data) for (const r of checksRes.data) engagedUserIds.add(r.author_id);
+  if (responsesRes.data) for (const r of responsesRes.data) engagedUserIds.add(r.user_id);
+  if (commentsRes.data) for (const r of commentsRes.data) engagedUserIds.add(r.user_id);
+  if (messagesRes.data) for (const r of messagesRes.data) engagedUserIds.add(r.sender_id);
+
+  // Lurkers: active but not engaged
+  const lurkerIds = [...activeUserIds].filter(id => !engagedUserIds.has(id));
+  const lurkerNames: string[] = lurkerIds.map(id => profileNames.get(id) || id.slice(0, 8));
+
+  // Daily activity counts (grouped by local date)
+  const checksByDate: Record<string, number> = {};
+  const responsesByDate: Record<string, number> = {};
+  const commentsByDate: Record<string, number> = {};
+  const messagesByDate: Record<string, number> = {};
+
+  if (checksRes.data) for (const r of checksRes.data) {
+    const d = toLocalDate(r.created_at, tz);
+    checksByDate[d] = (checksByDate[d] || 0) + 1;
+  }
+  if (responsesRes.data) for (const r of responsesRes.data) {
+    const d = toLocalDate(r.created_at, tz);
+    responsesByDate[d] = (responsesByDate[d] || 0) + 1;
+  }
+  if (commentsRes.data) for (const r of commentsRes.data) {
+    const d = toLocalDate(r.created_at, tz);
+    commentsByDate[d] = (commentsByDate[d] || 0) + 1;
+  }
+  if (messagesRes.data) for (const r of messagesRes.data) {
+    const d = toLocalDate(r.created_at, tz);
+    messagesByDate[d] = (messagesByDate[d] || 0) + 1;
+  }
+
   // Fetch commit messages from GitHub for build SHAs
   const commitMessages: Record<string, string> = {};
   const shas = versionDistribution
@@ -178,6 +241,16 @@ export async function GET(request: NextRequest) {
     versions: {
       distribution: versionDistribution,
       commitMessages,
+    },
+    engagement: {
+      active7d: activeUserIds.size,
+      engaged7d: engagedUserIds.size,
+      lurkers7d: lurkerIds.length,
+      lurkerNames,
+      checksByDate,
+      responsesByDate,
+      commentsByDate,
+      messagesByDate,
     },
   });
 }

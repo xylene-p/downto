@@ -14,7 +14,7 @@ interface PushFailure {
   error: string | null;
 }
 
-type AdminTab = "users" | "push" | "versions";
+type AdminTab = "users" | "engagement" | "push" | "versions";
 
 interface Metrics {
   totalUsers: number;
@@ -37,6 +37,16 @@ interface Metrics {
   versions: {
     distribution: { build_id: string; users: number; pings24h: number; latestPing: string; userNames: string[] }[];
     commitMessages: Record<string, string>;
+  };
+  engagement: {
+    active7d: number;
+    engaged7d: number;
+    lurkers7d: number;
+    lurkerNames: string[];
+    checksByDate: Record<string, number>;
+    responsesByDate: Record<string, number>;
+    commentsByDate: Record<string, number>;
+    messagesByDate: Record<string, number>;
   };
 }
 
@@ -124,8 +134,23 @@ export default function AdminPage() {
   const dauToday = metrics.dauByDate[todayKey] || 0;
   const maxDau = Math.max(...days.map((d) => d.dau), 1);
 
+  // Build 7-day engagement chart data
+  const engagementDays: { date: string; checks: number; responses: number; comments: number; messages: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    const key = localDateKey(d);
+    engagementDays.push({
+      date: key,
+      checks: metrics.engagement.checksByDate[key] || 0,
+      responses: metrics.engagement.responsesByDate[key] || 0,
+      comments: metrics.engagement.commentsByDate[key] || 0,
+      messages: metrics.engagement.messagesByDate[key] || 0,
+    });
+  }
+
   const tabs: { key: AdminTab; label: string }[] = [
     { key: "users", label: "Users" },
+    { key: "engagement", label: "Engagement" },
     { key: "push", label: "Push" },
     { key: "versions", label: "Versions" },
   ];
@@ -242,6 +267,68 @@ export default function AdminPage() {
                 </div>
               ))}
             </div>
+          )}
+        </>
+      )}
+
+      {/* Engagement tab */}
+      {tab === "engagement" && (
+        <>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 32 }}>
+            <SummaryCard label="Active (7d)" value={metrics.engagement.active7d} />
+            <SummaryCard label="Engaged (7d)" value={metrics.engagement.engaged7d} />
+            <SummaryCard label="Lurking (7d)" value={metrics.engagement.lurkers7d} accent={metrics.engagement.lurkers7d > 0 ? "#ff8c00" : undefined} />
+          </div>
+
+          <h2 style={sectionHeader}>Activity (last 7 days)</h2>
+          <div style={{ marginBottom: 32 }}>
+            {engagementDays.map(({ date, checks, responses, comments, messages }) => {
+              const total = checks + responses + comments + messages;
+              const maxActivity = Math.max(...engagementDays.map(d => d.checks + d.responses + d.comments + d.messages), 1);
+              return (
+                <div key={date} style={{ marginBottom: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 11, color: color.dim }}>{date.slice(5)}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, color: color.faint }}>
+                      {total > 0 && `${checks}c · ${responses}r · ${comments}cm · ${messages}m`}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", height: 14, borderRadius: 2, overflow: "hidden", width: total > 0 ? `${(total / maxActivity) * 100}%` : 0, minWidth: total > 0 ? 4 : 0 }}>
+                    {checks > 0 && <div style={{ flex: checks, background: color.accent }} />}
+                    {responses > 0 && <div style={{ flex: responses, background: "#AF52DE" }} />}
+                    {comments > 0 && <div style={{ flex: comments, background: "#5AC8FA" }} />}
+                    {messages > 0 && <div style={{ flex: messages, background: "#34C759" }} />}
+                  </div>
+                </div>
+              );
+            })}
+            <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
+              {[
+                { label: "checks", color: color.accent },
+                { label: "responses", color: "#AF52DE" },
+                { label: "comments", color: "#5AC8FA" },
+                { label: "messages", color: "#34C759" },
+              ].map((l) => (
+                <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 2, background: l.color }} />
+                  <span style={{ fontFamily: font.mono, fontSize: 10, color: color.dim }}>{l.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {metrics.engagement.lurkerNames.length > 0 && (
+            <>
+              <h2 style={sectionHeader}>Lurkers (opened app, no activity)</h2>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                {metrics.engagement.lurkerNames.map((name) => (
+                  <span key={name} style={{
+                    fontFamily: font.mono, fontSize: 10, color: color.muted,
+                    background: color.borderLight, padding: "3px 8px", borderRadius: 6,
+                  }}>{name}</span>
+                ))}
+              </div>
+            </>
           )}
         </>
       )}
