@@ -9,6 +9,7 @@ import { color, font } from "@/lib/styles";
 interface PushFailure {
   created_at: string;
   user_id: string;
+  display_name: string;
   endpoint: string;
   status: string;
   error: string | null;
@@ -32,6 +33,8 @@ interface Metrics {
     sent24h: number;
     failed24h: number;
     stale24h: number;
+    subscribers: number;
+    subscriberNames: string[];
     recentFailures: PushFailure[];
   };
   versions: {
@@ -336,12 +339,26 @@ export default function AdminPage() {
       {/* Push tab */}
       {tab === "push" && (
         <>
-          <h2 style={sectionHeader}>Delivery (24h)</h2>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 24 }}>
-            <SummaryCard label="Sent" value={metrics.push.sent24h} />
-            <SummaryCard label="Failed" value={metrics.push.failed24h} accent="#ff4444" />
-            <SummaryCard label="Stale" value={metrics.push.stale24h} accent={color.muted} />
+            <SummaryCard label="Subscribers" value={metrics.push.subscribers} />
+            <SummaryCard label="Sent (24h)" value={metrics.push.sent24h} />
+            <SummaryCard label="Failed (24h)" value={metrics.push.failed24h} accent="#ff4444" />
+            <SummaryCard label="Stale (24h)" value={metrics.push.stale24h} accent={color.muted} />
           </div>
+
+          {metrics.push.subscriberNames.length > 0 && (
+            <>
+              <h2 style={sectionHeader}>Subscribed Users</h2>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 24 }}>
+                {metrics.push.subscriberNames.map((name) => (
+                  <span key={name} style={{
+                    fontFamily: font.mono, fontSize: 10, color: color.muted,
+                    background: color.borderLight, padding: "3px 8px", borderRadius: 6,
+                  }}>{name}</span>
+                ))}
+              </div>
+            </>
+          )}
 
           {metrics.push.recentFailures.length > 0 && (
             <>
@@ -357,8 +374,8 @@ export default function AdminPage() {
                         {f.status}
                       </span>
                     </div>
-                    <div style={{ fontFamily: font.mono, fontSize: 10, color: color.dim, wordBreak: "break-all" }}>
-                      {f.user_id.slice(0, 8)}...
+                    <div style={{ fontFamily: font.mono, fontSize: 10, color: color.dim }}>
+                      {f.display_name}
                     </div>
                     {f.error && (
                       <div style={{ fontFamily: font.mono, fontSize: 10, color: color.muted, marginTop: 2, wordBreak: "break-word" }}>

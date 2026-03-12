@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   // Run queries in parallel
-  const [totalRes, onboardedRes, notOnboardedRes, recentRes, signupsRes, pushSentRes, pushFailedRes, pushStaleRes, pushRecentFailures, versionPingsRes, dauPingsRes] = await Promise.all([
+  const [totalRes, onboardedRes, notOnboardedRes, recentRes, signupsRes, pushSentRes, pushFailedRes, pushStaleRes, pushRecentFailures, versionPingsRes, dauPingsRes, pushSubscribersRes] = await Promise.all([
     admin.from('profiles').select('*', { count: 'exact', head: true }),
     admin.from('profiles').select('*', { count: 'exact', head: true }).eq('onboarded', true),
     admin.from('profiles').select('*', { count: 'exact', head: true }).eq('onboarded', false),
@@ -59,6 +59,8 @@ export async function GET(request: NextRequest) {
       .select('user_id, created_at')
       .gte('created_at', since30d)
       .limit(50000),
+    admin.from('push_subscriptions')
+      .select('user_id'),
   ]);
 
   // Compute DAU from version_pings (30 days), grouped by local date
@@ -118,8 +120,16 @@ export async function GET(request: NextRequest) {
     usersByBuild.set(buildId, list);
   }
 
-  // Fetch display names for all users with version pings
-  const allUserIds = [...latestByUser.keys()];
+  // Push subscriber user IDs (deduplicated)
+  const pushSubscriberIds = new Set<string>();
+  if (pushSubscribersRes.data) {
+    for (const row of pushSubscribersRes.data) {
+      pushSubscriberIds.add(row.user_id);
+    }
+  }
+
+  // Fetch display names for all users with version pings or push subscriptions
+  const allUserIds = [...new Set([...latestByUser.keys(), ...pushSubscriberIds])];
   const profileNames = new Map<string, string>();
   if (allUserIds.length > 0) {
     const { data: profiles } = await admin.from('profiles')
@@ -131,6 +141,13 @@ export async function GET(request: NextRequest) {
       }
     }
   }
+
+  // Resolve push subscriber names and failure user names
+  const pushSubscriberNames = [...pushSubscriberIds].map(id => profileNames.get(id) || id.slice(0, 8));
+  const pushFailuresWithNames = (pushRecentFailures.data ?? []).map(f => ({
+    ...f,
+    display_name: profileNames.get(f.user_id) || f.user_id.slice(0, 8),
+  }));
 
   const versionDistribution = Array.from(buildCounts.entries())
     .map(([build_id, users]) => ({
@@ -236,7 +253,9 @@ export async function GET(request: NextRequest) {
       sent24h: pushSentRes.count ?? 0,
       failed24h: pushFailedRes.count ?? 0,
       stale24h: pushStaleRes.count ?? 0,
-      recentFailures: pushRecentFailures.data ?? [],
+      subscribers: pushSubscriberIds.size,
+      subscriberNames: pushSubscriberNames,
+      recentFailures: pushFailuresWithNames,
     },
     versions: {
       distribution: versionDistribution,
