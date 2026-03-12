@@ -460,6 +460,7 @@ const containerStyle: React.CSSProperties = {
   flexDirection: "column",
   maxWidth: 640,
   margin: "0 auto",
+  overflowY: "auto",
 };
 
 const sectionHeader: React.CSSProperties = {
