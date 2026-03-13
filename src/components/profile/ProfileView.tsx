@@ -41,8 +41,12 @@ const ProfileView = ({
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customExpiry, setCustomExpiry] = useState("");
   const [pendingStatus, setPendingStatus] = useState<AvailabilityStatus | null>(null);
-  const [editingName, setEditingName] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [nameInput, setNameInput] = useState("");
+  const [usernameInput, setUsernameInput] = useState("");
+  const [usernameError, setUsernameError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [confirmingUsername, setConfirmingUsername] = useState(false);
   const [editingIg, setEditingIg] = useState(false);
   const [igInput, setIgInput] = useState("");
   const [showArchived, setShowArchived] = useState(false);
@@ -88,14 +92,70 @@ const ProfileView = ({
     }
   };
 
-  const handleNameSave = async () => {
-    const trimmed = nameInput.trim();
-    if (!trimmed || !onUpdateProfile) return;
+  const displayName = profile?.display_name ?? "kat";
+  const avatarLetter = profile?.avatar_letter ?? displayName.charAt(0).toUpperCase();
+
+  const openEditModal = () => {
+    setNameInput(displayName);
+    setUsernameInput(profile?.username ?? "");
+    setUsernameError("");
+    setSaving(false);
+    setConfirmingUsername(false);
+    setShowEditModal(true);
+  };
+
+  const usernameChanged = () => {
+    const sanitized = usernameInput.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20);
+    return sanitized !== (profile?.username ?? "");
+  };
+
+  const handleProfileSave = async (confirmed = false) => {
+    if (!onUpdateProfile) return;
+    const trimmedName = nameInput.trim();
+    const sanitizedUsername = usernameInput.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20);
+
+    if (!trimmedName) return;
+    if (sanitizedUsername && !/^[a-z0-9_]{3,20}$/.test(sanitizedUsername)) {
+      setUsernameError("3-20 chars, lowercase letters, numbers, _");
+      return;
+    }
+    setUsernameError("");
+
+    // If username is changing and not yet confirmed, show confirmation
+    if (usernameChanged() && !confirmed) {
+      setConfirmingUsername(true);
+      return;
+    }
+
+    setSaving(true);
+
+    const updates: Partial<Profile> = {};
+    if (trimmedName !== displayName) updates.display_name = trimmedName;
+    if (sanitizedUsername !== (profile?.username ?? "")) updates.username = sanitizedUsername;
+
+    if (Object.keys(updates).length === 0) {
+      setShowEditModal(false);
+      return;
+    }
+
     try {
-      await onUpdateProfile({ display_name: trimmed });
-      setEditingName(false);
-    } catch {
-      showToast?.("Failed to update name");
+      await onUpdateProfile(updates);
+      setShowEditModal(false);
+      setConfirmingUsername(false);
+      showToast?.("Profile updated");
+    } catch (err: unknown) {
+      const pgErr = err as { code?: string; message?: string };
+      if (pgErr.code === "23505") {
+        setConfirmingUsername(false);
+        setUsernameError("that one's taken");
+      } else if (pgErr.message?.includes("USERNAME_COOLDOWN")) {
+        setConfirmingUsername(false);
+        setUsernameError("you changed your username too recently — try again in a few days");
+      } else {
+        showToast?.("Failed to update profile");
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -109,9 +169,6 @@ const ProfileView = ({
       showToast?.("Failed to update Instagram");
     }
   };
-
-  const displayName = profile?.display_name ?? "kat";
-  const avatarLetter = profile?.avatar_letter ?? displayName.charAt(0).toUpperCase();
 
   return (
   <div style={{ padding: "0 20px 100px", animation: "fadeIn 0.3s ease" }}>
@@ -134,111 +191,25 @@ const ProfileView = ({
       >
         {avatarLetter}
       </div>
-      {editingName ? (
-        <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center", marginTop: 4 }}>
-          <input
-            type="text"
-            value={nameInput}
-            onChange={(e) => {
-              if (e.target.value.length <= 30) setNameInput(e.target.value);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleNameSave();
-              if (e.key === "Escape") setEditingName(false);
-            }}
-            autoFocus
-            style={{
-              background: color.deep,
-              border: `1px solid ${color.borderMid}`,
-              borderRadius: 10,
-              padding: "8px 12px",
-              fontFamily: font.serif,
-              fontSize: 20,
-              color: color.text,
-              outline: "none",
-              width: 160,
-              textAlign: "center",
-            }}
-          />
-          <button
-            onClick={handleNameSave}
-            disabled={!nameInput.trim()}
-            style={{
-              background: nameInput.trim() ? color.accent : color.borderMid,
-              color: nameInput.trim() ? "#000" : color.dim,
-              border: "none",
-              borderRadius: 10,
-              padding: "8px 14px",
-              fontFamily: font.mono,
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: nameInput.trim() ? "pointer" : "not-allowed",
-            }}
-          >
-            Save
-          </button>
-          <button
-            onClick={() => setEditingName(false)}
-            style={{
-              background: "transparent",
-              border: "none",
-              fontFamily: font.mono,
-              fontSize: 11,
-              color: color.faint,
-              cursor: "pointer",
-            }}
-          >
-            Cancel
-          </button>
-        </div>
-      ) : (
-        <h2
-          onClick={() => {
-            if (onUpdateProfile) {
-              setNameInput(displayName);
-              setEditingName(true);
-            }
-          }}
-          style={{
-            fontFamily: font.serif,
-            fontSize: 24,
-            color: color.text,
-            fontWeight: 400,
-            cursor: onUpdateProfile ? "pointer" : "default",
-            position: "relative",
-            display: "inline-block",
-          }}
-        >
+      <div
+        onClick={onUpdateProfile ? openEditModal : undefined}
+        style={{
+          cursor: onUpdateProfile ? "pointer" : "default",
+          display: "inline-flex",
+          alignItems: "baseline",
+          gap: 8,
+        }}
+      >
+        <h2 style={{ fontFamily: font.serif, fontSize: 24, color: color.text, fontWeight: 400 }}>
           {displayName}
-          {onUpdateProfile && (
-            <span style={{ position: "absolute", top: "50%", transform: "translateY(-50%)", marginLeft: 8, fontSize: 12, color: color.faint }}>✎</span>
-          )}
         </h2>
-      )}
-      <p style={{ fontFamily: font.mono, fontSize: 11, color: color.dim, marginTop: 4 }}>
-        @{profile?.username ?? "you"}
-      </p>
-      {profile?.username && (
-        <button
-          onClick={() => {
-            navigator.clipboard.writeText(`https://downto.xyz?add=${profile.username}`);
-            showToast?.("Link copied!");
-          }}
-          style={{
-            marginTop: 10,
-            background: "transparent",
-            border: `1px solid ${color.borderMid}`,
-            borderRadius: 20,
-            padding: "6px 14px",
-            fontFamily: font.mono,
-            fontSize: 11,
-            color: color.muted,
-            cursor: "pointer",
-          }}
-        >
-          copy my link
-        </button>
-      )}
+        <span style={{ fontFamily: font.mono, fontSize: 11, color: color.dim }}>
+          @{profile?.username ?? "you"}
+        </span>
+        {onUpdateProfile && (
+          <span style={{ fontSize: 12, color: color.faint }}>✎</span>
+        )}
+      </div>
     </div>
 
     {/* Friends */}
@@ -809,6 +780,198 @@ const ProfileView = ({
         <span style={{ color: "#ff6b6b" }}>→</span>
       </div>
     </div>
+    {showEditModal && (
+      <div
+        onClick={() => setShowEditModal(false)}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.7)",
+          zIndex: 9999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            background: color.deep,
+            border: `1px solid ${color.border}`,
+            borderRadius: 16,
+            maxWidth: 300,
+            width: "calc(100% - 40px)",
+            padding: "24px 20px",
+          }}
+        >
+          <div style={{ fontFamily: font.serif, fontSize: 18, color: color.text, marginBottom: 20, textAlign: "center" }}>
+            Edit profile
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontFamily: font.mono, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.15em", color: color.dim, marginBottom: 6, display: "block" }}>
+              Display name
+            </label>
+            <input
+              type="text"
+              value={nameInput}
+              onChange={(e) => { if (e.target.value.length <= 30) setNameInput(e.target.value); }}
+              onKeyDown={(e) => { if (e.key === "Enter") handleProfileSave(); }}
+              autoFocus
+              style={{
+                width: "100%",
+                background: color.surface,
+                border: `1px solid ${color.borderMid}`,
+                borderRadius: 10,
+                padding: "10px 12px",
+                fontFamily: font.serif,
+                fontSize: 18,
+                color: color.text,
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: usernameError ? 4 : 20 }}>
+            <label style={{ fontFamily: font.mono, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.15em", color: color.dim, marginBottom: 6, display: "block" }}>
+              Username
+            </label>
+            <div style={{ position: "relative" }}>
+              <span style={{
+                position: "absolute",
+                left: 12,
+                top: "50%",
+                transform: "translateY(-50%)",
+                fontFamily: font.mono,
+                fontSize: 13,
+                color: color.dim,
+                pointerEvents: "none",
+              }}>@</span>
+              <input
+                type="text"
+                value={usernameInput}
+                onChange={(e) => {
+                  const val = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20);
+                  setUsernameInput(val);
+                  setUsernameError("");
+                }}
+                onKeyDown={(e) => { if (e.key === "Enter") handleProfileSave(); }}
+                style={{
+                  width: "100%",
+                  background: color.surface,
+                  borderWidth: 1,
+                  borderStyle: "solid",
+                  borderColor: usernameError ? "#ff4444" : color.borderMid,
+                  borderRadius: 10,
+                  padding: "10px 12px 10px 26px",
+                  fontFamily: font.mono,
+                  fontSize: 13,
+                  color: color.text,
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+          </div>
+          {usernameError && (
+            <p style={{ fontFamily: font.mono, fontSize: 10, color: "#ff4444", marginBottom: 16, textAlign: "center" }}>
+              {usernameError}
+            </p>
+          )}
+
+          {confirmingUsername ? (
+            <div>
+              <p style={{ fontFamily: font.mono, fontSize: 11, color: color.dim, marginBottom: 14, textAlign: "center", lineHeight: 1.5 }}>
+                you can only change your username once every 24 hours
+              </p>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  onClick={() => setConfirmingUsername(false)}
+                  style={{
+                    flex: 1,
+                    background: "transparent",
+                    border: `1px solid ${color.borderMid}`,
+                    borderRadius: 12,
+                    padding: 12,
+                    fontFamily: font.mono,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: color.dim,
+                    cursor: "pointer",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  Nah
+                </button>
+                <button
+                  onClick={() => handleProfileSave(true)}
+                  disabled={saving}
+                  style={{
+                    flex: 2,
+                    background: saving ? color.borderMid : color.accent,
+                    color: saving ? color.dim : "#000",
+                    border: "none",
+                    borderRadius: 12,
+                    padding: 12,
+                    fontFamily: font.mono,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: saving ? "not-allowed" : "pointer",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  {saving ? "Saving..." : "yes, I really wanna change it"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setShowEditModal(false)}
+                style={{
+                  flex: 1,
+                  background: "transparent",
+                  border: `1px solid ${color.borderMid}`,
+                  borderRadius: 12,
+                  padding: 12,
+                  fontFamily: font.mono,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: color.dim,
+                  cursor: "pointer",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleProfileSave()}
+                disabled={saving || !nameInput.trim()}
+                style={{
+                  flex: 1,
+                  background: nameInput.trim() && !saving ? color.accent : color.borderMid,
+                  color: nameInput.trim() && !saving ? "#000" : color.dim,
+                  border: "none",
+                  borderRadius: 12,
+                  padding: 12,
+                  fontFamily: font.mono,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: nameInput.trim() && !saving ? "pointer" : "not-allowed",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                }}
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
   </div>
   );
 };
