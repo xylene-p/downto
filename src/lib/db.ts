@@ -13,6 +13,7 @@ import type {
   CrewPoolEntry,
   CheckCoAuthor,
   CheckComment,
+  SquadJoinRequest,
 } from './types';
 
 // ============================================================================
@@ -1558,4 +1559,64 @@ export async function getEventSocialSignal(eventId: string): Promise<{ totalDown
 
   const friendsDown = allDown.filter(d => friendIds.has(d.user_id)).length;
   return { totalDown, friendsDown };
+}
+
+// ============================================================================
+// SQUAD JOIN REQUESTS
+// ============================================================================
+
+export async function getEventSquadMembers(eventId: string): Promise<{ user_id: string; squad_id: string; squad_name: string }[]> {
+  const { data, error } = await supabase.rpc('get_event_squad_members', { p_event_id: eventId });
+  if (error) throw error;
+  return (data ?? []) as { user_id: string; squad_id: string; squad_name: string }[];
+}
+
+export async function requestToJoinSquad(squadId: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { error } = await supabase
+    .from('squad_join_requests')
+    .insert({ squad_id: squadId, user_id: user.id });
+
+  if (error) throw error;
+}
+
+export async function respondToJoinRequest(squadId: string, userId: string, accept: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('squad_join_requests')
+    .update({ status: accept ? 'accepted' : 'declined' })
+    .eq('squad_id', squadId)
+    .eq('user_id', userId)
+    .eq('status', 'pending');
+
+  if (error) throw error;
+}
+
+export async function getPendingJoinRequests(squadId: string): Promise<SquadJoinRequest[]> {
+  const { data, error } = await supabase
+    .from('squad_join_requests')
+    .select('*, user:profiles!user_id(*)')
+    .eq('squad_id', squadId)
+    .eq('status', 'pending');
+
+  if (error) throw error;
+  return (data ?? []) as SquadJoinRequest[];
+}
+
+export async function getMyPendingJoinRequests(eventId: string): Promise<{ squad_id: string }[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('squad_join_requests')
+    .select('squad_id, squads!squad_id(event_id)')
+    .eq('user_id', user.id)
+    .eq('status', 'pending');
+
+  if (error) throw error;
+  // Filter to requests for squads linked to this event
+  return ((data ?? []) as unknown as { squad_id: string; squads: { event_id: string | null } }[])
+    .filter((r) => r.squads?.event_id === eventId)
+    .map((r) => ({ squad_id: r.squad_id }));
 }

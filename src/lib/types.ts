@@ -174,10 +174,19 @@ export interface Message {
   sender?: Profile;
 }
 
+export interface SquadJoinRequest {
+  id: string;
+  squad_id: string;
+  user_id: string;
+  status: 'pending' | 'accepted' | 'declined';
+  created_at: string;
+  user?: Profile;
+}
+
 export interface Notification {
   id: string;
   user_id: string;
-  type: 'friend_request' | 'friend_accepted' | 'check_response' | 'squad_message' | 'squad_invite' | 'friend_check' | 'date_confirm' | 'check_tag' | 'check_comment' | 'poll_created';
+  type: 'friend_request' | 'friend_accepted' | 'check_response' | 'squad_message' | 'squad_invite' | 'friend_check' | 'date_confirm' | 'check_tag' | 'check_comment' | 'poll_created' | 'squad_join_request';
   title: string;
   body: string | null;
   related_user_id: string | null;

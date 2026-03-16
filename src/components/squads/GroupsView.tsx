@@ -84,6 +84,8 @@ const GroupsView = ({
   onCreatePoll,
   onVotePoll,
   onClosePoll,
+  pendingJoinRequests,
+  onRespondToJoinRequest,
 }: {
   squads: Squad[];
   onSquadUpdate: (squadsOrUpdater: Squad[] | ((prev: Squad[]) => Squad[])) => void;
@@ -106,6 +108,8 @@ const GroupsView = ({
   onCreatePoll?: (squadId: string, question: string, options: string[]) => Promise<void>;
   onVotePoll?: (pollId: string, optionIndex: number) => Promise<void>;
   onClosePoll?: (pollId: string) => Promise<void>;
+  pendingJoinRequests?: { squadId: string; userId: string; name: string; avatar: string }[];
+  onRespondToJoinRequest?: (squadId: string, userId: string, accept: boolean) => Promise<void>;
 }) => {
   const onSquadUpdateRef = useRef(onSquadUpdate);
   onSquadUpdateRef.current = onSquadUpdate;
@@ -1554,6 +1558,78 @@ const GroupsView = ({
               </div>
             </div>
           )}
+          {/* Join request banners */}
+          {pendingJoinRequests && onRespondToJoinRequest && selectedSquad && pendingJoinRequests
+            .filter((r) => r.squadId === selectedSquad.id)
+            .map((r) => (
+              <div
+                key={r.userId}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "10px 20px",
+                  borderTop: `1px solid ${color.border}`,
+                }}
+              >
+                <div style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  background: color.borderLight,
+                  color: color.dim,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontFamily: font.mono,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}>
+                  {r.avatar}
+                </div>
+                <span style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, flex: 1, minWidth: 0 }}>
+                  {r.name} wants to join
+                </span>
+                <button
+                  onClick={() => onRespondToJoinRequest(r.squadId, r.userId, true)}
+                  style={{
+                    background: color.accent,
+                    color: "#000",
+                    border: "none",
+                    borderRadius: 8,
+                    padding: "6px 12px",
+                    fontFamily: font.mono,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    cursor: "pointer",
+                  }}
+                >
+                  Accept
+                </button>
+                <button
+                  onClick={() => onRespondToJoinRequest(r.squadId, r.userId, false)}
+                  style={{
+                    background: "transparent",
+                    color: color.dim,
+                    border: `1px solid ${color.borderMid}`,
+                    borderRadius: 8,
+                    padding: "6px 12px",
+                    fontFamily: font.mono,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    cursor: "pointer",
+                  }}
+                >
+                  Decline
+                </button>
+              </div>
+            ))
+          }
           {/* Input row */}
           <div
             style={{

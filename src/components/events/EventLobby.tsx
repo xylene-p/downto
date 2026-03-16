@@ -17,6 +17,8 @@ const EventLobby = ({
   onViewProfile,
   existingSquadId,
   onGoToSquad,
+  onRequestToJoin,
+  pendingRequestSquadIds,
 }: {
   event: Event | null;
   open: boolean;
@@ -29,6 +31,8 @@ const EventLobby = ({
   onViewProfile?: (userId: string) => void;
   existingSquadId?: string;
   onGoToSquad?: (squadId: string) => void;
+  onRequestToJoin?: (squadId: string, squadName: string) => void;
+  pendingRequestSquadIds?: Set<string>;
 }) => {
   const [selectingMembers, setSelectingMembers] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -92,66 +96,105 @@ const EventLobby = ({
     });
   };
 
-  const PersonRow = ({ p, isFriend, selectable }: { p: Person; isFriend: boolean; selectable: boolean }) => (
-    <div
-      key={p.name}
-      onClick={() => {
-        if (selectable && p.userId) toggleSelect(p.userId);
-        else if (!isSelecting && p.userId && onViewProfile) onViewProfile(p.userId);
-      }}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "10px 0",
-        borderBottom: `1px solid ${isFriend ? "#222" : color.surface}`,
-        cursor: selectable || (!isSelecting && p.userId) ? "pointer" : "default",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: "50%",
-            background: isFriend ? color.accent : color.borderLight,
-            color: isFriend ? "#000" : color.dim,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontFamily: font.mono,
-            fontSize: 14,
-            fontWeight: 700,
-            ...(p.inPool ? { boxShadow: `0 0 0 2px ${color.pool}` } : {}),
-          }}
-        >
-          {p.avatar}
-        </div>
-        <span style={{ fontFamily: font.mono, fontSize: 13, color: isFriend ? color.text : color.muted }}>
-          {p.name}
-        </span>
-      </div>
-      {selectingMembers && selectable && p.userId && (
-        <div
-          style={{
-            width: 22,
-            height: 22,
-            borderRadius: 6,
-            border: `2px solid ${selectedIds.has(p.userId) ? color.accent : color.borderMid}`,
-            background: selectedIds.has(p.userId) ? color.accent : "transparent",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "all 0.15s ease",
-          }}
-        >
-          {selectedIds.has(p.userId) && (
-            <span style={{ color: "#000", fontSize: 14, fontWeight: 700 }}>&#10003;</span>
+  const PersonRow = ({ p, isFriend, selectable }: { p: Person; isFriend: boolean; selectable: boolean }) => {
+    const hasSquad = !!p.inSquadId;
+    const alreadyRequested = hasSquad && pendingRequestSquadIds?.has(p.inSquadId!);
+    const canRequest = hasSquad && !alreadyRequested && !!onRequestToJoin;
+    // In selection mode, persons already in a squad are unselectable
+    const effectiveSelectable = selectable && !hasSquad;
+
+    return (
+      <div
+        key={p.name}
+        onClick={() => {
+          if (effectiveSelectable && p.userId) toggleSelect(p.userId);
+          else if (!isSelecting && canRequest && p.inSquadId && p.inSquadName) onRequestToJoin!(p.inSquadId, p.inSquadName);
+          else if (!isSelecting && p.userId && onViewProfile) onViewProfile(p.userId);
+        }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "10px 0",
+          borderBottom: `1px solid ${isFriend ? "#222" : color.surface}`,
+          cursor: effectiveSelectable || (!isSelecting && (canRequest || p.userId)) ? "pointer" : "default",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              background: isFriend ? color.accent : color.borderLight,
+              color: isFriend ? "#000" : color.dim,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontFamily: font.mono,
+              fontSize: 14,
+              fontWeight: 700,
+              flexShrink: 0,
+              ...(p.inPool ? { boxShadow: `0 0 0 2px ${color.pool}` } : {}),
+            }}
+          >
+            {p.avatar}
+          </div>
+          <span style={{ fontFamily: font.mono, fontSize: 13, color: isFriend ? color.text : color.muted }}>
+            {p.name}
+          </span>
+          {hasSquad && (
+            <span style={{
+              fontFamily: font.mono,
+              fontSize: 9,
+              color: color.faint,
+              border: `1px solid ${color.faint}`,
+              borderRadius: 6,
+              padding: "1px 6px",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}>
+              in squad
+            </span>
           )}
         </div>
-      )}
-    </div>
-  );
+        {/* Request to join indicator */}
+        {!isSelecting && hasSquad && (
+          <span style={{
+            fontFamily: font.mono,
+            fontSize: 9,
+            color: color.accent,
+            opacity: alreadyRequested ? 0.6 : 1,
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+            marginLeft: 8,
+          }}>
+            {alreadyRequested ? "Requested" : "Request to join →"}
+          </span>
+        )}
+        {selectingMembers && effectiveSelectable && p.userId && (
+          <div
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: 6,
+              border: `2px solid ${selectedIds.has(p.userId) ? color.accent : color.borderMid}`,
+              background: selectedIds.has(p.userId) ? color.accent : "transparent",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.15s ease",
+              flexShrink: 0,
+            }}
+          >
+            {selectedIds.has(p.userId) && (
+              <span style={{ color: "#000", fontSize: 14, fontWeight: 700 }}>&#10003;</span>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div

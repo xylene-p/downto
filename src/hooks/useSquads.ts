@@ -116,6 +116,8 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
   } | null>(null);
   const [creatingSquad, setCreatingSquad] = useState(false);
   const [eventToSquad, setEventToSquad] = useState<Map<string, string>>(new Map());
+  const [pendingRequestSquadIds, setPendingRequestSquadIds] = useState<Set<string>>(new Set());
+  const [pendingJoinRequests, setPendingJoinRequests] = useState<{ squadId: string; userId: string; name: string; avatar: string }[]>([]);
   const [autoSelectSquadId, setAutoSelectSquadId] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
       return new URLSearchParams(window.location.search).get("squadId");
@@ -419,7 +421,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
     }
   };
 
-  // Load squad pool members when EventLobby opens and enrich peopleDown with inPool flags
+  // Load squad pool members when EventLobby opens and enrich peopleDown with inPool + inSquad flags
   useEffect(() => {
     if (!socialEvent?.id || isDemoMode) {
       setSquadPoolMembers([]);
@@ -428,7 +430,13 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
     }
     (async () => {
       try {
-        const pool = await db.getCrewPool(socialEvent.id);
+        const [pool, squadMembers, myRequests] = await Promise.all([
+          db.getCrewPool(socialEvent.id),
+          db.getEventSquadMembers(socialEvent.id),
+          db.getMyPendingJoinRequests(socialEvent.id),
+        ]);
+
+        // Pool enrichment
         const userIsInPool = pool.some((entry) => entry.user_id === userId);
         setInSquadPool(userIsInPool);
         const poolUserIds = new Set(pool.map((entry) => entry.user_id));
@@ -442,22 +450,96 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
           }));
         setSquadPoolMembers(poolPeople);
 
-        // Enrich socialEvent.peopleDown with fresh inPool flags
+        // Squad member map for enrichment
+        const squadMemberMap = new Map<string, { squadId: string; squadName: string }>();
+        for (const sm of squadMembers) {
+          if (sm.user_id !== userId) {
+            squadMemberMap.set(sm.user_id, { squadId: sm.squad_id, squadName: sm.squad_name });
+          }
+        }
+
+        // Track user's own pending requests
+        setPendingRequestSquadIds(new Set(myRequests.map((r) => r.squad_id)));
+
+        // Enrich socialEvent.peopleDown with fresh inPool + inSquad flags
         const poolCount = pool.length;
         setSocialEvent((prev) => prev ? {
           ...prev,
           poolCount,
           userInPool: userIsInPool,
-          peopleDown: prev.peopleDown.map((p) => ({
-            ...p,
-            inPool: p.userId ? poolUserIds.has(p.userId) : false,
-          })),
+          peopleDown: prev.peopleDown.map((p) => {
+            const squadInfo = p.userId ? squadMemberMap.get(p.userId) : undefined;
+            return {
+              ...p,
+              inPool: p.userId ? poolUserIds.has(p.userId) : false,
+              inSquadId: squadInfo?.squadId,
+              inSquadName: squadInfo?.squadName,
+            };
+          }),
         } : prev);
       } catch (err) {
         logWarn("loadSquadPool", "Failed to load squad pool", { eventId: socialEvent?.id });
       }
     })();
   }, [socialEvent?.id, isDemoMode, userId]);
+
+  const handleRequestToJoin = useCallback(async (squadId: string, squadName: string) => {
+    try {
+      await db.requestToJoinSquad(squadId);
+      setPendingRequestSquadIds((prev) => new Set(prev).add(squadId));
+      showToast(`Requested to join ${squadName}`);
+    } catch (err: unknown) {
+      const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : '';
+      if (code === '23505') {
+        showToast("Already requested");
+        return;
+      }
+      logError("requestToJoinSquad", err, { squadId });
+      showToast("Something went wrong");
+    }
+  }, [showToast]);
+
+  const handleRespondToJoinRequest = useCallback(async (squadId: string, requestUserId: string, accept: boolean) => {
+    try {
+      await db.respondToJoinRequest(squadId, requestUserId, accept);
+      setPendingJoinRequests((prev) => prev.filter((r) => !(r.squadId === squadId && r.userId === requestUserId)));
+      if (accept) {
+        // Reload squads to reflect new member
+        const freshSquads = await db.getSquads();
+        hydrateSquads(freshSquads);
+      }
+    } catch (err) {
+      logError("respondToJoinRequest", err, { squadId, requestUserId, accept });
+      showToast("Something went wrong");
+    }
+  }, [hydrateSquads, showToast]);
+
+  // Load pending join requests for user's squads
+  const loadJoinRequests = useCallback(async () => {
+    if (!userId || isDemoMode) return;
+    try {
+      const allRequests: { squadId: string; userId: string; name: string; avatar: string }[] = [];
+      for (const sq of squads) {
+        const requests = await db.getPendingJoinRequests(sq.id);
+        for (const r of requests) {
+          allRequests.push({
+            squadId: sq.id,
+            userId: r.user_id,
+            name: r.user?.display_name ?? "Unknown",
+            avatar: r.user?.avatar_letter ?? r.user?.display_name?.charAt(0)?.toUpperCase() ?? "?",
+          });
+        }
+      }
+      setPendingJoinRequests(allRequests);
+    } catch (err) {
+      logWarn("loadJoinRequests", "Failed to load join requests", {});
+    }
+  }, [userId, isDemoMode, squads]);
+
+  // Load join requests when squads change
+  useEffect(() => {
+    loadJoinRequests();
+  }, [loadJoinRequests]);
 
   return {
     squads,
@@ -476,5 +558,9 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
     startSquadFromEvent,
     handleJoinSquadPool,
     eventToSquad,
+    pendingRequestSquadIds,
+    handleRequestToJoin,
+    pendingJoinRequests,
+    handleRespondToJoinRequest,
   };
 }

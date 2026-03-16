@@ -4,6 +4,8 @@ export interface Person {
   mutual: boolean;
   userId?: string;
   inPool?: boolean;
+  inSquadId?: string;
+  inSquadName?: string;
 }
 
 export interface Event {

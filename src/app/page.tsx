@@ -1076,6 +1076,8 @@ export default function Home() {
             onClosePoll={async (pollId) => {
               await db.closePoll(pollId);
             }}
+            pendingJoinRequests={squadsHook.pendingJoinRequests}
+            onRespondToJoinRequest={squadsHook.handleRespondToJoinRequest}
             onBack={squadChatOrigin ? () => {
               setTab(squadChatOrigin);
               setSquadChatOrigin(null);
@@ -1332,6 +1334,8 @@ export default function Home() {
           squadsHook.setAutoSelectSquadId(squadId);
           setTab("groups");
         }}
+        onRequestToJoin={squadsHook.handleRequestToJoin}
+        pendingRequestSquadIds={squadsHook.pendingRequestSquadIds}
       />
       <NotificationsPanel
         open={notificationsHook.notificationsOpen}
