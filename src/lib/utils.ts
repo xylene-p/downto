@@ -62,7 +62,10 @@ const MONTH_NAMES: Record<string, number> = {
 };
 
 /** Todoist-style: scan free text for date phrases, return { label, iso } or null */
-export const parseNaturalDate = (text: string): { label: string; iso: string } | null => {
+// TODO: disabled — parsing not reliable enough yet
+export const parseNaturalDate = (_text: string): { label: string; iso: string } | null => {
+  return null; // disabled
+  const text = _text; // eslint-disable-line no-unreachable
   const lower = text.toLowerCase();
   const today = new Date();
   const todayDay = today.getDay();
@@ -199,8 +202,10 @@ export const parseNaturalDate = (text: string): { label: string; iso: string } |
 };
 
 /** Scan free text for time phrases, return display string like "7 PM" or null */
-export const parseNaturalTime = (text: string): string | null => {
-  const lower = text.toLowerCase();
+// TODO: disabled — parsing not reliable enough yet
+export const parseNaturalTime = (_text: string): string | null => {
+  return null; // disabled
+  const lower = _text.toLowerCase(); // eslint-disable-line no-unreachable
 
   // "noon"
   if (/\bnoon\b/.test(lower)) return "12 PM";
@@ -229,8 +234,10 @@ const formatTimeMatch = (rawHour: number, minutes: string | null, meridiem: "am"
 };
 
 /** Parse a location from text, e.g. "dinner at Jollibee" → "Jollibee" */
-export const parseNaturalLocation = (text: string): string | null => {
-  const lower = text.toLowerCase();
+// TODO: disabled — parsing not reliable enough yet
+export const parseNaturalLocation = (_text: string): string | null => {
+  return null; // disabled
+  const lower = _text.toLowerCase(); // eslint-disable-line no-unreachable
 
   // Skip "at" followed by time-like words
   const timeWords = /^(noon|midnight|night|\d{1,2}(:\d{2})?\s*(am|pm)?)\b/;

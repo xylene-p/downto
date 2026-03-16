@@ -109,7 +109,7 @@ interface UseChecksParams {
 
 export function useChecks({ userId, isDemoMode, profile, friendCount, showToast, onCheckCreated, onDownResponse, onCoAuthorRespond }: UseChecksParams) {
   const [checks, setChecks] = useState<InterestCheck[]>([]);
-  const [myCheckResponses, setMyCheckResponses] = useState<Record<string, "down" | "maybe">>({});
+  const [myCheckResponses, setMyCheckResponses] = useState<Record<string, "down" | "waitlist">>({});
   const [hiddenCheckIds, setHiddenCheckIds] = useState<Set<string>>(new Set());
   const [pendingDownCheckIds, setPendingDownCheckIds] = useState<Set<string>>(new Set());
   const [newlyAddedCheckId, setNewlyAddedCheckId] = useState<string | null>(null);
@@ -155,10 +155,10 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
     setHiddenCheckIds(new Set(hiddenIds));
 
     // Hydrate myCheckResponses from existing responses
-    const restoredResponses: Record<string, "down" | "maybe"> = {};
+    const restoredResponses: Record<string, "down" | "waitlist"> = {};
     for (const c of transformedChecks) {
       const myResponse = c.responses.find((r) => r.name === "You");
-      if (myResponse && (myResponse.status === "down" || myResponse.status === "maybe")) {
+      if (myResponse && (myResponse.status === "down" || myResponse.status === "waitlist")) {
         restoredResponses[c.id] = myResponse.status;
       }
     }
@@ -167,9 +167,9 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
     }
   }, [userId]);
 
-  const respondToCheck = (checkId: string, status: "down" | "maybe") => {
+  const respondToCheck = (checkId: string) => {
     const check = checks.find((c) => c.id === checkId);
-    setMyCheckResponses((prev) => ({ ...prev, [checkId]: status }));
+    setMyCheckResponses((prev) => ({ ...prev, [checkId]: "down" }));
     setChecks((prev) =>
       prev.map((c) => {
         if (c.id === checkId) {
@@ -178,35 +178,43 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
             return {
               ...c,
               responses: c.responses.map((r) =>
-                r.name === "You" ? { ...r, status } : r
+                r.name === "You" ? { ...r, status: "down" as const } : r
               ),
             };
           }
           return {
             ...c,
-            responses: [...c.responses, { name: "You", avatar: profile?.avatar_letter ?? "?", status }],
+            responses: [...c.responses, { name: "You", avatar: profile?.avatar_letter ?? "?", status: "down" as const }],
           };
         }
         return c;
       })
     );
-    showToast(status === "down" ? "You're down! \u{1F919}" : "Marked as maybe");
+    showToast("You're down! \u{1F919}");
     if (!isDemoMode && check?.id) {
-      if (status === "down") {
-        setPendingDownCheckIds((prev) => new Set(prev).add(checkId));
-      }
-      db.respondToCheck(check.id, status)
-        .then(async () => {
-          if (status === "down") {
-            // Full reload: DB trigger may have auto-joined user to a squad
-            if (onDownResponse) await onDownResponse();
-            else await loadChecks();
-            setPendingDownCheckIds((prev) => { const next = new Set(prev); next.delete(checkId); return next; });
+      setPendingDownCheckIds((prev) => new Set(prev).add(checkId));
+      db.respondToCheck(check.id, 'down')
+        .then(async (result) => {
+          // Server may have converted to waitlist via trigger
+          if (result.response === 'waitlist') {
+            setMyCheckResponses((prev) => ({ ...prev, [checkId]: "waitlist" }));
+            setChecks((prev) =>
+              prev.map((c) =>
+                c.id === checkId
+                  ? { ...c, responses: c.responses.map((r) => r.name === "You" ? { ...r, status: "waitlist" as const } : r) }
+                  : c
+              )
+            );
+            showToast("Check is full — you're on the waitlist");
           }
+          // Full reload: DB trigger may have auto-joined user to a squad
+          if (onDownResponse) await onDownResponse();
+          else await loadChecks();
+          setPendingDownCheckIds((prev) => { const next = new Set(prev); next.delete(checkId); return next; });
         })
         .catch((err) => {
           setPendingDownCheckIds((prev) => { const next = new Set(prev); next.delete(checkId); return next; });
-          logError("respondToCheck", err, { checkId: check?.id, status });
+          logError("respondToCheck", err, { checkId: check?.id });
         });
     }
   };
@@ -215,7 +223,7 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
     idea: string,
     expiresInHours: number | null,
     eventDate: string | null,
-    maxSquadSize: number,
+    maxSquadSize: number | null,
     movieData?: { letterboxdUrl: string; title: string; year?: string; director?: string; thumbnail?: string; vibes?: string[] },
     eventTime?: string | null,
     dateFlexible?: boolean,
@@ -248,7 +256,7 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
           expiryPercent: 0,
           responses: [],
           isYours: true,
-          maxSquadSize,
+          maxSquadSize: maxSquadSize ?? undefined,
           eventDate: eventDate ?? undefined,
           eventDateLabel: dateLabel,
           eventTime: eventTime ?? undefined,
@@ -274,7 +282,7 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
         expiryPercent: 0,
         responses: [],
         isYours: true,
-        maxSquadSize,
+        maxSquadSize: maxSquadSize ?? undefined,
         eventDate: eventDate ?? undefined,
         eventDateLabel: dateLabel,
         eventTime: eventTime ?? undefined,
@@ -402,7 +410,7 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
     // Optimistically remove from leftChecks
     setLeftChecks((prev) => prev.filter((c) => c.id !== checkId));
     // Re-down via normal flow
-    respondToCheck(checkId, 'down');
+    respondToCheck(checkId);
     // Backup: explicitly remove left_checks row (trigger should handle it, but be safe)
     db.removeLeftCheck(checkId).catch((err) => logError('removeLeftCheck', err, { checkId }));
   }, [respondToCheck]);

@@ -61,17 +61,17 @@ export async function POST(req: NextRequest) {
       .eq('id', squadId)
       .single();
 
-    let maxSize = 999;
+    let maxSize: number | null = null;
     if (squad?.check_id) {
       const { data: check } = await adminClient
         .from('interest_checks')
         .select('max_squad_size')
         .eq('id', squad.check_id)
         .single();
-      maxSize = check?.max_squad_size ?? 999;
+      maxSize = check?.max_squad_size ?? null;
     }
 
-    if ((memberCount ?? 0) >= maxSize) {
+    if (maxSize != null && (memberCount ?? 0) >= maxSize) {
       return NextResponse.json({ error: 'Squad is full' }, { status: 400 });
     }
   }

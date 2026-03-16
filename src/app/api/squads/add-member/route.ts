@@ -63,8 +63,8 @@ export async function POST(req: NextRequest) {
     .eq('id', squad.check_id)
     .single();
 
-  const maxSize = check?.max_squad_size ?? 999;
-  if ((memberCount ?? 0) >= maxSize) {
+  const maxSize = check?.max_squad_size ?? null;
+  if (maxSize != null && (memberCount ?? 0) >= maxSize) {
     return NextResponse.json({ error: 'Squad is full' }, { status: 400 });
   }
 

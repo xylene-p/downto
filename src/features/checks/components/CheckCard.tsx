@@ -24,6 +24,7 @@ export default function CheckCard({
     author,
     event_date: eventDate,
     event_time: eventTime,
+    max_squad_size: maxSquadSize,
   },
 }: {
   check: InterestCheck;
@@ -60,6 +61,8 @@ export default function CheckCard({
   const isAuthor = authorId == user.id;
   const currentUserResponse =
     responses.find((r) => r.user_id === user.id)?.response ?? null;
+  const downsCount = responses.filter((r) => r.response === 'down').length;
+  const isFull = maxSquadSize != null && downsCount >= maxSquadSize;
 
   return (
     <div
@@ -116,7 +119,7 @@ export default function CheckCard({
         <div className="flex items-center justify-between">
           <CheckResponses checkId={id} responses={responses} />
           {!isAuthor && (
-            <CheckActions checkId={id} response={currentUserResponse} />
+            <CheckActions checkId={id} response={currentUserResponse} isFull={isFull} />
           )}
         </div>
         <div id={`check-${id}:responses-root`}></div>

@@ -28,7 +28,7 @@ const AddModal = ({
   open: boolean;
   onClose: () => void;
   onSubmit: (e: ScrapedEvent, sharePublicly: boolean) => void;
-  onInterestCheck: (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number, movieData?: CheckMovie, eventTime?: string | null, dateFlexible?: boolean, timeFlexible?: boolean, taggedFriendIds?: string[]) => void;
+  onInterestCheck: (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number | null, movieData?: CheckMovie, eventTime?: string | null, dateFlexible?: boolean, timeFlexible?: boolean, taggedFriendIds?: string[]) => void;
   defaultMode?: "paste" | "idea" | "manual" | null;
   friends?: { id: string; name: string; avatar: string }[];
 }) => {
@@ -1245,7 +1245,7 @@ const AddModal = ({
                     ))
                     .map(f => f.id);
                   const title = sanitize(stripDateTimeText(idea), 280);
-                  onInterestCheck(title, checkTimer, eventDate, squadSize === 0 ? 999 : squadSize, checkMovie ?? undefined, eventTime, !dateLocked, !timeLocked, taggedIds.length > 0 ? taggedIds : undefined);
+                  onInterestCheck(title, checkTimer, eventDate, squadSize === 0 ? null : squadSize, checkMovie ?? undefined, eventTime, !dateLocked, !timeLocked, taggedIds.length > 0 ? taggedIds : undefined);
                   close();
                 }
               }}

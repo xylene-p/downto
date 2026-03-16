@@ -100,7 +100,7 @@ export const DEMO_CHECKS: InterestCheck[] = [
     expiryPercent: 60,
     responses: [
       { name: "Sara", avatar: "S", status: "down" },
-      { name: "devon.mp3", avatar: "D", status: "maybe" },
+      { name: "devon.mp3", avatar: "D", status: "down" },
       { name: "raya_k", avatar: "R", status: "down" },
     ],
   },

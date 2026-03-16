@@ -9,7 +9,7 @@ export type InterestCheck = Tables<'interest_checks'> & {
   })[];
 };
 
-const RESPONSE = ['down', 'maybe'] as const;
+const RESPONSE = ['down', 'waitlist'] as const;
 export type ResponseType = (typeof RESPONSE)[number];
 
 export type CheckResponse = Tables<'check_responses'> & {

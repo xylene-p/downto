@@ -22,7 +22,7 @@ const CalendarView = ({
 }: {
   events: Event[];
   checks?: InterestCheck[];
-  myCheckResponses?: Record<string, "down" | "maybe">;
+  myCheckResponses?: Record<string, "down" | "waitlist">;
   onToggleSave?: (id: string) => void;
   onToggleDown?: (id: string) => void;
   onOpenSocial?: (event: Event) => void;
@@ -396,10 +396,10 @@ const CalendarView = ({
                       {c.eventTime && <span>{c.eventTime}</span>}
                       {c.eventTime && <span>·</span>}
                       <span style={{
-                        color: response === "down" ? color.accent : response === "maybe" ? color.muted : color.dim,
+                        color: response === "down" ? color.accent : response === "waitlist" ? color.muted : color.dim,
                         fontWeight: 700,
                       }}>
-                        {response === "down" ? "✓ Down" : response === "maybe" ? "✓ Maybe" : "Yours"}
+                        {response === "down" ? "✓ Down" : response === "waitlist" ? "✓ Waitlisted" : "Yours"}
                       </span>
                     </div>
                   </div>

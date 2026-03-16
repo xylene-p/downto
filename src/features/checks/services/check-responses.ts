@@ -7,7 +7,7 @@ export async function updateCheckResponse({
 }: {
   userId: string;
   checkId: string;
-  response: 'down' | 'maybe';
+  response: 'down';
 }) {
   const supabase = await createClient();
 

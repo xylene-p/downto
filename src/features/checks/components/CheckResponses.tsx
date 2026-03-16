@@ -17,7 +17,7 @@ const ResponseItem = ({ response }: { response: CheckResponse }) => {
         'flex items-center gap-1 rounded-full border border-neutral-800 pr-1.5',
         {
           'border-solid bg-neutral-900': res === 'down',
-          'bg-neutral-925 border-dashed': res === 'maybe',
+          'bg-neutral-925 border-dashed': res === 'waitlist',
         }
       )}
     >
@@ -27,7 +27,9 @@ const ResponseItem = ({ response }: { response: CheckResponse }) => {
         highlight={res === 'down'}
         className="border-neutral-925 border-2 border-solid"
       />
-      <span className="text-tiny">{user.display_name}</span>
+      <span className={cn('text-tiny', { 'text-neutral-500': res === 'waitlist' })}>
+        {user.display_name}
+      </span>
     </div>
   );
 };
@@ -42,11 +44,14 @@ export default function CheckResponses({
   const [isExpanded, setIsExpanded] = useState(false);
 
   const downs = responses.filter((r) => r.response == 'down');
-  const maybes = responses.filter((r) => r.response == 'maybe');
+  const waitlisted = responses.filter((r) => r.response == 'waitlist');
 
   if (!responses.length) {
     return <div className="text-tiny">no responses yet</div>;
   }
+
+  // Show downs first, then waitlisted in avatar stack
+  const orderedResponses = [...downs, ...waitlisted];
 
   return (
     <div className="text-tiny flex items-center">
@@ -55,25 +60,28 @@ export default function CheckResponses({
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex">
-          {responses.slice(0, MAX_VISIBLE_AVATARS).map((r) => (
+          {orderedResponses.slice(0, MAX_VISIBLE_AVATARS).map((r) => (
             <AvatarLetter
               size="inline"
               avatarLetter={r.user.avatar_letter}
               highlight={r.response === 'down'}
-              className="border-neutral-925 border-2 border-solid not-first:-ml-1.5"
+              className={cn(
+                'border-neutral-925 border-2 border-solid not-first:-ml-1.5',
+                { 'opacity-50': r.response === 'waitlist' }
+              )}
               key={`${r.id}-${r.response}`}
             />
           ))}
-          {responses.length > MAX_VISIBLE_AVATARS && (
+          {orderedResponses.length > MAX_VISIBLE_AVATARS && (
             <AvatarLetter
               size="inline"
-              avatarLetter={`+${responses.length - MAX_VISIBLE_AVATARS}`}
+              avatarLetter={`+${orderedResponses.length - MAX_VISIBLE_AVATARS}`}
               className="border-neutral-925 border-2 border-solid text-[0.5rem] not-first:-ml-1.5"
             />
           )}
         </div>
         {!!downs.length && <span className="text-dt">{downs.length} down</span>}
-        {!!maybes.length && <span>{maybes.length} maybe</span>}
+        {!!waitlisted.length && <span className="text-neutral-500">{waitlisted.length} waitlist</span>}
       </div>
 
       {isExpanded &&
@@ -91,13 +99,13 @@ export default function CheckResponses({
                 </div>
               </section>
             )}
-            {!!maybes.length && (
+            {!!waitlisted.length && (
               <section>
-                <h2 className="text-tiny mb-2 uppercase">
-                  Maybe ({maybes.length})
+                <h2 className="text-tiny mb-2 uppercase text-neutral-500">
+                  Waitlist ({waitlisted.length})
                 </h2>
                 <div className="flex flex-wrap justify-start gap-1">
-                  {maybes.map((r) => (
+                  {waitlisted.map((r) => (
                     <ResponseItem response={r} key={r.id} />
                   ))}
                 </div>

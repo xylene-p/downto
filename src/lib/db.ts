@@ -596,7 +596,7 @@ export async function createInterestCheck(
   text: string,
   expiresInHours: number | null = 24,
   eventDate: string | null = null,
-  maxSquadSize: number = 5,
+  maxSquadSize: number | null = null,
   movieData?: { letterboxdUrl: string; title: string; year?: string; director?: string; thumbnail?: string; vibes?: string[] },
   eventTime: string | null = null,
   dateFlexible: boolean = true,
@@ -715,7 +715,7 @@ export async function removeCheckResponse(checkId: string): Promise<void> {
 
 export async function respondToCheck(
   checkId: string,
-  response: 'down' | 'maybe' | 'nah'
+  response: 'down'
 ): Promise<CheckResponse> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');

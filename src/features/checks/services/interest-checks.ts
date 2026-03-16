@@ -29,7 +29,7 @@ export async function createInterestCheck(
     expiresAt = d.toISOString();
   }
 
-  let maxSquadSize = undefined;
+  let maxSquadSize: number | null = null;
   if (squadSize != 'open') {
     maxSquadSize = squadSize;
   }

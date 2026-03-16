@@ -47,31 +47,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
-  // Auto-promote waitlisted members if there's now room
-  const { count: activeCount } = await adminClient
-    .from('squad_members')
+  // Auto-promote waitlisted check responses if there's now room
+  // The RPC promotes one at a time and returns the promoted user_id (or null)
+  const { count: downCount } = await adminClient
+    .from('check_responses')
     .select('id', { count: 'exact', head: true })
-    .eq('squad_id', squad.id)
-    .eq('role', 'member');
+    .eq('check_id', checkId)
+    .eq('response', 'down');
 
-  const spotsAvailable = maxSquadSize - (activeCount ?? 0);
+  const spotsAvailable = maxSquadSize - (downCount ?? 0);
 
   if (spotsAvailable > 0) {
-    // Get waitlisted members ordered by join time (first come first served)
-    const { data: waitlisted } = await adminClient
-      .from('squad_members')
-      .select('id, user_id, user:profiles!user_id(display_name)')
-      .eq('squad_id', squad.id)
-      .eq('role', 'waitlist')
-      .order('joined_at', { ascending: true })
-      .limit(spotsAvailable);
-
-    if (waitlisted && waitlisted.length > 0) {
-      // Promote one at a time using the race-safe RPC (skips already-promoted)
-      for (const w of waitlisted) {
-        const { data: promoted } = await adminClient.rpc('promote_waitlisted_member', { p_squad_id: squad.id });
-        if (!promoted) break; // no more room or no more waitlisted
-      }
+    for (let i = 0; i < spotsAvailable; i++) {
+      const { data: promoted } = await adminClient.rpc('promote_waitlisted_check_response', { p_check_id: checkId });
+      if (!promoted) break; // no more waitlisted
     }
   }
 

@@ -175,8 +175,8 @@ export interface FeedViewProps {
   setFeedMode: (mode: "foryou" | "tonight") => void;
   checks: InterestCheck[];
   setChecks: React.Dispatch<React.SetStateAction<InterestCheck[]>>;
-  myCheckResponses: Record<string, "down" | "maybe">;
-  setMyCheckResponses: React.Dispatch<React.SetStateAction<Record<string, "down" | "maybe">>>;
+  myCheckResponses: Record<string, "down" | "waitlist">;
+  setMyCheckResponses: React.Dispatch<React.SetStateAction<Record<string, "down" | "waitlist">>>;
   events: Event[];
   setEvents: React.Dispatch<React.SetStateAction<Event[]>>;
   tonightEvents: Event[];
@@ -192,7 +192,7 @@ export interface FeedViewProps {
   // Callbacks
   toggleSave: (id: string) => void;
   toggleDown: (id: string) => void;
-  respondToCheck: (checkId: string, status: "down" | "maybe") => void;
+  respondToCheck: (checkId: string) => void;
   startSquadFromCheck: (check: InterestCheck) => Promise<void>;
   loadRealData: () => Promise<void>;
   showToast: (msg: string) => void;
@@ -748,10 +748,9 @@ export default function FeedView({
                                       background:
                                         r.status === "down"
                                           ? color.accent
-                                          : r.status === "maybe"
-                                          ? color.borderLight
                                           : color.faint,
                                       color: r.status === "down" ? "#000" : color.dim,
+                                      opacity: r.status === "waitlist" ? 0.5 : 1,
                                       display: "flex",
                                       alignItems: "center",
                                       justifyContent: "center",
@@ -796,9 +795,9 @@ export default function FeedView({
                                 }}
                               >
                                 {check.responses.filter((r) => r.status === "down").length} down
-                                {check.responses.some((r) => r.status === "maybe") && (
+                                {check.responses.some((r) => r.status === "waitlist") && (
                                   <span style={{ color: color.dim }}>
-                                    {" "}{check.responses.filter((r) => r.status === "maybe").length} maybe
+                                    {" "}{check.responses.filter((r) => r.status === "waitlist").length} waitlist
                                   </span>
                                 )}
                                 {" "}<span style={{ color: color.faint, fontSize: 8, paddingRight: 4 }}>{expandedCheckId === check.id ? "▴" : "▾"}</span>
@@ -839,7 +838,7 @@ export default function FeedView({
                             <div style={{ display: "flex", gap: 6, alignItems: "center", marginLeft: "auto" }}>
                               <button
                                 onClick={() => {
-                                  if (myCheckResponses[check.id] === "down") {
+                                  if (myCheckResponses[check.id] === "down" || myCheckResponses[check.id] === "waitlist") {
                                     // Undo — optimistically clear response + squad membership
                                     setMyCheckResponses((prev) => {
                                       const next = { ...prev };
@@ -859,13 +858,19 @@ export default function FeedView({
                                         .catch((err) => logError("removeCheckResponse", err, { checkId: check.id }));
                                     }
                                   } else {
-                                    respondToCheck(check.id, "down");
+                                    respondToCheck(check.id);
                                   }
                                 }}
                                 style={{
-                                  background: myCheckResponses[check.id] === "down" ? color.accent : "transparent",
-                                  color: myCheckResponses[check.id] === "down" ? "#000" : color.text,
-                                  border: myCheckResponses[check.id] === "down" ? "none" : `1px solid ${color.borderMid}`,
+                                  background: myCheckResponses[check.id] === "down" ? color.accent
+                                    : myCheckResponses[check.id] === "waitlist" ? "transparent"
+                                    : "transparent",
+                                  color: myCheckResponses[check.id] === "down" ? "#000"
+                                    : myCheckResponses[check.id] === "waitlist" ? color.dim
+                                    : color.text,
+                                  border: myCheckResponses[check.id] === "down" ? "none"
+                                    : myCheckResponses[check.id] === "waitlist" ? `1px dashed ${color.borderMid}`
+                                    : `1px solid ${color.borderMid}`,
                                   borderRadius: 8,
                                   padding: "6px 10px",
                                   fontFamily: font.mono,
@@ -875,51 +880,14 @@ export default function FeedView({
                                   whiteSpace: "nowrap" as const,
                                 }}
                               >
-                                {myCheckResponses[check.id] === "down" ? "✓ Down" : "Down"}
-                              </button>
-                              <button
-                                onClick={() => {
-                                  if (myCheckResponses[check.id] === "maybe") {
-                                    // Undo — optimistically clear response + squad membership
-                                    setMyCheckResponses((prev) => {
-                                      const next = { ...prev };
-                                      delete next[check.id];
-                                      return next;
-                                    });
-                                    setChecks((prev) =>
-                                      prev.map((c) =>
-                                        c.id === check.id
-                                          ? { ...c, responses: c.responses.filter((r) => r.name !== "You"), inSquad: undefined }
-                                          : c
-                                      )
-                                    );
-                                    if (!isDemoMode && check.id) {
-                                      db.removeCheckResponse(check.id)
-                                        .then(() => loadRealData())
-                                        .catch((err) => logError("removeCheckResponse", err, { checkId: check.id }));
-                                    }
-                                  } else {
-                                    respondToCheck(check.id, "maybe");
-                                  }
-                                }}
-                                style={{
-                                  background: myCheckResponses[check.id] === "maybe" ? color.dim : "transparent",
-                                  color: myCheckResponses[check.id] === "maybe" ? "#000" : color.dim,
-                                  border: `1px solid ${color.borderMid}`,
-                                  borderRadius: 8,
-                                  padding: "6px 8px",
-                                  fontFamily: font.mono,
-                                  fontSize: 10,
-                                  cursor: "pointer",
-                                  whiteSpace: "nowrap" as const,
-                                }}
-                              >
-                                {myCheckResponses[check.id] === "maybe" ? "✓ Maybe" : "Maybe"}
+                                {myCheckResponses[check.id] === "down" ? "✓ Down"
+                                  : myCheckResponses[check.id] === "waitlist" ? "✓ Waitlisted"
+                                  : "Down"}
                               </button>
                               {myCheckResponses[check.id] === "down" && (() => {
                                 const memberCount = check.squadMemberCount ?? 0;
-                                const maxSize = check.maxSquadSize ?? 5;
-                                const isUnlimited = maxSize >= 999;
+                                const maxSize = check.maxSquadSize;
+                                const isUnlimited = maxSize == null;
                                 const isFull = !isUnlimited && memberCount >= maxSize;
                                 const capacityLabel = isUnlimited ? `${memberCount}/∞` : `${memberCount}/${maxSize}`;
                                 return (
@@ -1087,7 +1055,7 @@ export default function FeedView({
                                   whiteSpace: "nowrap" as const,
                                 }}
                               >
-                                💬 Squad →<span style={{ color: "rgba(175, 82, 222, 0.6)", marginLeft: 4, fontWeight: 400 }}>{check.squadMemberCount ?? 0}{check.maxSquadSize && check.maxSquadSize < 999 ? `/${check.maxSquadSize}` : `/∞`}</span>
+                                💬 Squad →<span style={{ color: "rgba(175, 82, 222, 0.6)", marginLeft: 4, fontWeight: 400 }}>{check.squadMemberCount ?? 0}{check.maxSquadSize != null ? `/${check.maxSquadSize}` : `/∞`}</span>
                               </button>
                             </div>
                           )}
@@ -1107,14 +1075,14 @@ export default function FeedView({
                                   </div>
                                 </div>
                               )}
-                              {check.responses.filter((r) => r.status === "maybe").length > 0 && (
+                              {check.responses.filter((r) => r.status === "waitlist").length > 0 && (
                                 <div>
-                                  <span style={{ fontFamily: font.mono, fontSize: 9, color: color.dim, textTransform: "uppercase", letterSpacing: "0.1em" }}>Maybe</span>
+                                  <span style={{ fontFamily: font.mono, fontSize: 9, color: color.dim, textTransform: "uppercase", letterSpacing: "0.1em" }}>Waitlist</span>
                                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
-                                    {check.responses.filter((r) => r.status === "maybe").map((r) => (
+                                    {check.responses.filter((r) => r.status === "waitlist").map((r) => (
                                       <span key={r.name} style={{
                                         fontFamily: font.mono, fontSize: 11, color: color.dim, background: color.borderLight,
-                                        padding: "3px 8px", borderRadius: 6,
+                                        padding: "3px 8px", borderRadius: 6, borderStyle: "dashed",
                                       }}>{r.name}</span>
                                     ))}
                                   </div>
@@ -1524,7 +1492,7 @@ export default function FeedView({
                                   color: myResponse === "down" ? color.accent : color.muted,
                                 }}
                               >
-                                {myResponse === "down" ? "✓ Down" : "✓ Maybe"}
+                                {myResponse === "down" ? "✓ Down" : "✓ Waitlisted"}
                               </div>
                             )}
                           </div>

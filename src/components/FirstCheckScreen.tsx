@@ -9,7 +9,7 @@ const FirstCheckScreen = ({
   onComplete,
   onSkip,
 }: {
-  onComplete: (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number, eventTime?: string | null, dateFlexible?: boolean, timeFlexible?: boolean) => void;
+  onComplete: (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number | null, eventTime?: string | null, dateFlexible?: boolean, timeFlexible?: boolean) => void;
   onSkip: () => void;
 }) => {
   const [idea, setIdea] = useState("");
@@ -308,7 +308,7 @@ const FirstCheckScreen = ({
               : (detectedDate?.iso ?? null);
             const eventTime = manualTime !== null ? (manualTime || null) : (detectedTime ?? null);
             const title = sanitize(stripDateTimeText(idea), 280);
-            onComplete(title, checkTimer, eventDate, squadSize === 0 ? 999 : squadSize, eventTime, !dateLocked, !timeLocked);
+            onComplete(title, checkTimer, eventDate, squadSize === 0 ? null : squadSize, eventTime, !dateLocked, !timeLocked);
           }
         }}
         disabled={!idea.trim()}

@@ -93,8 +93,23 @@ export async function POST(req: NextRequest) {
     }),
   ]);
 
-  // Auto-promote first waitlisted member if there's now room
-  await adminClient.rpc('promote_waitlisted_member', { p_squad_id: squadId });
+  // Auto-promote first waitlisted check response if there's now room
+  const { data: kickSquad } = await adminClient
+    .from('squads')
+    .select('check_id')
+    .eq('id', squadId)
+    .single();
+
+  if (kickSquad?.check_id) {
+    // Also remove the kicked user's check_response so they're fully out
+    await adminClient
+      .from('check_responses')
+      .delete()
+      .eq('check_id', kickSquad.check_id)
+      .eq('user_id', targetUserId);
+
+    await adminClient.rpc('promote_waitlisted_check_response', { p_check_id: kickSquad.check_id });
+  }
 
   return NextResponse.json({ ok: true });
 }

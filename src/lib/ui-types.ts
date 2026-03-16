@@ -41,14 +41,14 @@ export interface InterestCheck {
   timeAgo: string;
   expiresIn: string;
   expiryPercent: number;
-  responses: { name: string; avatar: string; status: "down" | "maybe" | "nah"; odbc?: string }[];
+  responses: { name: string; avatar: string; status: "down" | "waitlist"; odbc?: string }[];
   isYours?: boolean;
   eventDate?: string;
   eventDateLabel?: string;
   eventTime?: string;
   dateFlexible?: boolean;
   timeFlexible?: boolean;
-  maxSquadSize?: number;
+  maxSquadSize?: number | null;
   squadId?: string;
   squadMemberCount?: number;
   inSquad?: boolean;
@@ -95,7 +95,7 @@ export interface Squad {
   eventTime?: string;
   dateFlexible?: boolean;
   timeFlexible?: boolean;
-  maxSquadSize?: number;
+  maxSquadSize?: number | null;
   members: { name: string; avatar: string; userId?: string }[];
   waitlistedMembers?: { name: string; avatar: string; userId: string }[];
   downResponders?: { name: string; avatar: string; userId: string }[];

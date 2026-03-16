@@ -94,7 +94,7 @@ export interface CheckResponse {
   id: string;
   check_id: string;
   user_id: string;
-  response: 'down' | 'maybe' | 'nah';
+  response: 'down' | 'waitlist';
   created_at: string;
   // Joined data
   user?: Profile;
@@ -229,7 +229,7 @@ export interface InterestCheckView {
 export interface CheckResponseView {
   name: string;
   avatar: string;
-  status: 'down' | 'maybe' | 'nah';
+  status: 'down' | 'waitlist';
 }
 
 export interface SquadView {

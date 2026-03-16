@@ -1423,7 +1423,7 @@ const GroupsView = ({
                       )}
                     </div>
                     <span style={{ fontFamily: font.mono, fontSize: 10, color: color.dim }}>
-                      {selectedSquad.members.length}{selectedSquad.maxSquadSize && selectedSquad.maxSquadSize < 999 ? `/${selectedSquad.maxSquadSize}` : ''} member{selectedSquad.members.length !== 1 ? 's' : ''}
+                      {selectedSquad.members.length}{selectedSquad.maxSquadSize != null ? `/${selectedSquad.maxSquadSize}` : ''} member{selectedSquad.members.length !== 1 ? 's' : ''}
                     </span>
                   </div>
 
@@ -1802,7 +1802,7 @@ const GroupsView = ({
                               <button
                                 onClick={async (e) => {
                                   e.stopPropagation();
-                                  const isFull = selectedSquad.members.length >= (selectedSquad.maxSquadSize ?? 999);
+                                  const isFull = selectedSquad.members.length >= (selectedSquad.maxSquadSize ?? Infinity);
                                   if (isFull) return;
                                   await onSetMemberRole(selectedSquad.id, m.userId, 'member');
                                   const updated = {
@@ -1813,17 +1813,17 @@ const GroupsView = ({
                                   setSelectedSquad(updated);
                                   onSquadUpdate((prev: Squad[]) => prev.map((s) => s.id === selectedSquad.id ? updated : s));
                                 }}
-                                disabled={selectedSquad.members.length >= (selectedSquad.maxSquadSize ?? 999)}
+                                disabled={selectedSquad.members.length >= (selectedSquad.maxSquadSize ?? Infinity)}
                                 style={{
                                   background: "none",
                                   border: `1px solid ${color.borderMid}`,
                                   borderRadius: 8,
-                                  color: selectedSquad.members.length >= (selectedSquad.maxSquadSize ?? 999) ? color.faint : color.accent,
+                                  color: selectedSquad.members.length >= (selectedSquad.maxSquadSize ?? Infinity) ? color.faint : color.accent,
                                   fontFamily: font.mono,
                                   fontSize: 11,
                                   fontWeight: 700,
                                   padding: "4px 10px",
-                                  cursor: selectedSquad.members.length >= (selectedSquad.maxSquadSize ?? 999) ? "default" : "pointer",
+                                  cursor: selectedSquad.members.length >= (selectedSquad.maxSquadSize ?? Infinity) ? "default" : "pointer",
                                 }}
                               >
                                 Promote
@@ -1837,7 +1837,7 @@ const GroupsView = ({
 
                   {/* Down on check — people who can be added */}
                   {selectedSquad.downResponders && selectedSquad.downResponders.length > 0 &&
-                    selectedSquad.members.length < (selectedSquad.maxSquadSize ?? 999) && (
+                    selectedSquad.members.length < (selectedSquad.maxSquadSize ?? Infinity) && (
                     <div style={{ marginTop: 16 }}>
                       <span style={{
                         fontFamily: font.mono,
