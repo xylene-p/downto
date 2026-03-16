@@ -104,7 +104,7 @@ export default function CheckResponses({
               </section>
             )}
           </div>,
-          document.getElementById(`check-${checkId}:responses-root`)
+          document.getElementById(`check-${checkId}:responses-root`)!
         )}
     </div>
   );
