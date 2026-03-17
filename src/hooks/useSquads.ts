@@ -117,6 +117,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
   const [creatingSquad, setCreatingSquad] = useState(false);
   const [eventToSquad, setEventToSquad] = useState<Map<string, string>>(new Map());
   const [pendingRequestSquadIds, setPendingRequestSquadIds] = useState<Set<string>>(new Set());
+  const [socialDataLoaded, setSocialDataLoaded] = useState(false);
   const [pendingJoinRequests, setPendingJoinRequests] = useState<{ squadId: string; userId: string; name: string; avatar: string }[]>([]);
   const [autoSelectSquadId, setAutoSelectSquadId] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
@@ -164,8 +165,8 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         id: s.id,
         name: s.name,
         event: s.event ? `${s.event.title} — ${s.event.date_display}` : undefined,
-        eventDate: s.event?.date_display ?? undefined,
-        eventIsoDate: s.locked_date ?? s.event?.date ?? undefined,
+        eventDate: s.event?.date_display ?? (s.check?.event_date ? new Date(s.check.event_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : undefined),
+        eventIsoDate: s.locked_date ?? s.event?.date ?? s.check?.event_date ?? undefined,
         eventTime: s.check?.event_time ?? undefined,
         dateFlexible: s.check?.date_flexible ?? true,
         timeFlexible: s.check?.time_flexible ?? true,
@@ -426,8 +427,10 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
     if (!socialEvent?.id || isDemoMode) {
       setSquadPoolMembers([]);
       setInSquadPool(false);
+      setSocialDataLoaded(false);
       return;
     }
+    setSocialDataLoaded(false);
     (async () => {
       try {
         const [pool, squadMembers, myRequests] = await Promise.all([
@@ -477,8 +480,10 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
             };
           }),
         } : prev);
+        setSocialDataLoaded(true);
       } catch (err) {
         logWarn("loadSquadPool", "Failed to load squad pool", { eventId: socialEvent?.id });
+        setSocialDataLoaded(true);
       }
     })();
   }, [socialEvent?.id, isDemoMode, userId]);
@@ -562,5 +567,6 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
     handleRequestToJoin,
     pendingJoinRequests,
     handleRespondToJoinRequest,
+    socialDataLoaded,
   };
 }
