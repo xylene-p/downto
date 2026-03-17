@@ -80,6 +80,10 @@ const EventLobby = ({
   if (!visible || !event) return null;
   const friends = event.peopleDown.filter((p) => p.mutual);
   const others = event.peopleDown.filter((p) => !p.mutual);
+  const friendSquadmates = existingSquadId ? friends.filter((p) => p.inSquadId === existingSquadId) : [];
+  const friendNonSquadmates = existingSquadId ? friends.filter((p) => p.inSquadId !== existingSquadId) : friends;
+  const otherSquadmates = existingSquadId ? others.filter((p) => p.inSquadId === existingSquadId) : [];
+  const otherNonSquadmates = existingSquadId ? others.filter((p) => p.inSquadId !== existingSquadId) : others;
   const poolCount = event.poolCount ?? squadPoolMembers.length + (inSquadPool ? 1 : 0);
   const maxSquadPick = 4; // max 4 others + you = 5 total
   const isSelecting = selectingMembers;
@@ -96,10 +100,79 @@ const EventLobby = ({
     });
   };
 
+  const SquadFacepile = ({ members, isFriend }: { members: Person[]; isFriend: boolean }) => {
+    if (members.length === 0) return null;
+    const maxShow = 5;
+    const shown = members.slice(0, maxShow);
+    const overflow = members.length - maxShow;
+    return (
+      <div
+        onClick={() => existingSquadId && onGoToSquad?.(existingSquadId)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "10px 0",
+          borderBottom: `1px solid ${isFriend ? "#222" : color.surface}`,
+          cursor: existingSquadId ? "pointer" : "default",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            {shown.map((p, i) => (
+              <div
+                key={p.userId ?? p.name}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  background: isFriend ? color.accent : color.borderLight,
+                  color: isFriend ? "#000" : color.dim,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontFamily: font.mono,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  flexShrink: 0,
+                  marginLeft: i === 0 ? 0 : -8,
+                  border: `2px solid ${color.surface}`,
+                  position: "relative",
+                  zIndex: maxShow - i,
+                }}
+              >
+                {p.avatar}
+              </div>
+            ))}
+            {overflow > 0 && (
+              <span style={{
+                fontFamily: font.mono,
+                fontSize: 8,
+                fontWeight: 700,
+                color: color.dim,
+                marginLeft: 4,
+              }}>
+                +{overflow}
+              </span>
+            )}
+          </div>
+          <span style={{
+            fontFamily: font.mono,
+            fontSize: 11,
+            color: color.faint,
+          }}>
+            Your squad
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   const PersonRow = ({ p, isFriend, selectable }: { p: Person; isFriend: boolean; selectable: boolean }) => {
     const hasSquad = !!p.inSquadId;
+    const inSameSquad = !!(existingSquadId && p.inSquadId === existingSquadId);
     const alreadyRequested = hasSquad && pendingRequestSquadIds?.has(p.inSquadId!);
-    const canRequest = hasSquad && !alreadyRequested && !!onRequestToJoin;
+    const canRequest = hasSquad && !inSameSquad && !alreadyRequested && !!onRequestToJoin;
     // In selection mode, persons already in a squad are unselectable
     const effectiveSelectable = selectable && !hasSquad;
 
@@ -159,7 +232,7 @@ const EventLobby = ({
           )}
         </div>
         {/* Request to join indicator */}
-        {!isSelecting && hasSquad && (
+        {!isSelecting && hasSquad && !inSameSquad && (
           <span style={{
             fontFamily: font.mono,
             fontSize: 9,
@@ -301,7 +374,8 @@ const EventLobby = ({
             >
               Friends ({friends.length})
             </div>
-            {friends.map((p) => (
+            {!isSelecting && <SquadFacepile members={friendSquadmates} isFriend />}
+            {(isSelecting ? friends : friendNonSquadmates).map((p) => (
               <PersonRow key={p.name} p={p} isFriend selectable={selectingMembers} />
             ))}
           </>
@@ -323,7 +397,8 @@ const EventLobby = ({
             >
               Also down ({others.length})
             </div>
-            {others.map((p) => (
+            {!isSelecting && <SquadFacepile members={otherSquadmates} isFriend={false} />}
+            {(isSelecting ? others : otherNonSquadmates).map((p) => (
               <PersonRow key={p.name} p={p} isFriend={false} selectable={selectingMembers} />
             ))}
           </>
@@ -428,7 +503,7 @@ const EventLobby = ({
           )}
 
           {/* Looking for a squad toggle — always visible when not selecting */}
-          {!isSelecting && !isDemoMode && !existingSquadId && (
+          {!isSelecting && !isDemoMode && (
             <button
               onClick={() => onJoinSquadPool(event)}
               style={{
