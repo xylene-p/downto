@@ -1336,6 +1336,7 @@ export default function Home() {
         }}
         onRequestToJoin={squadsHook.handleRequestToJoin}
         pendingRequestSquadIds={squadsHook.pendingRequestSquadIds}
+        socialDataLoaded={squadsHook.socialDataLoaded}
       />
       <NotificationsPanel
         open={notificationsHook.notificationsOpen}

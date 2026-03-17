@@ -19,6 +19,7 @@ const EventLobby = ({
   onGoToSquad,
   onRequestToJoin,
   pendingRequestSquadIds,
+  socialDataLoaded,
 }: {
   event: Event | null;
   open: boolean;
@@ -33,6 +34,7 @@ const EventLobby = ({
   onGoToSquad?: (squadId: string) => void;
   onRequestToJoin?: (squadId: string, squadName: string) => void;
   pendingRequestSquadIds?: Set<string>;
+  socialDataLoaded?: boolean;
 }) => {
   const [selectingMembers, setSelectingMembers] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -87,6 +89,8 @@ const EventLobby = ({
   const poolCount = event.poolCount ?? squadPoolMembers.length + (inSquadPool ? 1 : 0);
   const maxSquadPick = 4; // max 4 others + you = 5 total
   const isSelecting = selectingMembers;
+  // Wait for squad enrichment before rendering people list when user has a squad
+  const peopleReady = !existingSquadId || socialDataLoaded;
 
   const toggleSelect = (userId: string) => {
     setSelectedIds((prev) => {
@@ -360,7 +364,7 @@ const EventLobby = ({
         )}
 
         {/* Friends section */}
-        {friends.length > 0 && (
+        {friends.length > 0 && peopleReady && (
           <>
             <div
               style={{
@@ -382,7 +386,7 @@ const EventLobby = ({
         )}
 
         {/* Others section */}
-        {others.length > 0 && (
+        {others.length > 0 && peopleReady && (
           <>
             <div
               style={{
@@ -407,7 +411,7 @@ const EventLobby = ({
         {/* CTAs */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
           {/* Start a squad / Go to squad — visible when anyone is down */}
-          {(friends.length > 0 || others.length > 0) && !isSelecting && (
+          {(friends.length > 0 || others.length > 0) && peopleReady && !isSelecting && (
             existingSquadId ? (
               <button
                 onClick={() => { onGoToSquad?.(existingSquadId); close(); }}
