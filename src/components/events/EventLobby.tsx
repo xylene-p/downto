@@ -363,95 +363,80 @@ const EventLobby = ({
           </div>
         )}
 
-        {/* Loading skeleton while waiting for squad enrichment */}
+        {/* Loading shimmer while waiting for squad enrichment */}
         {!peopleReady && (friends.length > 0 || others.length > 0) && (
-          <div style={{ opacity: 0.4 }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "16px 0",
+          }}>
+            {[...Array(Math.min(friends.length + others.length, 5))].map((_, i) => (
+              <div key={i} style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                background: color.borderLight,
+                opacity: 0.4,
+                marginLeft: i === 0 ? 0 : -10,
+                border: `2px solid ${color.surface}`,
+                flexShrink: 0,
+              }} />
+            ))}
+            <div style={{
+              width: 60, height: 8, borderRadius: 4,
+              background: color.borderLight, opacity: 0.3, marginLeft: 4,
+            }} />
+          </div>
+        )}
+
+        {peopleReady && (
+          <div style={{ animation: "fadeIn 0.2s ease" }}>
+            {/* Friends section */}
             {friends.length > 0 && (
               <>
-                <div style={{
-                  fontFamily: font.mono, fontSize: 10, textTransform: "uppercase",
-                  letterSpacing: "0.15em", color: color.accent, marginBottom: 12,
-                }}>
+                <div
+                  style={{
+                    fontFamily: font.mono,
+                    fontSize: 10,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.15em",
+                    color: color.accent,
+                    marginBottom: 12,
+                  }}
+                >
                   Friends ({friends.length})
                 </div>
-                {friends.map((p) => (
-                  <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: `1px solid #222` }}>
-                    <div style={{
-                      width: 36, height: 36, borderRadius: "50%", background: color.accent,
-                      color: "#000", display: "flex", alignItems: "center", justifyContent: "center",
-                      fontFamily: font.mono, fontSize: 14, fontWeight: 700,
-                    }}>{p.avatar}</div>
-                    <div style={{ width: 80, height: 10, borderRadius: 4, background: color.borderLight }} />
-                  </div>
+                {!isSelecting && <SquadFacepile members={friendSquadmates} isFriend />}
+                {(isSelecting ? friends : friendNonSquadmates).map((p) => (
+                  <PersonRow key={p.name} p={p} isFriend selectable={selectingMembers} />
                 ))}
               </>
             )}
+
+            {/* Others section */}
             {others.length > 0 && (
               <>
-                <div style={{
-                  fontFamily: font.mono, fontSize: 10, textTransform: "uppercase",
-                  letterSpacing: "0.15em", color: color.dim, marginTop: 20, marginBottom: 12,
-                }}>
+                <div
+                  style={{
+                    fontFamily: font.mono,
+                    fontSize: 10,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.15em",
+                    color: color.dim,
+                    marginTop: 20,
+                    marginBottom: 12,
+                  }}
+                >
                   Also down ({others.length})
                 </div>
-                {others.map((p) => (
-                  <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: `1px solid ${color.surface}` }}>
-                    <div style={{
-                      width: 36, height: 36, borderRadius: "50%", background: color.borderLight,
-                      color: color.dim, display: "flex", alignItems: "center", justifyContent: "center",
-                      fontFamily: font.mono, fontSize: 14, fontWeight: 700,
-                    }}>{p.avatar}</div>
-                    <div style={{ width: 80, height: 10, borderRadius: 4, background: color.borderLight }} />
-                  </div>
+                {!isSelecting && <SquadFacepile members={otherSquadmates} isFriend={false} />}
+                {(isSelecting ? others : otherNonSquadmates).map((p) => (
+                  <PersonRow key={p.name} p={p} isFriend={false} selectable={selectingMembers} />
                 ))}
               </>
             )}
           </div>
-        )}
-
-        {/* Friends section */}
-        {friends.length > 0 && peopleReady && (
-          <>
-            <div
-              style={{
-                fontFamily: font.mono,
-                fontSize: 10,
-                textTransform: "uppercase",
-                letterSpacing: "0.15em",
-                color: color.accent,
-                marginBottom: 12,
-              }}
-            >
-              Friends ({friends.length})
-            </div>
-            {!isSelecting && <SquadFacepile members={friendSquadmates} isFriend />}
-            {(isSelecting ? friends : friendNonSquadmates).map((p) => (
-              <PersonRow key={p.name} p={p} isFriend selectable={selectingMembers} />
-            ))}
-          </>
-        )}
-
-        {/* Others section */}
-        {others.length > 0 && peopleReady && (
-          <>
-            <div
-              style={{
-                fontFamily: font.mono,
-                fontSize: 10,
-                textTransform: "uppercase",
-                letterSpacing: "0.15em",
-                color: color.dim,
-                marginTop: 20,
-                marginBottom: 12,
-              }}
-            >
-              Also down ({others.length})
-            </div>
-            {!isSelecting && <SquadFacepile members={otherSquadmates} isFriend={false} />}
-            {(isSelecting ? others : otherNonSquadmates).map((p) => (
-              <PersonRow key={p.name} p={p} isFriend={false} selectable={selectingMembers} />
-            ))}
-          </>
         )}
 
         {/* CTAs */}
