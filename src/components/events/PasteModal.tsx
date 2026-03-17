@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { font, color } from "@/lib/styles";
 import { useModalTransition } from "@/hooks/useModalTransition";
 import type { ScrapedEvent } from "@/lib/ui-types";
@@ -16,6 +16,25 @@ interface CheckMovie {
   vibes?: string[];
   letterboxdUrl: string;
 }
+
+const CHECK_PLACEHOLDERS = [
+  "park hang w me and @kat ^.^",
+  "dinner at 7 tomorrow?",
+  "need to touch grass asap",
+  "someone come thrift w me",
+  "get molly tea or heytea tn??",
+  "beach day this weekend who's in",
+  "late night ramen?",
+  "gonna go on a walk, join me",
+  "movie marathon at mine tonight",
+  "farmers market tmrw morning?",
+  "who wants to be productive at a cafe",
+  "spontaneous road trip this wknd??",
+  "karaoke night let's goooo",
+  "sunrise hike anyone?",
+  "cooking dinner tonight need taste testers",
+  "someone pls come to this concert w me",
+];
 
 const AddModal = ({
   open,
@@ -33,6 +52,9 @@ const AddModal = ({
   friends?: { id: string; name: string; avatar: string }[];
 }) => {
   const { visible, entering, closing, close } = useModalTransition(open, onClose);
+  const checkPlaceholder = useMemo(() =>
+    CHECK_PLACEHOLDERS[Math.floor(Math.random() * CHECK_PLACEHOLDERS.length)],
+  []);
   const [mode, setMode] = useState<"paste" | "idea" | "manual">("idea");
   const [url, setUrl] = useState("");
   const [idea, setIdea] = useState("");
@@ -823,7 +845,7 @@ const AddModal = ({
                   }
                 }}
                 maxLength={280}
-                placeholder="e.g., park hang w me and @kat ^.^ dinner at 7 tomorrow? need to touch grass asap"
+                placeholder={checkPlaceholder}
                 style={{
                   width: "100%",
                   background: color.deep,
