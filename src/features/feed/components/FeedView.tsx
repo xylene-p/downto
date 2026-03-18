@@ -125,7 +125,7 @@ function CheckCommentsSection({ checkId, comments, userId, onPostComment }: {
         </div>
       )}
       {userId && (
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", minWidth: 0 }}>
           <input
             ref={inputRef}
             type="text"
@@ -136,6 +136,7 @@ function CheckCommentsSection({ checkId, comments, userId, onPostComment }: {
             placeholder="Add a comment..."
             style={{
               flex: 1,
+              minWidth: 0,
               background: color.deep,
               border: `1px solid ${color.borderLight}`,
               borderRadius: 8,
@@ -150,6 +151,7 @@ function CheckCommentsSection({ checkId, comments, userId, onPostComment }: {
             onClick={(e) => { e.stopPropagation(); handleSubmit(); }}
             disabled={!text.trim()}
             style={{
+              flexShrink: 0,
               background: text.trim() ? color.accent : color.faint,
               color: text.trim() ? "#000" : color.dim,
               border: "none",
