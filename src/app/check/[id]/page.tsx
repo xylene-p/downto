@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getServiceClient } from "@/lib/supabase-admin";
 import { font, color } from "@/lib/styles";
+import CheckPreviewCTA from "./cta";
 
 interface CheckData {
   id: string;
@@ -166,25 +167,7 @@ export default async function CheckPreviewPage({ params }: { params: Promise<{ i
         </div>
 
         {/* CTA */}
-        <a
-          href="/"
-          style={{
-            display: "block",
-            textAlign: "center",
-            background: color.accent,
-            color: "#000",
-            borderRadius: 12,
-            padding: 14,
-            fontFamily: font.mono,
-            fontSize: 12,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            textDecoration: "none",
-          }}
-        >
-          Join to respond
-        </a>
+        <CheckPreviewCTA />
 
         {/* Branding */}
         <p
