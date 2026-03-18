@@ -6,7 +6,7 @@ import { logError } from "@/lib/logger";
 import type { Event, InterestCheck } from "@/lib/ui-types";
 import TonightEmptyState from "./TonightEmptyState";
 
-function TonightPlans({
+function TonightChecks({
   tonightChecks,
   myCheckResponses,
   onNavigateToGroups,
@@ -126,7 +126,7 @@ function TonightPlans({
   );
 }
 
-function TonightOutTonight({
+function TonightEvents({
   tonightEvents,
   tonightChecks,
   setTonightEvents,
@@ -312,12 +312,12 @@ export default function TonightView({
 }: TonightViewProps) {
   return (
     <>
-      <TonightPlans
+      <TonightChecks
         tonightChecks={tonightChecks}
         myCheckResponses={myCheckResponses}
         onNavigateToGroups={onNavigateToGroups}
       />
-      <TonightOutTonight
+      <TonightEvents
         tonightEvents={tonightEvents}
         tonightChecks={tonightChecks}
         setTonightEvents={setTonightEvents}
