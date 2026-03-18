@@ -32,7 +32,7 @@ const CHECKS: SampleCheck[] = [
     expiresIn: "4h",
     expiryPercent: 60,
     eventDateLabel: "Sat, Mar 15",
-    eventTime: "7 PM",
+    eventTime: "7pm",
     eventLocation: "Bushwick",
     responses: [
       { name: "Alex", type: "down" },
@@ -49,7 +49,7 @@ const CHECKS: SampleCheck[] = [
     expiresIn: "12h",
     expiryPercent: 35,
     eventDateLabel: "Fri, Mar 14",
-    eventTime: "7 PM",
+    eventTime: "7pm",
     timeFlexible: true,
     eventLocation: "56 Henry LES",
     responses: [
