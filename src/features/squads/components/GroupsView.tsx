@@ -2562,23 +2562,6 @@ const GroupsView = ({
             >
               {g.lastMsg}
             </div>
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-              {g.members.map((m) => (
-                <span
-                  key={m.name}
-                  style={{
-                    background: m.name === "You" ? color.accent : "#222",
-                    color: m.name === "You" ? "#000" : color.dim,
-                    padding: "3px 8px",
-                    borderRadius: 8,
-                    fontFamily: font.mono,
-                    fontSize: 10,
-                  }}
-                >
-                  {m.name}
-                </span>
-              ))}
-            </div>
           </div>
         ))
       )}
