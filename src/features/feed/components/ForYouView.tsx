@@ -131,7 +131,7 @@ function CheckCommentsSection({
           ))}
         </div>
       )}
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, minWidth: 0 }}>
         <input
           ref={inputRef}
           value={text}
@@ -140,6 +140,7 @@ function CheckCommentsSection({
           placeholder="Add a comment…"
           style={{
             flex: 1,
+            minWidth: 0,
             background: color.deep,
             border: `1px solid ${color.border}`,
             borderRadius: 8,
@@ -153,6 +154,7 @@ function CheckCommentsSection({
         <button
           onClick={handleSubmit}
           style={{
+            flexShrink: 0,
             background: color.accent,
             color: "#000",
             border: "none",
@@ -252,6 +254,37 @@ export default function ForYouView({
   const [expandedCheckId, setExpandedCheckId] = useState<string | null>(null);
   const [editModalCheck, setEditModalCheck] = useState<InterestCheck | null>(null);
   const [actionsSheetCheck, setActionsSheetCheck] = useState<InterestCheck | null>(null);
+  const checkLongPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const checkLongPressFired = useRef(false);
+
+  const clearCheckLongPress = () => {
+    if (checkLongPressTimer.current) {
+      clearTimeout(checkLongPressTimer.current);
+      checkLongPressTimer.current = null;
+    }
+  };
+
+  const shareCheck = async (check: InterestCheck) => {
+    if (!isDemoMode) {
+      try { await db.markCheckShared(check.id); } catch { /* best-effort */ }
+    }
+    const url = `${window.location.origin}/check/${check.id}`;
+    const shareData = {
+      title: check.text.slice(0, 60),
+      text: `${check.author}: ${check.text}`,
+      url,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(url);
+        showToast("Link copied!");
+      }
+    } catch {
+      // User cancelled share — ignore
+    }
+  };
 
   const visibleChecks = checks
     .filter((c) => !hiddenCheckIds.has(c.id) && c.expiresIn !== "expired")
@@ -288,6 +321,17 @@ export default function ForYouView({
               ref={check.id === newlyAddedCheckId ? (el) => {
                 if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
               } : undefined}
+              onPointerDown={() => {
+                if (!(check.isYours || check.isCoAuthor)) return;
+                checkLongPressFired.current = false;
+                checkLongPressTimer.current = setTimeout(() => {
+                  checkLongPressFired.current = true;
+                  shareCheck(check);
+                }, 500);
+              }}
+              onPointerUp={clearCheckLongPress}
+              onPointerLeave={clearCheckLongPress}
+              onTouchMove={clearCheckLongPress}
               style={{
                 background: (check.isYours || check.isCoAuthor) ? "rgba(232,255,90,0.05)" : color.card,
                 borderRadius: 14,
@@ -295,6 +339,8 @@ export default function ForYouView({
                 marginBottom: 8,
                 border: `1px solid ${check.id === newlyAddedCheckId ? "rgba(90,200,255,0.5)" : (check.isYours || check.isCoAuthor) ? "rgba(232,255,90,0.2)" : color.border}`,
                 ...(check.id === newlyAddedCheckId ? { animation: "checkGlow 2s ease-in-out infinite" } : {}),
+                WebkitUserSelect: (check.isYours || check.isCoAuthor) ? "none" : undefined,
+                userSelect: (check.isYours || check.isCoAuthor) ? "none" : undefined,
               }}
             >
               {check.expiresIn !== "open" && (
@@ -862,6 +908,7 @@ export default function ForYouView({
         open={!!actionsSheetCheck}
         onClose={() => setActionsSheetCheck(null)}
         hasSquad={!!actionsSheetCheck?.squadId}
+        onShare={actionsSheetCheck ? () => shareCheck(actionsSheetCheck) : undefined}
         onEdit={() => { if (actionsSheetCheck) setEditModalCheck(actionsSheetCheck); setActionsSheetCheck(null); }}
         onArchive={async () => {
           if (!actionsSheetCheck) return;
