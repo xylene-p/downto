@@ -911,8 +911,6 @@ export default function Home() {
             newlyAddedId={newlyAddedId}
             newlyAddedCheckId={checksHook.newlyAddedCheckId}
             friends={friendsHook.friends}
-            suggestions={friendsHook.suggestions}
-            setSuggestions={friendsHook.setSuggestions}
             userId={userId}
             isDemoMode={isDemoMode}
             profile={profile}
