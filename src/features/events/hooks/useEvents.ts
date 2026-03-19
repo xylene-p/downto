@@ -15,7 +15,6 @@ interface UseEventsParams {
 
 export function useEvents({ userId, isDemoMode, showToast, loadRealDataRef }: UseEventsParams) {
   const [events, setEvents] = useState<Event[]>([]);
-  const [tonightEvents, setTonightEvents] = useState<Event[]>([]);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [newlyAddedId, setNewlyAddedId] = useState<string | null>(null);
   const [archivedChecks, setArchivedChecks] = useState<{ id: string; text: string; archived_at: string }[]>([]);
@@ -95,36 +94,6 @@ export function useEvents({ userId, isDemoMode, showToast, loadRealDataRef }: Us
         });
     });
 
-    setTonightEvents((prev) => {
-      const prevPeopleDown = new Map(prev.map((e) => [e.id, e.peopleDown]));
-      return publicEvents
-        .filter((e) => e.venue && e.date_display)
-        .filter((e) => !e.date || e.date === today)
-        .map((e) => ({
-          id: e.id,
-          createdBy: e.created_by ?? undefined,
-          title: e.title,
-          venue: e.venue ?? "",
-          date: e.date_display ?? "Tonight",
-          time: e.time_display ?? "",
-          vibe: e.vibes,
-          image: e.image_url ?? "",
-          igHandle: e.ig_handle ?? "",
-          igUrl: e.ig_url ?? undefined,
-          diceUrl: e.dice_url ?? undefined,
-          letterboxdUrl: e.letterboxd_url ?? undefined,
-          movieTitle: e.movie_metadata?.title,
-          movieYear: e.movie_metadata?.year,
-          movieDirector: e.movie_metadata?.director,
-          movieThumbnail: e.movie_metadata?.thumbnail,
-          note: e.note ?? undefined,
-          saved: savedEventIdSet.has(e.id),
-          isDown: savedDownMap.get(e.id) ?? false,
-          isPublic: true,
-          peopleDown: prevPeopleDown.get(e.id) ?? [],
-          neighborhood: e.neighborhood ?? undefined,
-        }));
-    });
   }, []);
 
   const hydrateSocialData = useCallback((
@@ -150,7 +119,6 @@ export function useEvents({ userId, isDemoMode, showToast, loadRealDataRef }: Us
     };
 
     setEvents((prev) => prev.map(enrichEvent));
-    setTonightEvents((prev) => prev.map(enrichEvent));
   }, []);
 
   const toggleSave = (id: string) => {
@@ -236,7 +204,6 @@ export function useEvents({ userId, isDemoMode, showToast, loadRealDataRef }: Us
           : e
       );
     setEvents(updateList);
-    setTonightEvents(updateList);
     setEditingEvent(null);
     showToast("Event updated!");
   };
@@ -244,8 +211,6 @@ export function useEvents({ userId, isDemoMode, showToast, loadRealDataRef }: Us
   return {
     events,
     setEvents,
-    tonightEvents,
-    setTonightEvents,
     editingEvent,
     setEditingEvent,
     newlyAddedId,
