@@ -234,7 +234,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
   }, [userId, setChecks]);
 
   const startSquadFromCheck = async (check: InterestCheck) => {
-    if (creatingSquad) return;
+    if (creatingSquad || check.squadId) return;
     setCreatingSquad(true);
     const maxSize = check.maxSquadSize ?? 5;
     const allDown = check.responses.filter((r) => r.status === "down" && r.name !== "You");
@@ -259,8 +259,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         await db.sendMessage(dbSquad.id, opener);
         squadDbId = dbSquad.id;
       } catch (err: unknown) {
-        logError("createSquadFromCheck", err, { checkId: check.id });
-        showToast(`Failed to create squad: ${err instanceof Error ? err.message : "Unknown error"}`);
+        // Unique constraint = squad already exists for this check, skip silently
         setCreatingSquad(false);
         return;
       }
