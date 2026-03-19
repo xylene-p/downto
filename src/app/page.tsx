@@ -21,6 +21,7 @@ import AddModal from "@/features/events/components/CreateModal";
 import UserProfileOverlay from "@/features/friends/components/UserProfileOverlay";
 import FeedView from "@/features/feed/components/FeedView";
 import FriendsModal from "@/features/friends/components/FriendsModal";
+import OnboardingFriendsPopup from "@/features/friends/components/OnboardingFriendsPopup";
 import CalendarView from "@/features/calendar/components/CalendarView";
 import GroupsView from "@/features/squads/components/GroupsView";
 import ProfileView from "@/features/profile/components/ProfileView";
@@ -86,8 +87,11 @@ export default function Home() {
   // ─── Misc page-level state ──────────────────────────────────────────────
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [onboardingFriendGate, setOnboardingFriendGate] = useState(false);
+  const [onboardingCheckAuthorId, setOnboardingCheckAuthorId] = useState<string | null>(null);
   const [profileSetupDone, setProfileSetupDone] = useState(false);
+  const [notificationsDone, setNotificationsDone] = useState(false);
   const [showFirstCheck, setShowFirstCheck] = useState(false);
+  const [pendingSharedCheckId, setPendingSharedCheckId] = useState<string | null>(null);
   const [showAddGlow, setShowAddGlow] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("showAddGlow") === "true";
@@ -329,10 +333,48 @@ export default function Home() {
     const checkId = localStorage.getItem("pendingCheckId");
     if (!checkId) return;
     localStorage.removeItem("pendingCheckId");
+    setPendingSharedCheckId(checkId);
     setTab("feed");
     checksHook.setNewlyAddedCheckId(checkId);
     setTimeout(() => checksHook.setNewlyAddedCheckId(null), 3000);
   }, [isLoggedIn, userId, profile?.onboarded]);
+
+  // Inject shared check into feed once feedLoaded is true
+  useEffect(() => {
+    if (!pendingSharedCheckId || !feedLoaded) return;
+    const checkId = pendingSharedCheckId;
+    setPendingSharedCheckId(null);
+
+    (async () => {
+      // Check if already in feed (e.g. already friends)
+      const alreadyInFeed = checksHook.checks.some((c) => c.id === checkId);
+      if (!alreadyInFeed) {
+        const shared = await db.getSharedCheck(checkId);
+        if (shared) {
+          const { formatTimeAgo } = await import("@/lib/utils");
+          checksHook.setChecks((prev) => {
+            if (prev.some((c) => c.id === checkId)) return prev;
+            return [{
+              id: shared.id,
+              text: shared.text,
+              author: shared.author_name,
+              authorId: shared.author_id,
+              timeAgo: formatTimeAgo(new Date(shared.created_at)),
+              expiresIn: shared.expires_at ? "expiring" : "open",
+              expiryPercent: 0,
+              responses: [],
+              eventDate: shared.event_date ?? undefined,
+              eventTime: shared.event_time ?? undefined,
+              location: shared.location ?? undefined,
+              viaFriendName: "shared link",
+            }, ...prev];
+          });
+        }
+      }
+      checksHook.setNewlyAddedCheckId(checkId);
+      setTimeout(() => checksHook.setNewlyAddedCheckId(null), 5000);
+    })();
+  }, [pendingSharedCheckId, feedLoaded]);
 
   // Trigger data load when logged in
   useEffect(() => {
@@ -760,7 +802,7 @@ export default function Home() {
     );
   }
 
-  if (profile && !profile.onboarded && !profileSetupDone) {
+  if (profile && !profile.onboarded && !profileSetupDone && !profile.display_name) {
     return (
       <ProfileSetupScreen
         profile={profile}
@@ -772,24 +814,33 @@ export default function Home() {
     );
   }
 
-  if (profile && !profile.onboarded) {
+  if (profile && !profile.onboarded && !notificationsDone) {
     return (
       <EnableNotificationsScreen
         onComplete={async () => {
           localStorage.setItem("pushAutoPrompted", "1");
-          if (!isDemoMode) {
+          // If user came from a shared check, suggest the check author first
+          const pendingCheckId = localStorage.getItem("pendingCheckId");
+          if (pendingCheckId) {
             try {
-              const updated = await db.updateProfile({ onboarded: true } as Partial<Profile>);
-              setProfile(updated);
-            } catch (err) {
-              logError("finishOnboarding", err);
-              setProfile((prev) => prev ? { ...prev, onboarded: true } : prev);
-            }
-          } else {
-            setProfile((prev) => prev ? { ...prev, onboarded: true } : prev);
+              const authorProfile = await db.getCheckAuthorProfile(pendingCheckId);
+              if (authorProfile && authorProfile.id !== userId) {
+                setOnboardingCheckAuthorId(authorProfile.id);
+                friendsHook.setSuggestions((prev) => {
+                  const without = prev.filter((s) => s.id !== authorProfile.id);
+                  return [{
+                    id: authorProfile.id,
+                    name: authorProfile.display_name,
+                    username: authorProfile.username,
+                    avatar: authorProfile.avatar_letter,
+                    status: "none" as const,
+                    igHandle: authorProfile.ig_handle ?? undefined,
+                  }, ...without];
+                });
+              }
+            } catch {}
           }
-          friendsHook.setFriendsInitialTab("add");
-          friendsHook.setFriendsOpen(true);
+          setNotificationsDone(true);
           setOnboardingFriendGate(true);
         }}
       />
@@ -1170,15 +1221,37 @@ export default function Home() {
         onClose={() => setEditingEvent(null)}
         onSave={handleEditEvent}
       />
+      {onboardingFriendGate && (
+        <OnboardingFriendsPopup
+          suggestions={friendsHook.suggestions}
+          checkAuthorId={onboardingCheckAuthorId}
+          onAddFriend={friendsHook.addFriend}
+          onCancelRequest={friendsHook.cancelRequest}
+          onSearchUsers={friendsHook.searchUsers}
+          onDone={async () => {
+            // Mark onboarded now that friend gate is passed
+            if (!isDemoMode) {
+              try {
+                const updated = await db.updateProfile({ onboarded: true } as Partial<Profile>);
+                setProfile(updated);
+              } catch (err) {
+                logError("finishOnboarding", err);
+                setProfile((prev) => prev ? { ...prev, onboarded: true } : prev);
+              }
+            } else {
+              setProfile((prev) => prev ? { ...prev, onboarded: true } : prev);
+            }
+            setOnboardingFriendGate(false);
+            setOnboardingCheckAuthorId(null);
+            setShowFirstCheck(true);
+          }}
+        />
+      )}
       <FriendsModal
         open={friendsHook.friendsOpen}
         onClose={() => {
           friendsHook.setFriendsOpen(false);
           friendsHook.setFriendsInitialTab("friends");
-          if (onboardingFriendGate) {
-            setOnboardingFriendGate(false);
-            setShowFirstCheck(true);
-          }
         }}
         initialTab={friendsHook.friendsInitialTab}
         friends={friendsHook.friends}
@@ -1189,7 +1262,6 @@ export default function Home() {
         onCancelRequest={friendsHook.cancelRequest}
         onSearchUsers={friendsHook.searchUsers}
         onViewProfile={(uid) => setViewingUserId(uid)}
-        preventClose={onboardingFriendGate}
       />
       {viewingUserId && (
         <UserProfileOverlay
