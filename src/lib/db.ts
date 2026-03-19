@@ -528,10 +528,9 @@ export async function getSuggestedUsers(): Promise<Profile[]> {
 // ============================================================================
 
 export async function getCheckAuthorProfile(checkId: string): Promise<Profile | null> {
-  const res = await fetch(`/api/checks/author?checkId=${encodeURIComponent(checkId)}`);
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data.author ?? null;
+  const { data, error } = await supabase.rpc('get_shared_check_author', { p_check_id: checkId });
+  if (error || !data || data.length === 0) return null;
+  return data[0] as Profile;
 }
 
 export async function getHiddenCheckIds(): Promise<string[]> {
