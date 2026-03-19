@@ -337,9 +337,8 @@ export default function Home() {
     if (!checkId) return;
     localStorage.removeItem("pendingCheckId");
 
-    // Auto-respond "down" and inject the check into the feed
+    // Inject the shared check into the feed and highlight it
     (async () => {
-      await db.respondToSharedCheck(checkId);
       await loadRealData();
 
       // If the check isn't in the feed (not friends yet), fetch and inject it
@@ -356,7 +355,7 @@ export default function Home() {
             timeAgo: formatTimeAgo(new Date(shared.created_at)),
             expiresIn: shared.expires_at ? "expiring" : "open",
             expiryPercent: 0,
-            responses: [{ name: "You", avatar: profile?.avatar_letter ?? "?", status: "down" as const }],
+            responses: [],
             eventDate: shared.event_date ?? undefined,
             eventTime: shared.event_time ?? undefined,
             location: shared.location ?? undefined,
@@ -368,8 +367,7 @@ export default function Home() {
       setTab("feed");
       setFeedMode("foryou");
       checksHook.setNewlyAddedCheckId(checkId);
-      setTimeout(() => checksHook.setNewlyAddedCheckId(null), 3000);
-      showToast("You're down! \u{1F919}");
+      setTimeout(() => checksHook.setNewlyAddedCheckId(null), 5000);
     })();
   }, [isLoggedIn, userId, profile?.onboarded]);
 
