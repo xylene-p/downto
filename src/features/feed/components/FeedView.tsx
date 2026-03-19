@@ -320,7 +320,7 @@ export default function FeedView({
   newlyAddedId,
   newlyAddedCheckId,
   friends,
-  suggestions,
+  suggestions = [],
   setSuggestions,
   userId,
   isDemoMode,
