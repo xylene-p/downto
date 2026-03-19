@@ -21,6 +21,7 @@ import AddModal from "@/features/events/components/CreateModal";
 import UserProfileOverlay from "@/features/friends/components/UserProfileOverlay";
 import FeedView from "@/features/feed/components/FeedView";
 import FriendsModal from "@/features/friends/components/FriendsModal";
+import OnboardingFriendsPopup from "@/features/friends/components/OnboardingFriendsPopup";
 import CalendarView from "@/features/calendar/components/CalendarView";
 import GroupsView from "@/features/squads/components/GroupsView";
 import ProfileView from "@/features/profile/components/ProfileView";
@@ -88,6 +89,7 @@ export default function Home() {
   // ─── Misc page-level state ──────────────────────────────────────────────
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [onboardingFriendGate, setOnboardingFriendGate] = useState(false);
+  const [onboardingCheckAuthorId, setOnboardingCheckAuthorId] = useState<string | null>(null);
   const [profileSetupDone, setProfileSetupDone] = useState(false);
   const [showFirstCheck, setShowFirstCheck] = useState(false);
   const [showAddGlow, setShowAddGlow] = useState(() => {
@@ -801,6 +803,7 @@ export default function Home() {
             try {
               const authorProfile = await db.getCheckAuthorProfile(pendingCheckId);
               if (authorProfile && authorProfile.id !== userId) {
+                setOnboardingCheckAuthorId(authorProfile.id);
                 friendsHook.setSuggestions((prev) => {
                   const without = prev.filter((s) => s.id !== authorProfile.id);
                   return [{
@@ -815,8 +818,6 @@ export default function Home() {
               }
             } catch {}
           }
-          friendsHook.setFriendsInitialTab("add");
-          friendsHook.setFriendsOpen(true);
           setOnboardingFriendGate(true);
         }}
       />
@@ -1203,15 +1204,23 @@ export default function Home() {
         onClose={() => setEditingEvent(null)}
         onSave={handleEditEvent}
       />
+      {onboardingFriendGate && (
+        <OnboardingFriendsPopup
+          suggestions={friendsHook.suggestions}
+          checkAuthorId={onboardingCheckAuthorId}
+          onAddFriend={friendsHook.addFriend}
+          onDone={() => {
+            setOnboardingFriendGate(false);
+            setOnboardingCheckAuthorId(null);
+            setShowFirstCheck(true);
+          }}
+        />
+      )}
       <FriendsModal
         open={friendsHook.friendsOpen}
         onClose={() => {
           friendsHook.setFriendsOpen(false);
           friendsHook.setFriendsInitialTab("friends");
-          if (onboardingFriendGate) {
-            setOnboardingFriendGate(false);
-            setShowFirstCheck(true);
-          }
         }}
         initialTab={friendsHook.friendsInitialTab}
         friends={friendsHook.friends}
@@ -1222,7 +1231,6 @@ export default function Home() {
         onCancelRequest={friendsHook.cancelRequest}
         onSearchUsers={friendsHook.searchUsers}
         onViewProfile={(uid) => setViewingUserId(uid)}
-        preventClose={onboardingFriendGate}
       />
       {viewingUserId && (
         <UserProfileOverlay
