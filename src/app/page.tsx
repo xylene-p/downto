@@ -93,6 +93,7 @@ export default function Home() {
   const [profileSetupDone, setProfileSetupDone] = useState(false);
   const [notificationsDone, setNotificationsDone] = useState(false);
   const [showFirstCheck, setShowFirstCheck] = useState(false);
+  const [pendingSharedCheckId, setPendingSharedCheckId] = useState<string | null>(null);
   const [showAddGlow, setShowAddGlow] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("showAddGlow") === "true";
@@ -336,41 +337,47 @@ export default function Home() {
     const checkId = localStorage.getItem("pendingCheckId");
     if (!checkId) return;
     localStorage.removeItem("pendingCheckId");
-
-    // Fetch the shared check and inject it after a short delay
-    // (wait for loadRealData to finish hydrating first)
-    const injectSharedCheck = async () => {
-      const shared = await db.getSharedCheck(checkId);
-      if (!shared) return;
-      const { formatTimeAgo } = await import("@/lib/utils");
-      checksHook.setChecks((prev) => {
-        if (prev.some((c) => c.id === checkId)) return prev;
-        return [{
-          id: shared.id,
-          text: shared.text,
-          author: shared.author_name,
-          authorId: shared.author_id,
-          timeAgo: formatTimeAgo(new Date(shared.created_at)),
-          expiresIn: shared.expires_at ? "expiring" : "open",
-          expiryPercent: 0,
-          responses: [],
-          eventDate: shared.event_date ?? undefined,
-          eventTime: shared.event_time ?? undefined,
-          location: shared.location ?? undefined,
-          viaFriendName: "shared link",
-        }, ...prev];
-      });
-    };
-
+    setPendingSharedCheckId(checkId);
     setTab("feed");
     setFeedMode("foryou");
-    // Inject after loadRealData has had time to hydrate
-    setTimeout(async () => {
-      await injectSharedCheck();
+  }, [isLoggedIn, userId, profile?.onboarded]);
+
+  // Inject shared check into feed once feedLoaded is true
+  useEffect(() => {
+    if (!pendingSharedCheckId || !feedLoaded) return;
+    const checkId = pendingSharedCheckId;
+    setPendingSharedCheckId(null);
+
+    (async () => {
+      // Check if already in feed (e.g. already friends)
+      const alreadyInFeed = checksHook.checks.some((c) => c.id === checkId);
+      if (!alreadyInFeed) {
+        const shared = await db.getSharedCheck(checkId);
+        if (shared) {
+          const { formatTimeAgo } = await import("@/lib/utils");
+          checksHook.setChecks((prev) => {
+            if (prev.some((c) => c.id === checkId)) return prev;
+            return [{
+              id: shared.id,
+              text: shared.text,
+              author: shared.author_name,
+              authorId: shared.author_id,
+              timeAgo: formatTimeAgo(new Date(shared.created_at)),
+              expiresIn: shared.expires_at ? "expiring" : "open",
+              expiryPercent: 0,
+              responses: [],
+              eventDate: shared.event_date ?? undefined,
+              eventTime: shared.event_time ?? undefined,
+              location: shared.location ?? undefined,
+              viaFriendName: "shared link",
+            }, ...prev];
+          });
+        }
+      }
       checksHook.setNewlyAddedCheckId(checkId);
       setTimeout(() => checksHook.setNewlyAddedCheckId(null), 5000);
-    }, 1500);
-  }, [isLoggedIn, userId, profile?.onboarded]);
+    })();
+  }, [pendingSharedCheckId, feedLoaded]);
 
   // Trigger data load when logged in
   useEffect(() => {
