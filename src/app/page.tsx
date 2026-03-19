@@ -138,6 +138,7 @@ export default function Home() {
     onCheckCreated: () => { setTab("feed"); setFeedMode("foryou"); setShowAddGlow(false); localStorage.removeItem("showAddGlow"); },
     onDownResponse: () => { loadRealDataRef.current(); },
     onAutoSquad: (checkId: string) => {
+      // Use latest checks state via ref to avoid stale closure
       const check = checksHook.checks.find((c) => c.id === checkId);
       if (check && !check.squadId) {
         squadsHook.startSquadFromCheck(check);
@@ -164,7 +165,12 @@ export default function Home() {
     profile,
     setChecks: checksHook.setChecks,
     showToast,
-    onSquadCreated: () => { setSquadChatOrigin(tab); setTab("groups"); },
+    onSquadCreated: (squadId: string) => {
+      setSquadChatOrigin(tab);
+      setTab("groups");
+      // Delay so GroupsView mounts before auto-select triggers
+      setTimeout(() => squadsHook.setAutoSelectSquadId(squadId), 100);
+    },
     onAutoDown: async (eventId: string) => {
       await db.saveEvent(eventId).catch(() => {});
       await db.toggleDown(eventId, true);
@@ -437,8 +443,7 @@ export default function Home() {
         author: shared.author_name,
         authorId: shared.author_id,
         timeAgo: formatTimeAgo(new Date(shared.created_at)),
-        expiresIn: shared.expires_at ? "expiring" : "open",
-        expiryPercent: 0,
+        ...computeExpiry(shared.expires_at, shared.created_at),
         responses: [],
         eventDate: shared.event_date ?? undefined,
         eventTime: shared.event_time ?? undefined,

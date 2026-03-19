@@ -98,7 +98,7 @@ interface UseSquadsParams {
   profile: Profile | null;
   setChecks: Dispatch<SetStateAction<InterestCheck[]>>;
   showToast: (msg: string) => void;
-  onSquadCreated?: () => void;
+  onSquadCreated?: (squadId: string) => void;
   onAutoDown?: (eventId: string) => Promise<void>;
 }
 
@@ -283,10 +283,10 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
       time: "now",
     };
     setSquads((prev) => [newSquad, ...prev]);
-    setChecks((prev) => prev.map((c) => c.id === check.id ? { ...c, squadId: newSquad.id } : c));
+    setChecks((prev) => prev.map((c) => c.id === check.id ? { ...c, squadId: newSquad.id, inSquad: true } : c));
 
     setCreatingSquad(false);
-    onSquadCreated?.();
+    onSquadCreated?.(newSquad.id);
   };
 
   const startSquadFromEvent = async (event: Event, selectedUserIds: string[]) => {
@@ -356,7 +356,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
 
     setSocialEvent(null);
     setCreatingSquad(false);
-    onSquadCreated?.();
+    onSquadCreated?.(newSquad.id);
   };
 
   const handleJoinSquadPool = async (event: Event) => {
