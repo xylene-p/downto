@@ -283,7 +283,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
       time: "now",
     };
     setSquads((prev) => [newSquad, ...prev]);
-    setChecks((prev) => prev.map((c) => c.id === check.id ? { ...c, squadId: newSquad.id, inSquad: true } : c));
+    setChecks((prev) => prev.map((c) => c.id === check.id ? { ...c, squadId: newSquad.id, inSquad: true, squadMemberCount: memberSet.size } : c));
 
     setCreatingSquad(false);
     onSquadCreated?.(newSquad.id);
