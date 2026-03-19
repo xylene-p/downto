@@ -9,8 +9,8 @@ import * as db from "@/lib/db";
 import { font, color } from "@/lib/styles";
 import { sanitize, sanitizeVibes, parseDateToISO, toLocalISODate } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
-import type { Person, Event, Tab, ScrapedEvent, InterestCheck } from "@/lib/ui-types";
-import { DEMO_EVENTS, DEMO_CHECKS, DEMO_TONIGHT, DEMO_SQUADS, DEMO_FRIENDS, DEMO_SUGGESTIONS, DEMO_NOTIFICATIONS, DEMO_SEARCH_USERS } from "@/lib/demo-data";
+import type { Person, Event, Tab, ScrapedEvent } from "@/lib/ui-types";
+import { DEMO_EVENTS, DEMO_CHECKS, DEMO_SQUADS, DEMO_FRIENDS, DEMO_SUGGESTIONS, DEMO_NOTIFICATIONS } from "@/lib/demo-data";
 import Grain from "@/app/components/Grain";
 import AuthScreen from "@/features/auth/components/AuthScreen";
 import ProfileSetupScreen from "@/features/auth/components/ProfileSetupScreen";
@@ -69,7 +69,6 @@ export default function Home() {
   // ─── Tab / routing state ────────────────────────────────────────────────
   const {
     tab, setTab,
-    feedMode, setFeedMode,
     squadChatOrigin, setSquadChatOrigin,
     chatOpen, setChatOpen,
     scrolledDown, setScrolledDown,
@@ -83,7 +82,6 @@ export default function Home() {
   const eventsHook = useEvents({ userId, isDemoMode, showToast, loadRealDataRef });
   const {
     events, setEvents,
-    tonightEvents, setTonightEvents,
     editingEvent, setEditingEvent,
     newlyAddedId, setNewlyAddedId,
     archivedChecks, setArchivedChecks,
@@ -135,7 +133,7 @@ export default function Home() {
     profile,
     friendCount: friendsHook.friends.length,
     showToast,
-    onCheckCreated: () => { setTab("feed"); setFeedMode("foryou"); setShowAddGlow(false); localStorage.removeItem("showAddGlow"); },
+    onCheckCreated: () => { setTab("feed"); setShowAddGlow(false); localStorage.removeItem("showAddGlow"); },
     onDownResponse: () => { loadRealDataRef.current(); },
     onAutoSquad: (checkId: string) => {
       // Use latest checks state via ref to avoid stale closure
@@ -319,7 +317,6 @@ export default function Home() {
     }
     const checkId = params.get("checkId");
     if (checkId) {
-      setFeedMode("foryou");
       checksHook.setNewlyAddedCheckId(checkId);
       setTimeout(() => checksHook.setNewlyAddedCheckId(null), 3000);
       window.history.replaceState({}, "", "/?tab=feed");
@@ -338,7 +335,6 @@ export default function Home() {
       checksHook.setChecks(DEMO_CHECKS);
       squadsHook.setSquads(DEMO_SQUADS);
       friendsHook.setFriends(DEMO_FRIENDS);
-      setTonightEvents(DEMO_TONIGHT);
       friendsHook.setSuggestions(DEMO_SUGGESTIONS);
       notificationsHook.setNotifications(DEMO_NOTIFICATIONS);
       notificationsHook.setUnreadCount(DEMO_NOTIFICATIONS.filter(n => !n.is_read).length);
@@ -371,7 +367,8 @@ export default function Home() {
     localStorage.removeItem("pendingCheckId");
     setPendingSharedCheckId(checkId);
     setTab("feed");
-    setFeedMode("foryou");
+    checksHook.setNewlyAddedCheckId(checkId);
+    setTimeout(() => checksHook.setNewlyAddedCheckId(null), 3000);
   }, [isLoggedIn, userId, profile?.onboarded]);
 
   // Inject shared check into feed once feedLoaded is true
@@ -585,7 +582,6 @@ export default function Home() {
           setTab('groups');
         } else if (nType === 'check_response' || nType === 'friend_check' || nType === 'check_tag') {
           setTab('feed');
-          setFeedMode('foryou');
           if (relatedId) {
             checksHook.setNewlyAddedCheckId(relatedId);
             setTimeout(() => checksHook.setNewlyAddedCheckId(null), 3000);
@@ -852,7 +848,6 @@ export default function Home() {
     }
 
     setTab("feed");
-    setFeedMode("foryou");
     const openFriends = () => friendsHook.setFriendsOpen(true);
     if (e.type === "movie") {
       showToastWithAction("Movie night saved! Rally friends?", openFriends);
@@ -1047,16 +1042,12 @@ export default function Home() {
         )}
         {feedLoaded && tab === "feed" && (
           <FeedView
-            feedMode={feedMode}
-            setFeedMode={setFeedMode}
             checks={checksHook.checks}
             setChecks={checksHook.setChecks}
             myCheckResponses={checksHook.myCheckResponses}
             setMyCheckResponses={checksHook.setMyCheckResponses}
             events={events}
             setEvents={setEvents}
-            tonightEvents={tonightEvents}
-            setTonightEvents={setTonightEvents}
             newlyAddedId={newlyAddedId}
             newlyAddedCheckId={checksHook.newlyAddedCheckId}
             sharedCheckId={activeSharedCheckId}
@@ -1246,7 +1237,6 @@ export default function Home() {
             const patch = { poolCount: ev.poolCount, userInPool: ev.userInPool, isDown: ev.isDown };
             const apply = (e: Event) => e.id === ev.id ? { ...e, ...patch } : e;
             setEvents((prev) => prev.map(apply));
-            setTonightEvents((prev) => prev.map(apply));
           }
           squadsHook.setSocialEvent(null);
         }}
@@ -1285,7 +1275,6 @@ export default function Home() {
             setTab("groups");
           } else if (action.type === "feed") {
             setTab("feed");
-            setFeedMode("foryou");
             if (action.checkId) {
               checksHook.setNewlyAddedCheckId(action.checkId);
               setTimeout(() => checksHook.setNewlyAddedCheckId(null), 3000);

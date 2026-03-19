@@ -11,7 +11,6 @@ export function useAppNavigation() {
     }
     return "feed";
   });
-  const [feedMode, setFeedMode] = useState<"foryou" | "tonight">("foryou");
   const [squadChatOrigin, setSquadChatOrigin] = useState<Tab | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [scrolledDown, setScrolledDown] = useState(false);
@@ -19,8 +18,6 @@ export function useAppNavigation() {
   return {
     tab,
     setTab,
-    feedMode,
-    setFeedMode,
     squadChatOrigin,
     setSquadChatOrigin,
     chatOpen,
