@@ -91,6 +91,7 @@ export default function Home() {
   const [onboardingFriendGate, setOnboardingFriendGate] = useState(false);
   const [onboardingCheckAuthorId, setOnboardingCheckAuthorId] = useState<string | null>(null);
   const [profileSetupDone, setProfileSetupDone] = useState(false);
+  const [notificationsDone, setNotificationsDone] = useState(false);
   const [showFirstCheck, setShowFirstCheck] = useState(false);
   const [showAddGlow, setShowAddGlow] = useState(() => {
     if (typeof window !== "undefined") {
@@ -781,7 +782,7 @@ export default function Home() {
     );
   }
 
-  if (profile && !profile.onboarded) {
+  if (profile && !profile.onboarded && !notificationsDone) {
     return (
       <EnableNotificationsScreen
         onComplete={async () => {
@@ -807,6 +808,7 @@ export default function Home() {
               }
             } catch {}
           }
+          setNotificationsDone(true);
           setOnboardingFriendGate(true);
         }}
       />
