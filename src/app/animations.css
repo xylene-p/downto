@@ -63,6 +63,46 @@
     box-shadow: 0 0 20px rgba(90, 200, 255, 0.5);
   }
 }
+@keyframes rainbowGlow {
+  0% {
+    border-color: #ff6b6b;
+    box-shadow: 0 0 14px rgba(255, 107, 107, 0.4);
+  }
+  16% {
+    border-color: #ffa94d;
+    box-shadow: 0 0 14px rgba(255, 169, 77, 0.4);
+  }
+  33% {
+    border-color: #e8ff5a;
+    box-shadow: 0 0 14px rgba(232, 255, 90, 0.4);
+  }
+  50% {
+    border-color: #51cf66;
+    box-shadow: 0 0 14px rgba(81, 207, 102, 0.4);
+  }
+  66% {
+    border-color: #5ac8fa;
+    box-shadow: 0 0 14px rgba(90, 200, 250, 0.4);
+  }
+  83% {
+    border-color: #cc5de8;
+    box-shadow: 0 0 14px rgba(204, 93, 232, 0.4);
+  }
+  100% {
+    border-color: #ff6b6b;
+    box-shadow: 0 0 14px rgba(255, 107, 107, 0.4);
+  }
+}
+@keyframes downButtonPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(232, 255, 90, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 16px rgba(232, 255, 90, 0.6);
+  }
+}
 @keyframes addButtonGlow {
   0%,
   100% {

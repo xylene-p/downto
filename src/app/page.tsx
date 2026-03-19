@@ -28,7 +28,6 @@ import ProfileView from "@/features/profile/components/ProfileView";
 import Header from "@/app/components/Header";
 import BottomNav from "@/app/components/BottomNav";
 import Toast from "@/app/components/Toast";
-import SquadNotificationBanner from "@/features/squads/components/SquadNotificationBanner";
 import { isIOSNotStandalone } from "@/lib/pushNotifications";
 import NotificationsPanel from "@/features/notifications/components/NotificationsPanel";
 import FirstCheckScreen from "@/features/checks/components/FirstCheckScreen";
@@ -42,6 +41,23 @@ import { useNotifications } from "@/features/notifications/hooks/useNotification
 import { useCheckComments } from "@/features/checks/hooks/useCheckComments";
 import { logError, logWarn } from "@/lib/logger";
 
+
+function computeExpiry(expiresAt: string | null, createdAt: string): { expiresIn: string; expiryPercent: number } {
+  if (!expiresAt) return { expiresIn: "open", expiryPercent: 0 };
+  const now = Date.now();
+  const expires = new Date(expiresAt).getTime();
+  const created = new Date(createdAt).getTime();
+  const total = expires - created;
+  const elapsed = now - created;
+  const remaining = expires - now;
+  if (remaining <= 0) return { expiresIn: "expired", expiryPercent: 100 };
+  const hours = Math.floor(remaining / (1000 * 60 * 60));
+  const mins = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+  return {
+    expiresIn: hours > 0 ? `${hours}h` : `${mins}m`,
+    expiryPercent: Math.min(100, (elapsed / total) * 100),
+  };
+}
 
 // ─── Main App ───────────────────────────────────────────────────────────────
 
@@ -92,6 +108,10 @@ export default function Home() {
   const [notificationsDone, setNotificationsDone] = useState(false);
   const [showFirstCheck, setShowFirstCheck] = useState(false);
   const [pendingSharedCheckId, setPendingSharedCheckId] = useState<string | null>(null);
+  const [activeSharedCheckId, setActiveSharedCheckId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem("activeSharedCheckId");
+    return null;
+  });
   const [showAddGlow, setShowAddGlow] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("showAddGlow") === "true";
@@ -115,6 +135,13 @@ export default function Home() {
     showToast,
     onCheckCreated: () => { setTab("feed"); setShowAddGlow(false); localStorage.removeItem("showAddGlow"); },
     onDownResponse: () => { loadRealDataRef.current(); },
+    onAutoSquad: (checkId: string) => {
+      // Use latest checks state via ref to avoid stale closure
+      const check = checksHook.checks.find((c) => c.id === checkId);
+      if (check && !check.squadId) {
+        squadsHook.startSquadFromCheck(check);
+      }
+    },
     onCoAuthorRespond: (checkId: string) => {
       // Mark check_tag notification as read when user accepts/declines
       const tagNotif = notificationsHook.notifications.find(
@@ -136,7 +163,12 @@ export default function Home() {
     profile,
     setChecks: checksHook.setChecks,
     showToast,
-    onSquadCreated: () => { setSquadChatOrigin(tab); setTab("groups"); },
+    onSquadCreated: (squadId: string) => {
+      setSquadChatOrigin(tab);
+      setTab("groups");
+      // Delay so GroupsView mounts before auto-select triggers
+      setTimeout(() => squadsHook.setAutoSelectSquadId(squadId), 100);
+    },
     onAutoDown: async (eventId: string) => {
       await db.saveEvent(eventId).catch(() => {});
       await db.toggleDown(eventId, true);
@@ -360,8 +392,7 @@ export default function Home() {
               author: shared.author_name,
               authorId: shared.author_id,
               timeAgo: formatTimeAgo(new Date(shared.created_at)),
-              expiresIn: shared.expires_at ? "expiring" : "open",
-              expiryPercent: 0,
+              ...computeExpiry(shared.expires_at, shared.created_at),
               responses: [],
               eventDate: shared.event_date ?? undefined,
               eventTime: shared.event_time ?? undefined,
@@ -371,10 +402,58 @@ export default function Home() {
           });
         }
       }
+      setActiveSharedCheckId(checkId);
+      localStorage.setItem("activeSharedCheckId", checkId);
       checksHook.setNewlyAddedCheckId(checkId);
       setTimeout(() => checksHook.setNewlyAddedCheckId(null), 5000);
     })();
   }, [pendingSharedCheckId, feedLoaded]);
+
+  // Re-inject shared check if it gets removed by a data reload or page refresh
+  const sharedCheckCache = useRef<InterestCheck | null>(null);
+  useEffect(() => {
+    if (!activeSharedCheckId || !feedLoaded) return;
+    // Cache the shared check when it exists
+    const found = checksHook.checks.find((c) => c.id === activeSharedCheckId);
+    if (found) { sharedCheckCache.current = found; return; }
+    // Re-inject from cache
+    if (sharedCheckCache.current) {
+      checksHook.setChecks((prev) => {
+        if (prev.some((c) => c.id === activeSharedCheckId)) return prev;
+        return [sharedCheckCache.current!, ...prev];
+      });
+      return;
+    }
+    // Cache is empty (page refresh) — fetch from DB and inject
+    (async () => {
+      const shared = await db.getSharedCheck(activeSharedCheckId);
+      if (!shared) {
+        // Check no longer exists or was unshared — clean up
+        setActiveSharedCheckId(null);
+        localStorage.removeItem("activeSharedCheckId");
+        return;
+      }
+      const { formatTimeAgo } = await import("@/lib/utils");
+      const injected: InterestCheck = {
+        id: shared.id,
+        text: shared.text,
+        author: shared.author_name,
+        authorId: shared.author_id,
+        timeAgo: formatTimeAgo(new Date(shared.created_at)),
+        ...computeExpiry(shared.expires_at, shared.created_at),
+        responses: [],
+        eventDate: shared.event_date ?? undefined,
+        eventTime: shared.event_time ?? undefined,
+        location: shared.location ?? undefined,
+        viaFriendName: "shared link",
+      };
+      sharedCheckCache.current = injected;
+      checksHook.setChecks((prev) => {
+        if (prev.some((c) => c.id === activeSharedCheckId)) return prev;
+        return [injected, ...prev];
+      });
+    })();
+  }, [activeSharedCheckId, feedLoaded, checksHook.checks]);
 
   // Trigger data load when logged in
   useEffect(() => {
@@ -850,8 +929,8 @@ export default function Home() {
   if (showFirstCheck) {
     return (
       <FirstCheckScreen
-        onComplete={(idea, expiresInHours, eventDate, maxSquadSize, eventTime, dateFlexible, timeFlexible) => {
-          checksHook.handleCreateCheck(idea, expiresInHours, eventDate, maxSquadSize, undefined, eventTime, dateFlexible, timeFlexible);
+        onComplete={(idea, expiresInHours, eventDate, maxSquadSize, eventTime, dateFlexible, timeFlexible, location) => {
+          checksHook.handleCreateCheck(idea, expiresInHours, eventDate, maxSquadSize, undefined, eventTime, dateFlexible, timeFlexible, undefined, location);
           setShowFirstCheck(false);
         }}
         onSkip={() => {
@@ -971,6 +1050,7 @@ export default function Home() {
             setEvents={setEvents}
             newlyAddedId={newlyAddedId}
             newlyAddedCheckId={checksHook.newlyAddedCheckId}
+            sharedCheckId={activeSharedCheckId}
             friends={friendsHook.friends}
             userId={userId}
             isDemoMode={isDemoMode}
@@ -1137,18 +1217,6 @@ export default function Home() {
           message={toastMsg}
           action={toastAction}
           onDismiss={() => { setToastMsg(null); setToastAction(null); }}
-        />
-      )}
-
-      {squadsHook.squadNotification && (
-        <SquadNotificationBanner
-          notification={squadsHook.squadNotification}
-          onOpen={(squadId) => {
-            setSquadChatOrigin(tab);
-            squadsHook.setAutoSelectSquadId(squadId);
-            setTab("groups");
-            squadsHook.setSquadNotification(null);
-          }}
         />
       )}
 

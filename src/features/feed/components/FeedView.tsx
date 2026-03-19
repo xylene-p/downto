@@ -270,6 +270,7 @@ export interface FeedViewProps {
   setEvents: React.Dispatch<React.SetStateAction<Event[]>>;
   newlyAddedId: string | null;
   newlyAddedCheckId: string | null;
+  sharedCheckId?: string | null;
   friends: Friend[];
   userId: string | null;
   isDemoMode: boolean;
@@ -308,6 +309,7 @@ export default function FeedView({
   setEvents,
   newlyAddedId,
   newlyAddedCheckId,
+  sharedCheckId,
   friends,
   userId,
   isDemoMode,
