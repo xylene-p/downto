@@ -274,6 +274,7 @@ export interface FeedViewProps {
   setTonightEvents: React.Dispatch<React.SetStateAction<Event[]>>;
   newlyAddedId: string | null;
   newlyAddedCheckId: string | null;
+  sharedCheckId?: string | null;
   friends: Friend[];
   suggestions: Friend[];
   setSuggestions: React.Dispatch<React.SetStateAction<Friend[]>>;
@@ -319,6 +320,7 @@ export default function FeedView({
   setTonightEvents,
   newlyAddedId,
   newlyAddedCheckId,
+  sharedCheckId,
   friends,
   suggestions = [],
   setSuggestions,
@@ -470,8 +472,8 @@ export default function FeedView({
                           borderRadius: 14,
                           overflow: "hidden",
                           marginBottom: 8,
-                          border: `1px solid ${check.id === newlyAddedCheckId ? "rgba(90,200,255,0.5)" : (check.isYours || check.isCoAuthor) ? "rgba(232,255,90,0.2)" : color.border}`,
-                          ...(check.id === newlyAddedCheckId ? { animation: "checkGlow 2s ease-in-out infinite" } : {}),
+                          border: `1px solid ${check.id === sharedCheckId ? "#ff6b6b" : check.id === newlyAddedCheckId ? "rgba(90,200,255,0.5)" : (check.isYours || check.isCoAuthor) ? "rgba(232,255,90,0.2)" : color.border}`,
+                          ...(check.id === sharedCheckId ? { animation: "rainbowGlow 3s linear infinite" } : check.id === newlyAddedCheckId ? { animation: "checkGlow 2s ease-in-out infinite" } : {}),
                           WebkitUserSelect: (check.isYours || check.isCoAuthor) ? "none" : undefined,
                           userSelect: (check.isYours || check.isCoAuthor) ? "none" : undefined,
                         }}
@@ -935,12 +937,15 @@ export default function FeedView({
                                 style={{
                                   background: myCheckResponses[check.id] === "down" ? color.accent
                                     : myCheckResponses[check.id] === "waitlist" ? "transparent"
+                                    : (check.id === sharedCheckId && !myCheckResponses[check.id]) ? color.accent
                                     : "transparent",
                                   color: myCheckResponses[check.id] === "down" ? "#000"
                                     : myCheckResponses[check.id] === "waitlist" ? color.dim
+                                    : (check.id === sharedCheckId && !myCheckResponses[check.id]) ? "#000"
                                     : color.text,
                                   border: myCheckResponses[check.id] === "down" ? "none"
                                     : myCheckResponses[check.id] === "waitlist" ? `1px dashed ${color.borderMid}`
+                                    : (check.id === sharedCheckId && !myCheckResponses[check.id]) ? "none"
                                     : `1px solid ${color.borderMid}`,
                                   borderRadius: 8,
                                   padding: "6px 10px",
@@ -949,6 +954,7 @@ export default function FeedView({
                                   fontWeight: 700,
                                   cursor: "pointer",
                                   whiteSpace: "nowrap" as const,
+                                  ...(check.id === sharedCheckId && !myCheckResponses[check.id] ? { animation: "downButtonPulse 1.5s ease-in-out infinite" } : {}),
                                 }}
                               >
                                 {myCheckResponses[check.id] === "down" ? "✓ Down"

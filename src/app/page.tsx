@@ -9,7 +9,7 @@ import * as db from "@/lib/db";
 import { font, color } from "@/lib/styles";
 import { sanitize, sanitizeVibes, parseDateToISO, toLocalISODate } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
-import type { Person, Event, Tab, ScrapedEvent } from "@/lib/ui-types";
+import type { Person, Event, Tab, ScrapedEvent, InterestCheck } from "@/lib/ui-types";
 import { DEMO_EVENTS, DEMO_CHECKS, DEMO_TONIGHT, DEMO_SQUADS, DEMO_FRIENDS, DEMO_SUGGESTIONS, DEMO_NOTIFICATIONS, DEMO_SEARCH_USERS } from "@/lib/demo-data";
 import Grain from "@/app/components/Grain";
 import AuthScreen from "@/features/auth/components/AuthScreen";
@@ -94,6 +94,7 @@ export default function Home() {
   const [notificationsDone, setNotificationsDone] = useState(false);
   const [showFirstCheck, setShowFirstCheck] = useState(false);
   const [pendingSharedCheckId, setPendingSharedCheckId] = useState<string | null>(null);
+  const [activeSharedCheckId, setActiveSharedCheckId] = useState<string | null>(null);
   const [showAddGlow, setShowAddGlow] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("showAddGlow") === "true";
@@ -374,10 +375,27 @@ export default function Home() {
           });
         }
       }
+      setActiveSharedCheckId(checkId);
       checksHook.setNewlyAddedCheckId(checkId);
       setTimeout(() => checksHook.setNewlyAddedCheckId(null), 5000);
     })();
   }, [pendingSharedCheckId, feedLoaded]);
+
+  // Re-inject shared check if it gets removed by a data reload
+  const sharedCheckCache = useRef<InterestCheck | null>(null);
+  useEffect(() => {
+    if (!activeSharedCheckId) return;
+    // Cache the shared check when it exists
+    const found = checksHook.checks.find((c) => c.id === activeSharedCheckId);
+    if (found) { sharedCheckCache.current = found; return; }
+    // Re-inject from cache if it was removed
+    if (sharedCheckCache.current) {
+      checksHook.setChecks((prev) => {
+        if (prev.some((c) => c.id === activeSharedCheckId)) return prev;
+        return [sharedCheckCache.current!, ...prev];
+      });
+    }
+  }, [activeSharedCheckId, checksHook.checks]);
 
   // Trigger data load when logged in
   useEffect(() => {
@@ -980,6 +998,7 @@ export default function Home() {
             setTonightEvents={setTonightEvents}
             newlyAddedId={newlyAddedId}
             newlyAddedCheckId={checksHook.newlyAddedCheckId}
+            sharedCheckId={activeSharedCheckId}
             friends={friendsHook.friends}
             userId={userId}
             isDemoMode={isDemoMode}
