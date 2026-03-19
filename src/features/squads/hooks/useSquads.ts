@@ -286,15 +286,6 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
     setSquads((prev) => [newSquad, ...prev]);
     setChecks((prev) => prev.map((c) => c.id === check.id ? { ...c, squadId: newSquad.id } : c));
 
-    setSquadNotification({
-      squadName: check.text,
-      startedBy: "You",
-      ideaBy: check.author,
-      members: downPeople.map((p) => p.name),
-      squadId: newSquad.id,
-    });
-    setTimeout(() => setSquadNotification(null), 4000);
-
     setCreatingSquad(false);
     onSquadCreated?.();
   };

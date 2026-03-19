@@ -105,10 +105,11 @@ interface UseChecksParams {
   showToast: (msg: string) => void;
   onCheckCreated?: () => void;
   onDownResponse?: () => Promise<void> | void;
+  onAutoSquad?: (checkId: string) => void;
   onCoAuthorRespond?: (checkId: string) => void;
 }
 
-export function useChecks({ userId, isDemoMode, profile, friendCount, showToast, onCheckCreated, onDownResponse, onCoAuthorRespond }: UseChecksParams) {
+export function useChecks({ userId, isDemoMode, profile, friendCount, showToast, onCheckCreated, onDownResponse, onAutoSquad, onCoAuthorRespond }: UseChecksParams) {
   const [checks, setChecks] = useState<InterestCheck[]>([]);
   const [myCheckResponses, setMyCheckResponses] = useState<Record<string, "down" | "waitlist">>({});
   const [hiddenCheckIds, setHiddenCheckIds] = useState<Set<string>>(new Set());
@@ -212,6 +213,19 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
           if (onDownResponse) await onDownResponse();
           else await loadChecks();
           setPendingDownCheckIds((prev) => { const next = new Set(prev); next.delete(checkId); return next; });
+          // Auto-create squad if 2+ people are down and no squad exists yet
+          if (result.response === 'down' && onAutoSquad) {
+            setChecks((prev) => {
+              const updated = prev.find((c) => c.id === checkId);
+              if (updated && !updated.squadId) {
+                const downCount = updated.responses.filter((r) => r.status === "down").length;
+                if (downCount >= 2) {
+                  setTimeout(() => onAutoSquad(checkId), 300);
+                }
+              }
+              return prev;
+            });
+          }
         })
         .catch((err) => {
           setPendingDownCheckIds((prev) => { const next = new Set(prev); next.delete(checkId); return next; });

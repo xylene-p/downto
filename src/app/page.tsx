@@ -28,7 +28,6 @@ import ProfileView from "@/features/profile/components/ProfileView";
 import Header from "@/app/components/Header";
 import BottomNav from "@/app/components/BottomNav";
 import Toast from "@/app/components/Toast";
-import SquadNotificationBanner from "@/features/squads/components/SquadNotificationBanner";
 import { isIOSNotStandalone } from "@/lib/pushNotifications";
 import NotificationsPanel from "@/features/notifications/components/NotificationsPanel";
 import FirstCheckScreen from "@/features/checks/components/FirstCheckScreen";
@@ -118,6 +117,12 @@ export default function Home() {
     showToast,
     onCheckCreated: () => { setTab("feed"); setFeedMode("foryou"); setShowAddGlow(false); localStorage.removeItem("showAddGlow"); },
     onDownResponse: () => { loadRealDataRef.current(); },
+    onAutoSquad: (checkId: string) => {
+      const check = checksHook.checks.find((c) => c.id === checkId);
+      if (check && !check.squadId) {
+        squadsHook.startSquadFromCheck(check);
+      }
+    },
     onCoAuthorRespond: (checkId: string) => {
       // Mark check_tag notification as read when user accepts/declines
       const tagNotif = notificationsHook.notifications.find(
@@ -1165,18 +1170,6 @@ export default function Home() {
           message={toastMsg}
           action={toastAction}
           onDismiss={() => { setToastMsg(null); setToastAction(null); }}
-        />
-      )}
-
-      {squadsHook.squadNotification && (
-        <SquadNotificationBanner
-          notification={squadsHook.squadNotification}
-          onOpen={(squadId) => {
-            setSquadChatOrigin(tab);
-            squadsHook.setAutoSelectSquadId(squadId);
-            setTab("groups");
-            squadsHook.setSquadNotification(null);
-          }}
         />
       )}
 
