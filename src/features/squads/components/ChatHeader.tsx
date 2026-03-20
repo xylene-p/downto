@@ -129,7 +129,7 @@ export default function ChatHeader({
           </div>
           <div
             onClick={onOpenSettings}
-            style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", marginLeft: 12, flexShrink: 0, cursor: "pointer" }}
+            style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "center", marginLeft: 12, flexShrink: 0, cursor: "pointer", paddingTop: 4 }}
           >
             <div style={{ display: "flex", alignItems: "center" }}>
               {squad.members.slice(0, 4).map((m, idx) => {
