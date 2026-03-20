@@ -79,9 +79,9 @@ export function useFriends({ userId, isDemoMode, showToast, loadRealDataRef }: U
     }
 
     try {
-      await db.sendFriendRequest(id);
+      const friendship = await db.sendFriendRequest(id);
       setSuggestions((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, status: "pending" as const } : s))
+        prev.map((s) => (s.id === id ? { ...s, status: "pending" as const, friendshipId: friendship.id } : s))
       );
       showToast("Friend request sent! \u{1F91D}");
     } catch (err) {

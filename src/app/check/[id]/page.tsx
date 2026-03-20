@@ -94,6 +94,16 @@ export default async function CheckPreviewPage({ params }: { params: Promise<{ i
       }}
     >
       <div style={{ width: "100%", maxWidth: 380 }}>
+        <p style={{
+          fontFamily: font.serif,
+          fontSize: 22,
+          color: color.text,
+          textAlign: "center",
+          marginBottom: 20,
+          fontWeight: 400,
+        }}>
+          are you down?
+        </p>
         {/* Card */}
         <div
           style={{
@@ -167,7 +177,7 @@ export default async function CheckPreviewPage({ params }: { params: Promise<{ i
         </div>
 
         {/* CTA */}
-        <CheckPreviewCTA />
+        <CheckPreviewCTA checkId={check.id} />
 
         {/* Branding */}
         <p

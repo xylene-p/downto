@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as db from "@/lib/db";
 import type { Profile } from "@/lib/types";
 import { font, color } from "@/lib/styles";
@@ -14,6 +14,10 @@ const ProfileSetupScreen = ({
   profile: Profile;
   onComplete: (updated: Profile) => void;
 }) => {
+  const [hasPendingCheck, setHasPendingCheck] = useState(false);
+  useEffect(() => {
+    if (localStorage.getItem("pendingCheckId")) setHasPendingCheck(true);
+  }, []);
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [usernameError, setUsernameError] = useState<string | null>(null);
@@ -54,13 +58,17 @@ const ProfileSetupScreen = ({
   return (
     <div
       style={{
+        width: "100%",
         maxWidth: 420,
         margin: "0 auto",
-        minHeight: "100vh",
+        minHeight: "100dvh",
         background: color.bg,
         padding: "60px 24px",
         display: "flex",
         flexDirection: "column",
+        boxSizing: "border-box",
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
       }}
     >
       <Grain />
@@ -84,7 +92,9 @@ const ProfileSetupScreen = ({
           marginBottom: 40,
         }}
       >
-        pick a name and username — this is how you&apos;ll show up
+        {hasPendingCheck
+          ? "almost there — quick setup, then you can respond"
+          : "pick a name and username \u2014 this is how you\u2019ll show up"}
       </p>
 
       {/* Display name */}
@@ -254,9 +264,6 @@ const ProfileSetupScreen = ({
           </div>
           <span style={{ fontFamily: font.mono, fontSize: 13, color: color.text }}>
             {previewName}
-          </span>
-          <span style={{ fontFamily: font.mono, fontSize: 11, color: color.dim }}>
-            @{previewUsername}
           </span>
         </div>
         <div style={{ fontFamily: font.serif, fontSize: 18, color: color.text }}>

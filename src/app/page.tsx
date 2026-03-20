@@ -9,8 +9,8 @@ import * as db from "@/lib/db";
 import { font, color } from "@/lib/styles";
 import { sanitize, sanitizeVibes, parseDateToISO, toLocalISODate } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
-import type { Person, Event, Tab, ScrapedEvent, Squad } from "@/lib/ui-types";
-import { DEMO_EVENTS, DEMO_CHECKS, DEMO_TONIGHT, DEMO_SQUADS, DEMO_FRIENDS, DEMO_SUGGESTIONS, DEMO_NOTIFICATIONS, DEMO_SEARCH_USERS } from "@/lib/demo-data";
+import type { Person, Event, Tab, ScrapedEvent, Squad, InterestCheck } from "@/lib/ui-types";
+import { DEMO_EVENTS, DEMO_CHECKS, DEMO_SQUADS, DEMO_FRIENDS, DEMO_SUGGESTIONS, DEMO_NOTIFICATIONS } from "@/lib/demo-data";
 import Grain from "@/app/components/Grain";
 import AuthScreen from "@/features/auth/components/AuthScreen";
 import ProfileSetupScreen from "@/features/auth/components/ProfileSetupScreen";
@@ -21,6 +21,7 @@ import AddModal from "@/features/events/components/CreateModal";
 import UserProfileOverlay from "@/features/friends/components/UserProfileOverlay";
 import FeedView from "@/features/feed/components/FeedView";
 import FriendsModal from "@/features/friends/components/FriendsModal";
+import OnboardingFriendsPopup from "@/features/friends/components/OnboardingFriendsPopup";
 import CalendarView from "@/features/calendar/components/CalendarView";
 import GroupsView from "@/features/squads/components/GroupsView";
 import SquadChat from "@/features/squads/components/SquadChat";
@@ -28,7 +29,6 @@ import ProfileView from "@/features/profile/components/ProfileView";
 import Header from "@/app/components/Header";
 import BottomNav from "@/app/components/BottomNav";
 import Toast from "@/app/components/Toast";
-import SquadNotificationBanner from "@/features/squads/components/SquadNotificationBanner";
 import { isIOSNotStandalone } from "@/lib/pushNotifications";
 import NotificationsPanel from "@/features/notifications/components/NotificationsPanel";
 import FirstCheckScreen from "@/features/checks/components/FirstCheckScreen";
@@ -43,6 +43,23 @@ import { useCheckComments } from "@/features/checks/hooks/useCheckComments";
 import { logError, logWarn } from "@/lib/logger";
 
 
+function computeExpiry(expiresAt: string | null, createdAt: string): { expiresIn: string; expiryPercent: number } {
+  if (!expiresAt) return { expiresIn: "open", expiryPercent: 0 };
+  const now = Date.now();
+  const expires = new Date(expiresAt).getTime();
+  const created = new Date(createdAt).getTime();
+  const total = expires - created;
+  const elapsed = now - created;
+  const remaining = expires - now;
+  if (remaining <= 0) return { expiresIn: "expired", expiryPercent: 100 };
+  const hours = Math.floor(remaining / (1000 * 60 * 60));
+  const mins = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+  return {
+    expiresIn: hours > 0 ? `${hours}h` : `${mins}m`,
+    expiryPercent: Math.min(100, (elapsed / total) * 100),
+  };
+}
+
 // ─── Main App ───────────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -53,7 +70,6 @@ export default function Home() {
   // ─── Tab / routing state ────────────────────────────────────────────────
   const {
     tab, setTab,
-    feedMode, setFeedMode,
     setSquadChatOrigin,
     chatOpen, setChatOpen,
     scrolledDown, setScrolledDown,
@@ -67,7 +83,6 @@ export default function Home() {
   const eventsHook = useEvents({ userId, isDemoMode, showToast, loadRealDataRef });
   const {
     events, setEvents,
-    tonightEvents, setTonightEvents,
     editingEvent, setEditingEvent,
     newlyAddedId, setNewlyAddedId,
     archivedChecks, setArchivedChecks,
@@ -90,8 +105,16 @@ export default function Home() {
   const [selectedSquad, setSelectedSquad] = useState<Squad | null>(null);
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [onboardingFriendGate, setOnboardingFriendGate] = useState(false);
+  const friendGateInitRef = useRef(false);
+  const [onboardingCheckAuthorId, setOnboardingCheckAuthorId] = useState<string | null>(null);
   const [profileSetupDone, setProfileSetupDone] = useState(false);
+  const [notificationsDone, setNotificationsDone] = useState(false);
   const [showFirstCheck, setShowFirstCheck] = useState(false);
+  const [pendingSharedCheckId, setPendingSharedCheckId] = useState<string | null>(null);
+  const [activeSharedCheckId, setActiveSharedCheckId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem("activeSharedCheckId");
+    return null;
+  });
   const [showAddGlow, setShowAddGlow] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("showAddGlow") === "true";
@@ -113,8 +136,15 @@ export default function Home() {
     profile,
     friendCount: friendsHook.friends.length,
     showToast,
-    onCheckCreated: () => { setTab("feed"); setFeedMode("foryou"); setShowAddGlow(false); localStorage.removeItem("showAddGlow"); },
+    onCheckCreated: () => { setTab("feed"); setShowAddGlow(false); localStorage.removeItem("showAddGlow"); },
     onDownResponse: () => { loadRealDataRef.current(); },
+    onAutoSquad: (checkId: string) => {
+      // Use latest checks state via ref to avoid stale closure
+      const check = checksHook.checks.find((c) => c.id === checkId);
+      if (check && !check.squadId) {
+        squadsHook.startSquadFromCheck(check);
+      }
+    },
     onCoAuthorRespond: (checkId: string) => {
       // Mark check_tag notification as read when user accepts/declines
       const tagNotif = notificationsHook.notifications.find(
@@ -136,7 +166,12 @@ export default function Home() {
     profile,
     setChecks: checksHook.setChecks,
     showToast,
-    onSquadCreated: () => { setSquadChatOrigin(tab); setTab("groups"); },
+    onSquadCreated: (squadId: string) => {
+      setSquadChatOrigin(tab);
+      setTab("groups");
+      // Delay so GroupsView mounts before auto-select triggers
+      setTimeout(() => squadsHook.setAutoSelectSquadId(squadId), 100);
+    },
     onAutoDown: async (eventId: string) => {
       await db.saveEvent(eventId).catch(() => {});
       await db.toggleDown(eventId, true);
@@ -264,8 +299,9 @@ export default function Home() {
 
   // ─── Effects ────────────────────────────────────────────────────────────
 
-  // Capture ?add= and ?pendingCheck= params on mount
-  useEffect(() => {
+  // Capture ?add= and ?pendingCheck= params on mount (sync, before child effects)
+  const [paramsProcessed] = useState(() => {
+    if (typeof window === 'undefined') return false;
     const params = new URLSearchParams(window.location.search);
     const addUser = params.get("add");
     if (addUser) {
@@ -277,6 +313,10 @@ export default function Home() {
       localStorage.setItem("pendingCheckId", pendingCheck);
       window.history.replaceState({}, "", "/");
     }
+    return true;
+  });
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
     // Deep-link params from SW cold-open
     if (params.get("openFriends")) {
       friendsHook.setFriendsInitialTab("friends");
@@ -285,7 +325,6 @@ export default function Home() {
     }
     const checkId = params.get("checkId");
     if (checkId) {
-      setFeedMode("foryou");
       checksHook.setNewlyAddedCheckId(checkId);
       setTimeout(() => checksHook.setNewlyAddedCheckId(null), 3000);
       window.history.replaceState({}, "", "/?tab=feed");
@@ -304,7 +343,6 @@ export default function Home() {
       checksHook.setChecks(DEMO_CHECKS);
       squadsHook.setSquads(DEMO_SQUADS);
       friendsHook.setFriends(DEMO_FRIENDS);
-      setTonightEvents(DEMO_TONIGHT);
       friendsHook.setSuggestions(DEMO_SUGGESTIONS);
       notificationsHook.setNotifications(DEMO_NOTIFICATIONS);
       notificationsHook.setUnreadCount(DEMO_NOTIFICATIONS.filter(n => !n.is_read).length);
@@ -335,11 +373,109 @@ export default function Home() {
     const checkId = localStorage.getItem("pendingCheckId");
     if (!checkId) return;
     localStorage.removeItem("pendingCheckId");
+    setPendingSharedCheckId(checkId);
     setTab("feed");
-    setFeedMode("foryou");
     checksHook.setNewlyAddedCheckId(checkId);
     setTimeout(() => checksHook.setNewlyAddedCheckId(null), 3000);
   }, [isLoggedIn, userId, profile?.onboarded]);
+
+  // Inject shared check into feed once feedLoaded is true
+  useEffect(() => {
+    if (!pendingSharedCheckId || !feedLoaded) return;
+    const checkId = pendingSharedCheckId;
+    setPendingSharedCheckId(null);
+
+    (async () => {
+      // Check if already in feed (e.g. already friends)
+      const alreadyInFeed = checksHook.checks.some((c) => c.id === checkId);
+      if (!alreadyInFeed) {
+        const shared = await db.getSharedCheck(checkId);
+        if (shared) {
+          const { formatTimeAgo } = await import("@/lib/utils");
+          const myResponses: Record<string, "down" | "waitlist"> = {};
+          if (shared.myResponse === "down" || shared.myResponse === "waitlist") {
+            myResponses[shared.id] = shared.myResponse;
+            checksHook.setMyCheckResponses((prev) => ({ ...prev, ...myResponses }));
+          }
+          checksHook.setChecks((prev) => {
+            if (prev.some((c) => c.id === checkId)) return prev;
+            return [{
+              id: shared.id,
+              text: shared.text,
+              author: shared.author_name,
+              authorId: shared.author_id,
+              timeAgo: formatTimeAgo(new Date(shared.created_at)),
+              ...computeExpiry(shared.expires_at, shared.created_at),
+              responses: shared.myResponse === "down" ? [{ name: "You", avatar: profile?.avatar_letter ?? "?", status: "down" as const }] : [],
+              eventDate: shared.event_date ?? undefined,
+              eventTime: shared.event_time ?? undefined,
+              location: shared.location ?? undefined,
+              viaFriendName: "shared link",
+              squadId: shared.squadId ?? undefined,
+              squadMemberCount: shared.squadMemberCount,
+              inSquad: shared.inSquad,
+            }, ...prev];
+          });
+        }
+      }
+      setActiveSharedCheckId(checkId);
+      localStorage.setItem("activeSharedCheckId", checkId);
+      checksHook.setNewlyAddedCheckId(checkId);
+      setTimeout(() => checksHook.setNewlyAddedCheckId(null), 5000);
+    })();
+  }, [pendingSharedCheckId, feedLoaded]);
+
+  // Re-inject shared check if it gets removed by a data reload or page refresh
+  const sharedCheckCache = useRef<InterestCheck | null>(null);
+  useEffect(() => {
+    if (!activeSharedCheckId || !feedLoaded) return;
+    // Cache the shared check when it exists
+    const found = checksHook.checks.find((c) => c.id === activeSharedCheckId);
+    if (found) { sharedCheckCache.current = found; return; }
+    // Re-inject from cache
+    if (sharedCheckCache.current) {
+      checksHook.setChecks((prev) => {
+        if (prev.some((c) => c.id === activeSharedCheckId)) return prev;
+        return [sharedCheckCache.current!, ...prev];
+      });
+      return;
+    }
+    // Cache is empty (page refresh) — fetch from DB and inject
+    (async () => {
+      const shared = await db.getSharedCheck(activeSharedCheckId);
+      if (!shared) {
+        // Check no longer exists or was unshared — clean up
+        setActiveSharedCheckId(null);
+        localStorage.removeItem("activeSharedCheckId");
+        return;
+      }
+      const { formatTimeAgo } = await import("@/lib/utils");
+      if (shared.myResponse === "down" || shared.myResponse === "waitlist") {
+        checksHook.setMyCheckResponses((prev) => ({ ...prev, [shared.id]: shared.myResponse as "down" | "waitlist" }));
+      }
+      const injected: InterestCheck = {
+        id: shared.id,
+        text: shared.text,
+        author: shared.author_name,
+        authorId: shared.author_id,
+        timeAgo: formatTimeAgo(new Date(shared.created_at)),
+        ...computeExpiry(shared.expires_at, shared.created_at),
+        responses: shared.myResponse === "down" ? [{ name: "You", avatar: profile?.avatar_letter ?? "?", status: "down" as const }] : [],
+        eventDate: shared.event_date ?? undefined,
+        eventTime: shared.event_time ?? undefined,
+        location: shared.location ?? undefined,
+        viaFriendName: "shared link",
+        squadId: shared.squadId ?? undefined,
+        squadMemberCount: shared.squadMemberCount,
+        inSquad: shared.inSquad,
+      };
+      sharedCheckCache.current = injected;
+      checksHook.setChecks((prev) => {
+        if (prev.some((c) => c.id === activeSharedCheckId)) return prev;
+        return [injected, ...prev];
+      });
+    })();
+  }, [activeSharedCheckId, feedLoaded, checksHook.checks]);
 
   // Trigger data load when logged in
   useEffect(() => {
@@ -468,7 +604,6 @@ export default function Home() {
           setTab('groups');
         } else if (nType === 'check_response' || nType === 'friend_check' || nType === 'check_tag') {
           setTab('feed');
-          setFeedMode('foryou');
           if (relatedId) {
             checksHook.setNewlyAddedCheckId(relatedId);
             setTimeout(() => checksHook.setNewlyAddedCheckId(null), 3000);
@@ -743,7 +878,6 @@ export default function Home() {
     }
 
     setTab("feed");
-    setFeedMode("foryou");
     const openFriends = () => friendsHook.setFriendsOpen(true);
     if (e.type === "movie") {
       showToastWithAction("Movie night saved! Rally friends?", openFriends);
@@ -758,7 +892,9 @@ export default function Home() {
     return <div style={{ minHeight: "100vh", background: color.bg }} />;
   }
 
-  if (!installDismissed) {
+  // Normal visit (no shared check): show install prompt before auth
+  const hasPendingCheck = typeof window !== 'undefined' && !!localStorage.getItem("pendingCheckId");
+  if (!installDismissed && !hasPendingCheck) {
     return (
       <IOSInstallScreen
         onComplete={() => {
@@ -777,7 +913,7 @@ export default function Home() {
     );
   }
 
-  if (profile && !profile.onboarded && !profileSetupDone) {
+  if (profile && !profile.onboarded && !profileSetupDone && !profile.display_name) {
     return (
       <ProfileSetupScreen
         profile={profile}
@@ -789,35 +925,75 @@ export default function Home() {
     );
   }
 
-  if (profile && !profile.onboarded) {
-    return (
-      <EnableNotificationsScreen
-        onComplete={async () => {
-          localStorage.setItem("pushAutoPrompted", "1");
-          if (!isDemoMode) {
-            try {
-              const updated = await db.updateProfile({ onboarded: true } as Partial<Profile>);
-              setProfile(updated);
-            } catch (err) {
-              logError("finishOnboarding", err);
-              setProfile((prev) => prev ? { ...prev, onboarded: true } : prev);
-            }
-          } else {
-            setProfile((prev) => prev ? { ...prev, onboarded: true } : prev);
-          }
-          friendsHook.setFriendsInitialTab("add");
-          friendsHook.setFriendsOpen(true);
-          setOnboardingFriendGate(true);
-        }}
-      />
+  // After profile setup: shared check flow → install prompt; normal flow → friends
+  if (profile && !profile.onboarded && (profileSetupDone || !!profile.display_name) && !onboardingFriendGate) {
+    const pendingCheckId = localStorage.getItem("pendingCheckId");
+    const isInPWA = typeof window !== 'undefined' && (
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches
     );
+
+    // Shared check in browser: show install prompt, skip friends for now
+    if (pendingCheckId && !isInPWA && !installDismissed) {
+      return (
+        <IOSInstallScreen
+          onComplete={() => {
+            localStorage.setItem("pwa-install-dismissed", "1");
+            setInstallDismissed(true);
+          }}
+        />
+      );
+    }
+
+    // In PWA (after reinstall) or normal flow: show notifications then friends
+    if (!notificationsDone && isInPWA) {
+      return (
+        <EnableNotificationsScreen
+          onComplete={async () => {
+            localStorage.setItem("pushAutoPrompted", "1");
+            setNotificationsDone(true);
+          }}
+        />
+      );
+    }
+
+    // Set up friend gate with check author suggestion if applicable
+    if (!friendGateInitRef.current) {
+      friendGateInitRef.current = true;
+      if (pendingCheckId) {
+        (async () => {
+          try {
+            const authorProfile = await db.getCheckAuthorProfile(pendingCheckId);
+            if (authorProfile && authorProfile.id !== userId) {
+              setOnboardingCheckAuthorId(authorProfile.id);
+              friendsHook.setSuggestions((prev) => {
+                const without = prev.filter((s) => s.id !== authorProfile.id);
+                return [{
+                  id: authorProfile.id,
+                  name: authorProfile.display_name,
+                  username: authorProfile.username,
+                  avatar: authorProfile.avatar_letter,
+                  status: "none" as const,
+                  igHandle: authorProfile.ig_handle ?? undefined,
+                }, ...without];
+              });
+            }
+          } catch {}
+          setOnboardingFriendGate(true);
+        })();
+      } else {
+        setOnboardingFriendGate(true);
+      }
+    }
+    // Block rendering until friend gate is ready
+    return null;
   }
 
   if (showFirstCheck) {
     return (
       <FirstCheckScreen
-        onComplete={(idea, expiresInHours, eventDate, maxSquadSize, eventTime, dateFlexible, timeFlexible) => {
-          checksHook.handleCreateCheck(idea, expiresInHours, eventDate, maxSquadSize, undefined, eventTime, dateFlexible, timeFlexible);
+        onComplete={(idea, expiresInHours, eventDate, maxSquadSize, eventTime, dateFlexible, timeFlexible, location) => {
+          checksHook.handleCreateCheck(idea, expiresInHours, eventDate, maxSquadSize, undefined, eventTime, dateFlexible, timeFlexible, undefined, location);
           setShowFirstCheck(false);
         }}
         onSkip={() => {
@@ -828,6 +1004,7 @@ export default function Home() {
       />
     );
   }
+
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh" }}>
@@ -931,18 +1108,15 @@ export default function Home() {
         )}
         {feedLoaded && tab === "feed" && (
           <FeedView
-            feedMode={feedMode}
-            setFeedMode={setFeedMode}
             checks={checksHook.checks}
             setChecks={checksHook.setChecks}
             myCheckResponses={checksHook.myCheckResponses}
             setMyCheckResponses={checksHook.setMyCheckResponses}
             events={events}
             setEvents={setEvents}
-            tonightEvents={tonightEvents}
-            setTonightEvents={setTonightEvents}
             newlyAddedId={newlyAddedId}
             newlyAddedCheckId={checksHook.newlyAddedCheckId}
+            sharedCheckId={activeSharedCheckId}
             friends={friendsHook.friends}
             userId={userId}
             isDemoMode={isDemoMode}
@@ -1127,18 +1301,6 @@ export default function Home() {
         />
       )}
 
-      {squadsHook.squadNotification && (
-        <SquadNotificationBanner
-          notification={squadsHook.squadNotification}
-          onOpen={(squadId) => {
-            setSquadChatOrigin(tab);
-            squadsHook.setAutoSelectSquadId(squadId);
-            setTab("groups");
-            squadsHook.setSquadNotification(null);
-          }}
-        />
-      )}
-
       <AddModal
         open={addModalOpen}
         onClose={() => { setAddModalOpen(false); setAddModalDefaultMode(null); }}
@@ -1156,7 +1318,6 @@ export default function Home() {
             const patch = { poolCount: ev.poolCount, userInPool: ev.userInPool, isDown: ev.isDown };
             const apply = (e: Event) => e.id === ev.id ? { ...e, ...patch } : e;
             setEvents((prev) => prev.map(apply));
-            setTonightEvents((prev) => prev.map(apply));
           }
           squadsHook.setSocialEvent(null);
         }}
@@ -1195,7 +1356,6 @@ export default function Home() {
             setTab("groups");
           } else if (action.type === "feed") {
             setTab("feed");
-            setFeedMode("foryou");
             if (action.checkId) {
               checksHook.setNewlyAddedCheckId(action.checkId);
               setTimeout(() => checksHook.setNewlyAddedCheckId(null), 3000);
@@ -1210,15 +1370,40 @@ export default function Home() {
         onClose={() => setEditingEvent(null)}
         onSave={handleEditEvent}
       />
+      {onboardingFriendGate && (
+        <OnboardingFriendsPopup
+          suggestions={friendsHook.suggestions}
+          checkAuthorId={onboardingCheckAuthorId}
+          onAddFriend={friendsHook.addFriend}
+          onCancelRequest={friendsHook.cancelRequest}
+          onSearchUsers={friendsHook.searchUsers}
+          onDone={async () => {
+            // Mark onboarded now that friend gate is passed
+            if (!isDemoMode) {
+              try {
+                const updated = await db.updateProfile({ onboarded: true } as Partial<Profile>);
+                setProfile(updated);
+              } catch (err) {
+                logError("finishOnboarding", err);
+                setProfile((prev) => prev ? { ...prev, onboarded: true } : prev);
+              }
+            } else {
+              setProfile((prev) => prev ? { ...prev, onboarded: true } : prev);
+            }
+            setOnboardingFriendGate(false);
+            setOnboardingCheckAuthorId(null);
+            // Skip first check screen for shared check flow — they already have one to respond to
+            if (!localStorage.getItem("pendingCheckId") && !activeSharedCheckId) {
+              setShowFirstCheck(true);
+            }
+          }}
+        />
+      )}
       <FriendsModal
         open={friendsHook.friendsOpen}
         onClose={() => {
           friendsHook.setFriendsOpen(false);
           friendsHook.setFriendsInitialTab("friends");
-          if (onboardingFriendGate) {
-            setOnboardingFriendGate(false);
-            setShowFirstCheck(true);
-          }
         }}
         initialTab={friendsHook.friendsInitialTab}
         friends={friendsHook.friends}
@@ -1229,7 +1414,6 @@ export default function Home() {
         onCancelRequest={friendsHook.cancelRequest}
         onSearchUsers={friendsHook.searchUsers}
         onViewProfile={(uid) => setViewingUserId(uid)}
-        preventClose={onboardingFriendGate}
       />
       {viewingUserId && (
         <UserProfileOverlay

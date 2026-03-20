@@ -2,17 +2,15 @@
 
 import { font, color } from "@/lib/styles";
 
-interface ForYouEmptyStateProps {
+interface FeedEmptyStateProps {
   onOpenAdd: () => void;
   onOpenFriends: (tab?: "friends" | "add") => void;
-  setFeedMode: (mode: "foryou" | "tonight") => void;
 }
 
-export default function ForYouEmptyState({
+export default function FeedEmptyState({
   onOpenAdd,
   onOpenFriends,
-  setFeedMode,
-}: ForYouEmptyStateProps) {
+}: FeedEmptyStateProps) {
   return (
     <div
       style={{
@@ -27,7 +25,7 @@ export default function ForYouEmptyState({
         Your feed is empty
       </p>
       <p style={{ fontFamily: font.mono, fontSize: 12, color: color.dim, marginBottom: 24, lineHeight: 1.6 }}>
-        Save events, add friends, or check out what&apos;s happening tonight
+        Save events or add friends
       </p>
 
       <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
@@ -61,21 +59,6 @@ export default function ForYouEmptyState({
           }}
         >
           Find Friends
-        </button>
-        <button
-          onClick={() => setFeedMode("tonight")}
-          style={{
-            background: "transparent",
-            color: color.text,
-            border: `1px solid ${color.borderMid}`,
-            borderRadius: 20,
-            padding: "10px 16px",
-            fontFamily: font.mono,
-            fontSize: 11,
-            cursor: "pointer",
-          }}
-        >
-          Tonight ✶
         </button>
       </div>
     </div>

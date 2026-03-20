@@ -98,7 +98,7 @@ interface UseSquadsParams {
   profile: Profile | null;
   setChecks: Dispatch<SetStateAction<InterestCheck[]>>;
   showToast: (msg: string) => void;
-  onSquadCreated?: () => void;
+  onSquadCreated?: (squadId: string) => void;
   onAutoDown?: (eventId: string) => Promise<void>;
 }
 
@@ -168,6 +168,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         eventDate: s.event?.date_display ?? (s.check?.event_date ? new Date(s.check.event_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : undefined),
         eventIsoDate: s.locked_date ?? s.event?.date ?? s.check?.event_date ?? undefined,
         eventTime: s.check?.event_time?.replace(/\s*(AM)/gi, 'am').replace(/\s*(PM)/gi, 'pm') ?? undefined,
+        eventLocation: s.check?.location ?? undefined,
         dateFlexible: s.check?.date_flexible ?? true,
         timeFlexible: s.check?.time_flexible ?? true,
         maxSquadSize: s.check?.max_squad_size ?? undefined,
@@ -234,7 +235,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
   }, [userId, setChecks]);
 
   const startSquadFromCheck = async (check: InterestCheck) => {
-    if (creatingSquad) return;
+    if (creatingSquad || check.squadId) return;
     setCreatingSquad(true);
     const maxSize = check.maxSquadSize ?? 5;
     const allDown = check.responses.filter((r) => r.status === "down" && r.name !== "You");
@@ -259,8 +260,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
         await db.sendMessage(dbSquad.id, opener);
         squadDbId = dbSquad.id;
       } catch (err: unknown) {
-        logError("createSquadFromCheck", err, { checkId: check.id });
-        showToast(`Failed to create squad: ${err instanceof Error ? err.message : "Unknown error"}`);
+        // Unique constraint = squad already exists for this check, skip silently
         setCreatingSquad(false);
         return;
       }
@@ -284,19 +284,10 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
       time: "now",
     };
     setSquads((prev) => [newSquad, ...prev]);
-    setChecks((prev) => prev.map((c) => c.id === check.id ? { ...c, squadId: newSquad.id } : c));
-
-    setSquadNotification({
-      squadName: check.text,
-      startedBy: "You",
-      ideaBy: check.author,
-      members: downPeople.map((p) => p.name),
-      squadId: newSquad.id,
-    });
-    setTimeout(() => setSquadNotification(null), 4000);
+    setChecks((prev) => prev.map((c) => c.id === check.id ? { ...c, squadId: newSquad.id, inSquad: true, squadMemberCount: memberSet.size } : c));
 
     setCreatingSquad(false);
-    onSquadCreated?.();
+    onSquadCreated?.(newSquad.id);
   };
 
   const startSquadFromEvent = async (event: Event, selectedUserIds: string[]) => {
@@ -366,7 +357,7 @@ export function useSquads({ userId, isDemoMode, profile, setChecks, showToast, o
 
     setSocialEvent(null);
     setCreatingSquad(false);
-    onSquadCreated?.();
+    onSquadCreated?.(newSquad.id);
   };
 
   const handleJoinSquadPool = async (event: Event) => {
