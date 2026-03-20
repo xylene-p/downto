@@ -265,9 +265,6 @@ const ProfileSetupScreen = ({
           <span style={{ fontFamily: font.mono, fontSize: 13, color: color.text }}>
             {previewName}
           </span>
-          <span style={{ fontFamily: font.mono, fontSize: 11, color: color.dim }}>
-            @{previewUsername}
-          </span>
         </div>
         <div style={{ fontFamily: font.serif, fontSize: 18, color: color.text }}>
           who wants to grab dinner tonight?
