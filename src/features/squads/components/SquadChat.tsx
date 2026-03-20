@@ -133,23 +133,60 @@ const SquadChat = ({
     return () => { onChatOpen?.(false); };
   }, [onChatOpen]);
 
-  // Track visual viewport so the chat stays visible when the iOS keyboard opens
+  // ─── iOS keyboard handling ─────────────────────────────────────────────
+  // Container is position:fixed so it stays pinned to the screen.
+  // We listen to focus/blur on the message input (not visualViewport.resize)
+  // to avoid feedback loops. After the keyboard animation settles we shrink
+  // the container to the visual viewport height so the input sits above it.
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
-    const update = () => {
-      if (chatContainerRef.current) chatContainerRef.current.style.height = `${vv.height}px`;
-      // Prevent iOS from scrolling the page when focusing input — keeps fixed positioning correct
-      window.scrollTo(0, 0);
-      // Scroll messages into view after keyboard resize
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "instant" }), 50);
+    let timeoutId: ReturnType<typeof setTimeout>;
+    let inputFocused = false;
+
+    const apply = () => {
+      if (!chatContainerRef.current) return;
+      if (inputFocused) {
+        // Shrink to visible area above keyboard
+        chatContainerRef.current.style.height = `${vv.height}px`;
+        window.scrollTo(0, 0);
+        messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+      } else {
+        // Restore full-screen (matches CSS default)
+        chatContainerRef.current.style.height = "100dvh";
+      }
     };
-    update();
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
+
+    const onFocusIn = (e: FocusEvent) => {
+      if (e.target !== msgInputRef.current) return;
+      inputFocused = true;
+      clearTimeout(timeoutId);
+      // Wait for iOS keyboard animation to finish (~300ms)
+      timeoutId = setTimeout(apply, 350);
+    };
+
+    const onFocusOut = (e: FocusEvent) => {
+      if (e.target !== msgInputRef.current) return;
+      inputFocused = false;
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(apply, 100);
+    };
+
+    // Handle predictive text bar or keyboard height changes while focused
+    const onResize = () => {
+      if (!inputFocused) return;
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(apply, 150);
+    };
+
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    vv.addEventListener("resize", onResize);
     return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+      vv.removeEventListener("resize", onResize);
+      clearTimeout(timeoutId);
     };
   }, []);
 
@@ -381,6 +418,10 @@ const SquadChat = ({
       style={{
         display: "flex",
         flexDirection: "column",
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
         height: "100dvh",
         background: color.bg,
         overflow: "hidden",
