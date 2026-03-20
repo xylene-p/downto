@@ -36,6 +36,7 @@ const FirstCheckScreen = ({
   return (
     <div
       style={{
+        width: "100%",
         maxWidth: 420,
         margin: "0 auto",
         minHeight: "100vh",
@@ -43,6 +44,8 @@ const FirstCheckScreen = ({
         padding: "60px 24px",
         display: "flex",
         flexDirection: "column",
+        boxSizing: "border-box",
+        overflow: "hidden",
       }}
     >
       <Grain />
