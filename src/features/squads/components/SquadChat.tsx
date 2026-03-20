@@ -96,6 +96,7 @@ const SquadChat = ({
   const [chatMentionIdx, setChatMentionIdx] = useState(-1);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const msgInputRef = useRef<HTMLTextAreaElement>(null);
+  const [entering, setEntering] = useState(true);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showImOutConfirm, setShowImOutConfirm] = useState(false);
   const [kickTarget, setKickTarget] = useState<{ name: string; userId: string } | null>(null);
@@ -133,6 +134,13 @@ const SquadChat = ({
     return () => { onChatOpen?.(false); };
   }, [onChatOpen]);
 
+  // Slide in from right on mount
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setEntering(false));
+    });
+  }, []);
+
   // ─── iOS keyboard handling ─────────────────────────────────────────────
   // Container is position:fixed so it stays pinned to the screen.
   // We listen to focus/blur on the message input (not visualViewport.resize)
@@ -147,12 +155,10 @@ const SquadChat = ({
     const apply = () => {
       if (!chatContainerRef.current) return;
       if (inputFocused) {
-        // Shrink to visible area above keyboard
         chatContainerRef.current.style.height = `${vv.height}px`;
         window.scrollTo(0, 0);
         messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
       } else {
-        // Restore full-screen (matches CSS default)
         chatContainerRef.current.style.height = "100dvh";
       }
     };
@@ -425,8 +431,8 @@ const SquadChat = ({
         height: "100dvh",
         background: color.bg,
         overflow: "hidden",
-        transform: closing ? "translateX(100%)" : `translateX(${dragX}px)`,
-        transition: closing ? "transform 0.25s ease-in" : (dragX === 0 ? "transform 0.3s ease-out" : "none"),
+        transform: (closing || entering) ? "translateX(100%)" : `translateX(${dragX}px)`,
+        transition: closing ? "transform 0.25s ease-in" : (entering || dragX === 0) ? "transform 0.3s ease-out" : "none",
       }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
