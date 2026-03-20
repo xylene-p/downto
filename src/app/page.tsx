@@ -69,7 +69,7 @@ export default function Home() {
   // ─── Tab / routing state ────────────────────────────────────────────────
   const {
     tab, setTab,
-    setSquadChatOrigin,
+    squadChatOrigin, setSquadChatOrigin,
     chatOpen, setChatOpen,
     scrolledDown, setScrolledDown,
   } = useAppNavigation();
@@ -1169,7 +1169,13 @@ export default function Home() {
             <SquadChat
               squad={selectedSquad}
               userId={userId}
-              onClose={() => setSelectedSquad(null)}
+              onClose={() => {
+                setSelectedSquad(null);
+                if (squadChatOrigin && squadChatOrigin !== "groups") {
+                  setTab(squadChatOrigin);
+                  setSquadChatOrigin(null);
+                }
+              }}
               onSquadUpdate={squadsHook.setSquads}
               onChatOpen={setChatOpen}
               onViewProfile={(uid) => setViewingUserId(uid)}
@@ -1206,6 +1212,7 @@ export default function Home() {
               squads={squadsHook.squads}
               onSelectSquad={(squad) => {
                 setSelectedSquad(squad);
+                setSquadChatOrigin(null);
                 if (squad.hasUnread) {
                   squadsHook.setSquads((prev) => prev.map((s) => s.id === squad.id ? { ...s, hasUnread: false } : s));
                   db.markSquadNotificationsRead(squad.id).catch(() => {});
