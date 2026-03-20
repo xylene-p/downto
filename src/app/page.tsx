@@ -1335,7 +1335,10 @@ export default function Home() {
             }
             setOnboardingFriendGate(false);
             setOnboardingCheckAuthorId(null);
-            setShowFirstCheck(true);
+            // Skip first check screen for shared check flow — they already have one to respond to
+            if (!localStorage.getItem("pendingCheckId") && !activeSharedCheckId) {
+              setShowFirstCheck(true);
+            }
           }}
         />
       )}
