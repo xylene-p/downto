@@ -168,9 +168,7 @@ export default function Home() {
     showToast,
     onSquadCreated: (squadId: string) => {
       setSquadChatOrigin(tab);
-      setTab("groups");
-      // Delay so GroupsView mounts before auto-select triggers
-      setTimeout(() => squadsHook.setAutoSelectSquadId(squadId), 100);
+      squadsHook.setAutoSelectSquadId(squadId);
     },
     onAutoDown: async (eventId: string) => {
       await db.saveEvent(eventId).catch(() => {});
@@ -587,11 +585,19 @@ export default function Home() {
           friendsHook.setFriendsInitialTab("friends");
           friendsHook.setFriendsOpen(true);
         } else if (nType === 'squad_message' || nType === 'squad_invite' || nType === 'squad_mention') {
-          if (relatedId) squadsHook.setAutoSelectSquadId(relatedId);
-          setTab('groups');
+          if (relatedId) {
+            setSquadChatOrigin(tab);
+            squadsHook.setAutoSelectSquadId(relatedId);
+          } else {
+            setTab('groups');
+          }
         } else if (nType === 'date_confirm') {
-          if (relatedId) squadsHook.setAutoSelectSquadId(relatedId);
-          setTab('groups');
+          if (relatedId) {
+            setSquadChatOrigin(tab);
+            squadsHook.setAutoSelectSquadId(relatedId);
+          } else {
+            setTab('groups');
+          }
         } else if (nType === 'check_response' || nType === 'friend_check' || nType === 'check_tag') {
           setTab('feed');
           if (relatedId) {
@@ -1010,7 +1016,7 @@ export default function Home() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh" }}>
-      {!selectedSquad && (
+      <div>
         <Header
           unreadCount={notificationsHook.unreadCount}
           onOpenNotifications={() => {
@@ -1026,7 +1032,7 @@ export default function Home() {
           onOpenAdd={() => { setAddModalOpen(true); setShowAddGlow(false); localStorage.removeItem("showAddGlow"); }}
           glowAdd={showAddGlow}
         />
-      )}
+      </div>
 
       {/* Scroll area with fade edges */}
       <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
@@ -1137,8 +1143,11 @@ export default function Home() {
             }}
             onNavigateToGroups={(squadId) => {
               setSquadChatOrigin(tab);
-              if (squadId) squadsHook.setAutoSelectSquadId(squadId);
-              setTab("groups");
+              if (squadId) {
+                squadsHook.setAutoSelectSquadId(squadId);
+              } else {
+                setTab("groups");
+              }
             }}
             hiddenCheckIds={checksHook.hiddenCheckIds}
             pendingDownCheckIds={checksHook.pendingDownCheckIds}
@@ -1165,69 +1174,25 @@ export default function Home() {
           />
         )}
         {feedLoaded && tab === "groups" && (
-          selectedSquad ? (
-            <SquadChat
-              squad={selectedSquad}
-              userId={userId}
-              onClose={() => {
-                setSelectedSquad(null);
-                if (squadChatOrigin && squadChatOrigin !== "groups") {
-                  setTab(squadChatOrigin);
-                  setSquadChatOrigin(null);
-                }
-              }}
-              onSquadUpdate={squadsHook.setSquads}
-              onChatOpen={setChatOpen}
-              onViewProfile={(uid) => setViewingUserId(uid)}
-              onSendMessage={async (squadDbId, text, mentions) => {
-                await db.sendMessage(squadDbId, text, mentions);
-              }}
-              onLeaveSquad={async (squadDbId) => {
-                await db.leaveSquad(squadDbId);
-                await loadRealData();
-              }}
-              onSetSquadDate={handleSetSquadDate}
-              onClearSquadDate={handleClearSquadDate}
-              onConfirmDate={async (squadDbId, response) => {
-                await db.respondToDateConfirm(squadDbId, response);
-              }}
-              onUpdateSquadSize={handleUpdateSquadSize}
-              onSetMemberRole={handleSetMemberRole}
-              onKickMember={handleKickMember}
-              onAddMember={handleAddMember}
-              onCreatePoll={async (squadId, question, options, multiSelect) => {
-                await db.createPoll(squadId, question, options, multiSelect);
-              }}
-              onVotePoll={async (pollId, optionIndex) => {
-                await db.votePoll(pollId, optionIndex);
-              }}
-              onClosePoll={async (pollId) => {
-                await db.closePoll(pollId);
-              }}
-              pendingJoinRequests={squadsHook.pendingJoinRequests}
-              onRespondToJoinRequest={squadsHook.handleRespondToJoinRequest}
-            />
-          ) : (
-            <GroupsView
-              squads={squadsHook.squads}
-              onSelectSquad={(squad) => {
-                setSelectedSquad(squad);
-                setSquadChatOrigin(null);
-                if (squad.hasUnread) {
-                  squadsHook.setSquads((prev) => prev.map((s) => s.id === squad.id ? { ...s, hasUnread: false } : s));
-                  db.markSquadNotificationsRead(squad.id).catch(() => {});
-                  notificationsHook.setUnreadSquadCount((prev) => Math.max(0, prev - 1));
-                }
-                if ("serviceWorker" in navigator) {
-                  navigator.serviceWorker.getRegistration().then((reg) => {
-                    reg?.getNotifications({ tag: `squad_message-${squad.id}` }).then((notifs) => {
-                      notifs.forEach((n) => n.close());
-                    });
+          <GroupsView
+            squads={squadsHook.squads}
+            onSelectSquad={(squad) => {
+              setSelectedSquad(squad);
+              setSquadChatOrigin("groups");
+              if (squad.hasUnread) {
+                squadsHook.setSquads((prev) => prev.map((s) => s.id === squad.id ? { ...s, hasUnread: false } : s));
+                db.markSquadNotificationsRead(squad.id).catch(() => {});
+                notificationsHook.setUnreadSquadCount((prev) => Math.max(0, prev - 1));
+              }
+              if ("serviceWorker" in navigator) {
+                navigator.serviceWorker.getRegistration().then((reg) => {
+                  reg?.getNotifications({ tag: `squad_message-${squad.id}` }).then((notifs) => {
+                    notifs.forEach((n) => n.close());
                   });
-                }
-              }}
-            />
-          )
+                });
+              }
+            }}
+          />
         )}
         {feedLoaded && tab === "profile" && (
           <ProfileView
@@ -1280,7 +1245,53 @@ export default function Home() {
       </div>{/* end scroll container */}
       </div>{/* end scroll area with fades */}
 
-      {!chatOpen && (
+      {/* Squad chat overlay — rendered independently so origin tab stays visible underneath */}
+      {feedLoaded && selectedSquad && (
+        <SquadChat
+          squad={selectedSquad}
+          userId={userId}
+          onClose={() => {
+            const origin = squadChatOrigin;
+            setSelectedSquad(null);
+            setSquadChatOrigin(null);
+            if (origin && origin !== tab) {
+              setTab(origin);
+            }
+          }}
+          onSquadUpdate={squadsHook.setSquads}
+          onChatOpen={setChatOpen}
+          onViewProfile={(uid) => setViewingUserId(uid)}
+          onSendMessage={async (squadDbId, text, mentions) => {
+            await db.sendMessage(squadDbId, text, mentions);
+          }}
+          onLeaveSquad={async (squadDbId) => {
+            await db.leaveSquad(squadDbId);
+            await loadRealData();
+          }}
+          onSetSquadDate={handleSetSquadDate}
+          onClearSquadDate={handleClearSquadDate}
+          onConfirmDate={async (squadDbId, response) => {
+            await db.respondToDateConfirm(squadDbId, response);
+          }}
+          onUpdateSquadSize={handleUpdateSquadSize}
+          onSetMemberRole={handleSetMemberRole}
+          onKickMember={handleKickMember}
+          onAddMember={handleAddMember}
+          onCreatePoll={async (squadId, question, options, multiSelect) => {
+            await db.createPoll(squadId, question, options, multiSelect);
+          }}
+          onVotePoll={async (pollId, optionIndex) => {
+            await db.votePoll(pollId, optionIndex);
+          }}
+          onClosePoll={async (pollId) => {
+            await db.closePoll(pollId);
+          }}
+          pendingJoinRequests={squadsHook.pendingJoinRequests}
+          onRespondToJoinRequest={squadsHook.handleRespondToJoinRequest}
+        />
+      )}
+
+      <div>
         <BottomNav
           tab={tab}
           onTabChange={(t) => {
@@ -1294,7 +1305,7 @@ export default function Home() {
           }}
           hasGroupsUnread={squadsHook.squads.some((s) => s.hasUnread) || notificationsHook.notifications.some((n) => n.type === "squad_invite" && !n.is_read)}
         />
-      )}
+      </div>
 
       {toastMsg && (
         <Toast
@@ -1355,8 +1366,11 @@ export default function Home() {
             friendsHook.setFriendsOpen(true);
           } else if (action.type === "groups") {
             setSquadChatOrigin(tab);
-            if (action.squadId) squadsHook.setAutoSelectSquadId(action.squadId);
-            setTab("groups");
+            if (action.squadId) {
+              squadsHook.setAutoSelectSquadId(action.squadId);
+            } else {
+              setTab("groups");
+            }
           } else if (action.type === "feed") {
             setTab("feed");
             if (action.checkId) {

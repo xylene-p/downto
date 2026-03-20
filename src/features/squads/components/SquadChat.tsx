@@ -429,6 +429,7 @@ const SquadChat = ({
         left: 0,
         right: 0,
         height: "100dvh",
+        zIndex: 50,
         background: color.bg,
         overflow: "hidden",
         transform: (closing || entering) ? "translateX(100%)" : `translateX(${dragX}px)`,
