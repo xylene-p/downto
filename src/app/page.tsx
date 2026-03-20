@@ -9,7 +9,7 @@ import * as db from "@/lib/db";
 import { font, color } from "@/lib/styles";
 import { sanitize, sanitizeVibes, parseDateToISO, toLocalISODate } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
-import type { Person, Event, Tab, ScrapedEvent } from "@/lib/ui-types";
+import type { Person, Event, Tab, ScrapedEvent, Squad } from "@/lib/ui-types";
 import { DEMO_EVENTS, DEMO_CHECKS, DEMO_TONIGHT, DEMO_SQUADS, DEMO_FRIENDS, DEMO_SUGGESTIONS, DEMO_NOTIFICATIONS, DEMO_SEARCH_USERS } from "@/lib/demo-data";
 import Grain from "@/app/components/Grain";
 import AuthScreen from "@/features/auth/components/AuthScreen";
@@ -23,6 +23,7 @@ import FeedView from "@/features/feed/components/FeedView";
 import FriendsModal from "@/features/friends/components/FriendsModal";
 import CalendarView from "@/features/calendar/components/CalendarView";
 import GroupsView from "@/features/squads/components/GroupsView";
+import SquadChat from "@/features/squads/components/SquadChat";
 import ProfileView from "@/features/profile/components/ProfileView";
 import Header from "@/app/components/Header";
 import BottomNav from "@/app/components/BottomNav";
@@ -53,7 +54,7 @@ export default function Home() {
   const {
     tab, setTab,
     feedMode, setFeedMode,
-    squadChatOrigin, setSquadChatOrigin,
+    setSquadChatOrigin,
     chatOpen, setChatOpen,
     scrolledDown, setScrolledDown,
   } = useAppNavigation();
@@ -86,6 +87,7 @@ export default function Home() {
   }, []);
 
   // ─── Misc page-level state ──────────────────────────────────────────────
+  const [selectedSquad, setSelectedSquad] = useState<Squad | null>(null);
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [onboardingFriendGate, setOnboardingFriendGate] = useState(false);
   const [profileSetupDone, setProfileSetupDone] = useState(false);
@@ -479,6 +481,14 @@ export default function Home() {
     return () => navigator.serviceWorker.removeEventListener('message', handler);
   }, []);
 
+  // ─── Auto-select squad (from notification deep-link) ────────────────────
+  useEffect(() => {
+    if (!squadsHook.autoSelectSquadId) return;
+    const squad = squadsHook.squads.find(s => s.id === squadsHook.autoSelectSquadId);
+    if (squad) setSelectedSquad({ ...squad, hasUnread: false });
+    squadsHook.setAutoSelectSquadId(null);
+  }, [squadsHook.autoSelectSquadId]);
+
   // ─── Squad API handlers ──────────────────────────────────────────────────
 
   const handleSetSquadDate = async (squadDbId: string, date: string, time?: string | null, locked?: boolean) => {
@@ -821,21 +831,23 @@ export default function Home() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh" }}>
-      <Header
-        unreadCount={notificationsHook.unreadCount}
-        onOpenNotifications={() => {
-          notificationsHook.setNotificationsOpen(true);
-          if (notificationsHook.unreadCount > 0) {
-            if (!isDemoMode && userId) {
-              db.markAllNotificationsRead();
+      {!selectedSquad && (
+        <Header
+          unreadCount={notificationsHook.unreadCount}
+          onOpenNotifications={() => {
+            notificationsHook.setNotificationsOpen(true);
+            if (notificationsHook.unreadCount > 0) {
+              if (!isDemoMode && userId) {
+                db.markAllNotificationsRead();
+              }
+              notificationsHook.setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+              notificationsHook.setUnreadCount(0);
             }
-            notificationsHook.setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-            notificationsHook.setUnreadCount(0);
-          }
-        }}
-        onOpenAdd={() => { setAddModalOpen(true); setShowAddGlow(false); localStorage.removeItem("showAddGlow"); }}
-        glowAdd={showAddGlow}
-      />
+          }}
+          onOpenAdd={() => { setAddModalOpen(true); setShowAddGlow(false); localStorage.removeItem("showAddGlow"); }}
+          glowAdd={showAddGlow}
+        />
+      )}
 
       {/* Scroll area with fade edges */}
       <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
@@ -983,47 +995,62 @@ export default function Home() {
           />
         )}
         {feedLoaded && tab === "groups" && (
-          <GroupsView
-            squads={squadsHook.squads}
-            onSquadUpdate={squadsHook.setSquads}
-            autoSelectSquadId={squadsHook.autoSelectSquadId}
-            clearAutoSelectSquadId={() => squadsHook.setAutoSelectSquadId(null)}
-            onSendMessage={async (squadDbId, text, mentions) => {
-              await db.sendMessage(squadDbId, text, mentions);
-            }}
-            onLeaveSquad={async (squadDbId) => {
-              await db.leaveSquad(squadDbId);
-              await loadRealData();
-            }}
-            onSetSquadDate={handleSetSquadDate}
-            onClearSquadDate={handleClearSquadDate}
-            onConfirmDate={async (squadDbId, response) => {
-              await db.respondToDateConfirm(squadDbId, response);
-            }}
-            onUpdateSquadSize={handleUpdateSquadSize}
-            onSetMemberRole={handleSetMemberRole}
-            onKickMember={handleKickMember}
-            onAddMember={handleAddMember}
-            userId={userId}
-            onViewProfile={(uid) => setViewingUserId(uid)}
-            onChatOpen={setChatOpen}
-            onSquadRead={() => notificationsHook.setUnreadSquadCount((prev) => Math.max(0, prev - 1))}
-            onCreatePoll={async (squadId, question, options, multiSelect) => {
-              await db.createPoll(squadId, question, options, multiSelect);
-            }}
-            onVotePoll={async (pollId, optionIndex) => {
-              await db.votePoll(pollId, optionIndex);
-            }}
-            onClosePoll={async (pollId) => {
-              await db.closePoll(pollId);
-            }}
-            pendingJoinRequests={squadsHook.pendingJoinRequests}
-            onRespondToJoinRequest={squadsHook.handleRespondToJoinRequest}
-            onBack={squadChatOrigin ? () => {
-              setTab(squadChatOrigin);
-              setSquadChatOrigin(null);
-            } : undefined}
-          />
+          selectedSquad ? (
+            <SquadChat
+              squad={selectedSquad}
+              userId={userId}
+              onClose={() => setSelectedSquad(null)}
+              onSquadUpdate={squadsHook.setSquads}
+              onChatOpen={setChatOpen}
+              onViewProfile={(uid) => setViewingUserId(uid)}
+              onSendMessage={async (squadDbId, text, mentions) => {
+                await db.sendMessage(squadDbId, text, mentions);
+              }}
+              onLeaveSquad={async (squadDbId) => {
+                await db.leaveSquad(squadDbId);
+                await loadRealData();
+              }}
+              onSetSquadDate={handleSetSquadDate}
+              onClearSquadDate={handleClearSquadDate}
+              onConfirmDate={async (squadDbId, response) => {
+                await db.respondToDateConfirm(squadDbId, response);
+              }}
+              onUpdateSquadSize={handleUpdateSquadSize}
+              onSetMemberRole={handleSetMemberRole}
+              onKickMember={handleKickMember}
+              onAddMember={handleAddMember}
+              onCreatePoll={async (squadId, question, options, multiSelect) => {
+                await db.createPoll(squadId, question, options, multiSelect);
+              }}
+              onVotePoll={async (pollId, optionIndex) => {
+                await db.votePoll(pollId, optionIndex);
+              }}
+              onClosePoll={async (pollId) => {
+                await db.closePoll(pollId);
+              }}
+              pendingJoinRequests={squadsHook.pendingJoinRequests}
+              onRespondToJoinRequest={squadsHook.handleRespondToJoinRequest}
+            />
+          ) : (
+            <GroupsView
+              squads={squadsHook.squads}
+              onSelectSquad={(squad) => {
+                setSelectedSquad(squad);
+                if (squad.hasUnread) {
+                  squadsHook.setSquads((prev) => prev.map((s) => s.id === squad.id ? { ...s, hasUnread: false } : s));
+                  db.markSquadNotificationsRead(squad.id).catch(() => {});
+                  notificationsHook.setUnreadSquadCount((prev) => Math.max(0, prev - 1));
+                }
+                if ("serviceWorker" in navigator) {
+                  navigator.serviceWorker.getRegistration().then((reg) => {
+                    reg?.getNotifications({ tag: `squad_message-${squad.id}` }).then((notifs) => {
+                      notifs.forEach((n) => n.close());
+                    });
+                  });
+                }
+              }}
+            />
+          )
         )}
         {feedLoaded && tab === "profile" && (
           <ProfileView
