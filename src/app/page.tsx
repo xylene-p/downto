@@ -934,6 +934,11 @@ export default function Home() {
       window.matchMedia('(display-mode: standalone)').matches
     );
 
+    // Persist referral to DB early so it survives PWA install/re-auth
+    if (pendingCheckId) {
+      db.setReferralCheckId(pendingCheckId).catch(() => {});
+    }
+
     // Shared check in browser: show install prompt, skip friends for now
     if (pendingCheckId && !isInPWA && !installDismissed) {
       return (
