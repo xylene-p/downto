@@ -9,7 +9,7 @@ import * as db from "@/lib/db";
 import { font, color } from "@/lib/styles";
 import { sanitize, sanitizeVibes, parseDateToISO, toLocalISODate } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
-import type { Person, Event, Tab, ScrapedEvent } from "@/lib/ui-types";
+import type { Person, Event, Tab, ScrapedEvent, InterestCheck } from "@/lib/ui-types";
 import { DEMO_EVENTS, DEMO_CHECKS, DEMO_SQUADS, DEMO_FRIENDS, DEMO_SUGGESTIONS, DEMO_NOTIFICATIONS } from "@/lib/demo-data";
 import Grain from "@/app/components/Grain";
 import AuthScreen from "@/features/auth/components/AuthScreen";
@@ -105,7 +105,6 @@ export default function Home() {
   const [onboardingFriendGate, setOnboardingFriendGate] = useState(false);
   const [onboardingCheckAuthorId, setOnboardingCheckAuthorId] = useState<string | null>(null);
   const [profileSetupDone, setProfileSetupDone] = useState(false);
-  const [notificationsDone, setNotificationsDone] = useState(false);
   const [showFirstCheck, setShowFirstCheck] = useState(false);
   const [pendingSharedCheckId, setPendingSharedCheckId] = useState<string | null>(null);
   const [activeSharedCheckId, setActiveSharedCheckId] = useState<string | null>(() => {
@@ -876,7 +875,9 @@ export default function Home() {
     return <div style={{ minHeight: "100vh", background: color.bg }} />;
   }
 
-  if (!installDismissed) {
+  // Normal visit (no shared check): show install prompt before auth
+  const hasPendingCheck = typeof window !== 'undefined' && !!localStorage.getItem("pendingCheckId");
+  if (!installDismissed && !hasPendingCheck) {
     return (
       <IOSInstallScreen
         onComplete={() => {
@@ -907,37 +908,34 @@ export default function Home() {
     );
   }
 
-  if (profile && !profile.onboarded && !notificationsDone) {
-    return (
-      <EnableNotificationsScreen
-        onComplete={async () => {
-          localStorage.setItem("pushAutoPrompted", "1");
-          // If user came from a shared check, suggest the check author first
-          const pendingCheckId = localStorage.getItem("pendingCheckId");
-          if (pendingCheckId) {
-            try {
-              const authorProfile = await db.getCheckAuthorProfile(pendingCheckId);
-              if (authorProfile && authorProfile.id !== userId) {
-                setOnboardingCheckAuthorId(authorProfile.id);
-                friendsHook.setSuggestions((prev) => {
-                  const without = prev.filter((s) => s.id !== authorProfile.id);
-                  return [{
-                    id: authorProfile.id,
-                    name: authorProfile.display_name,
-                    username: authorProfile.username,
-                    avatar: authorProfile.avatar_letter,
-                    status: "none" as const,
-                    igHandle: authorProfile.ig_handle ?? undefined,
-                  }, ...without];
-                });
-              }
-            } catch {}
+  // After profile setup, go straight to friend gate
+  if (profile && !profile.onboarded && profileSetupDone && !onboardingFriendGate) {
+    // If user came from a shared check, suggest the check author first
+    const pendingCheckId = localStorage.getItem("pendingCheckId");
+    if (pendingCheckId) {
+      (async () => {
+        try {
+          const authorProfile = await db.getCheckAuthorProfile(pendingCheckId);
+          if (authorProfile && authorProfile.id !== userId) {
+            setOnboardingCheckAuthorId(authorProfile.id);
+            friendsHook.setSuggestions((prev) => {
+              const without = prev.filter((s) => s.id !== authorProfile.id);
+              return [{
+                id: authorProfile.id,
+                name: authorProfile.display_name,
+                username: authorProfile.username,
+                avatar: authorProfile.avatar_letter,
+                status: "none" as const,
+                igHandle: authorProfile.ig_handle ?? undefined,
+              }, ...without];
+            });
           }
-          setNotificationsDone(true);
-          setOnboardingFriendGate(true);
-        }}
-      />
-    );
+        } catch {}
+        setOnboardingFriendGate(true);
+      })();
+    } else {
+      setOnboardingFriendGate(true);
+    }
   }
 
   if (showFirstCheck) {
@@ -951,6 +949,18 @@ export default function Home() {
           setShowFirstCheck(false);
           setShowAddGlow(true);
           localStorage.setItem("showAddGlow", "true");
+        }}
+      />
+    );
+  }
+
+  // Show PWA install prompt after onboarding completes (iOS Safari only)
+  if (!installDismissed) {
+    return (
+      <IOSInstallScreen
+        onComplete={() => {
+          localStorage.setItem("pwa-install-dismissed", "1");
+          setInstallDismissed(true);
         }}
       />
     );
