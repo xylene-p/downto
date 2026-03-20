@@ -102,6 +102,7 @@ export default function Home() {
   // ─── Misc page-level state ──────────────────────────────────────────────
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [onboardingFriendGate, setOnboardingFriendGate] = useState(false);
+  const friendGateInitRef = useRef(false);
   const [onboardingCheckAuthorId, setOnboardingCheckAuthorId] = useState<string | null>(null);
   const [profileSetupDone, setProfileSetupDone] = useState(false);
   const [notificationsDone, setNotificationsDone] = useState(false);
@@ -931,29 +932,32 @@ export default function Home() {
     }
 
     // Set up friend gate with check author suggestion if applicable
-    if (pendingCheckId) {
-      (async () => {
-        try {
-          const authorProfile = await db.getCheckAuthorProfile(pendingCheckId);
-          if (authorProfile && authorProfile.id !== userId) {
-            setOnboardingCheckAuthorId(authorProfile.id);
-            friendsHook.setSuggestions((prev) => {
-              const without = prev.filter((s) => s.id !== authorProfile.id);
-              return [{
-                id: authorProfile.id,
-                name: authorProfile.display_name,
-                username: authorProfile.username,
-                avatar: authorProfile.avatar_letter,
-                status: "none" as const,
-                igHandle: authorProfile.ig_handle ?? undefined,
-              }, ...without];
-            });
-          }
-        } catch {}
+    if (!friendGateInitRef.current) {
+      friendGateInitRef.current = true;
+      if (pendingCheckId) {
+        (async () => {
+          try {
+            const authorProfile = await db.getCheckAuthorProfile(pendingCheckId);
+            if (authorProfile && authorProfile.id !== userId) {
+              setOnboardingCheckAuthorId(authorProfile.id);
+              friendsHook.setSuggestions((prev) => {
+                const without = prev.filter((s) => s.id !== authorProfile.id);
+                return [{
+                  id: authorProfile.id,
+                  name: authorProfile.display_name,
+                  username: authorProfile.username,
+                  avatar: authorProfile.avatar_letter,
+                  status: "none" as const,
+                  igHandle: authorProfile.ig_handle ?? undefined,
+                }, ...without];
+              });
+            }
+          } catch {}
+          setOnboardingFriendGate(true);
+        })();
+      } else {
         setOnboardingFriendGate(true);
-      })();
-    } else {
-      setOnboardingFriendGate(true);
+      }
     }
   }
 

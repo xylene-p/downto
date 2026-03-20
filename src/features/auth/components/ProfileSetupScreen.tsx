@@ -58,13 +58,17 @@ const ProfileSetupScreen = ({
   return (
     <div
       style={{
+        width: "100%",
         maxWidth: 420,
         margin: "0 auto",
-        minHeight: "100vh",
+        minHeight: "100dvh",
         background: color.bg,
         padding: "60px 24px",
         display: "flex",
         flexDirection: "column",
+        boxSizing: "border-box",
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
       }}
     >
       <Grain />
@@ -260,9 +264,6 @@ const ProfileSetupScreen = ({
           </div>
           <span style={{ fontFamily: font.mono, fontSize: 13, color: color.text }}>
             {previewName}
-          </span>
-          <span style={{ fontFamily: font.mono, fontSize: 11, color: color.dim }}>
-            @{previewUsername}
           </span>
         </div>
         <div style={{ fontFamily: font.serif, fontSize: 18, color: color.text }}>
