@@ -105,6 +105,7 @@ export default function Home() {
   const [onboardingFriendGate, setOnboardingFriendGate] = useState(false);
   const [onboardingCheckAuthorId, setOnboardingCheckAuthorId] = useState<string | null>(null);
   const [profileSetupDone, setProfileSetupDone] = useState(false);
+  const [notificationsDone, setNotificationsDone] = useState(false);
   const [showFirstCheck, setShowFirstCheck] = useState(false);
   const [pendingSharedCheckId, setPendingSharedCheckId] = useState<string | null>(null);
   const [activeSharedCheckId, setActiveSharedCheckId] = useState<string | null>(() => {
@@ -908,10 +909,39 @@ export default function Home() {
     );
   }
 
-  // After profile setup, go straight to friend gate
-  if (profile && !profile.onboarded && profileSetupDone && !onboardingFriendGate) {
-    // If user came from a shared check, suggest the check author first
+  // After profile setup: shared check flow → install prompt; normal flow → friends
+  if (profile && !profile.onboarded && (profileSetupDone || !!profile.display_name) && !onboardingFriendGate) {
     const pendingCheckId = localStorage.getItem("pendingCheckId");
+    const isInPWA = typeof window !== 'undefined' && (
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches
+    );
+
+    // Shared check in browser: show install prompt, skip friends for now
+    if (pendingCheckId && !isInPWA && !installDismissed) {
+      return (
+        <IOSInstallScreen
+          onComplete={() => {
+            localStorage.setItem("pwa-install-dismissed", "1");
+            setInstallDismissed(true);
+          }}
+        />
+      );
+    }
+
+    // In PWA (after reinstall) or normal flow: show notifications then friends
+    if (!notificationsDone && isInPWA) {
+      return (
+        <EnableNotificationsScreen
+          onComplete={async () => {
+            localStorage.setItem("pushAutoPrompted", "1");
+            setNotificationsDone(true);
+          }}
+        />
+      );
+    }
+
+    // Set up friend gate with check author suggestion if applicable
     if (pendingCheckId) {
       (async () => {
         try {
@@ -954,17 +984,6 @@ export default function Home() {
     );
   }
 
-  // Show PWA install prompt after onboarding completes (iOS Safari only)
-  if (!installDismissed) {
-    return (
-      <IOSInstallScreen
-        onComplete={() => {
-          localStorage.setItem("pwa-install-dismissed", "1");
-          setInstallDismissed(true);
-        }}
-      />
-    );
-  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh" }}>
