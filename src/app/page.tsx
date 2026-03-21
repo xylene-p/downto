@@ -105,6 +105,7 @@ export default function Home() {
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [onboardingFriendGate, setOnboardingFriendGate] = useState(false);
   const friendGateInitRef = useRef(false);
+  const referralPersistedRef = useRef(false);
   const [onboardingCheckAuthorId, setOnboardingCheckAuthorId] = useState<string | null>(null);
   const [profileSetupDone, setProfileSetupDone] = useState(false);
   const [notificationsDone, setNotificationsDone] = useState(false);
@@ -934,8 +935,22 @@ export default function Home() {
       window.matchMedia('(display-mode: standalone)').matches
     );
 
-    // Shared check in browser: show install prompt, skip friends for now
+    // Shared check in browser: persist referral to DB then show install prompt
     if (pendingCheckId && !isInPWA && !installDismissed) {
+      // Persist to DB via API (service role) so it survives PWA install/re-auth
+      if (!referralPersistedRef.current) {
+        referralPersistedRef.current = true;
+        (async () => {
+          const token = (await supabase.auth.getSession()).data.session?.access_token;
+          if (token) {
+            fetch("/api/checks/respond-shared", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ checkId: pendingCheckId, response: "down" }),
+            }).catch(() => {});
+          }
+        })();
+      }
       return (
         <IOSInstallScreen
           onComplete={() => {
@@ -946,8 +961,8 @@ export default function Home() {
       );
     }
 
-    // In PWA (after reinstall) or normal flow: show notifications then friends
-    if (!notificationsDone && isInPWA) {
+    // Show notifications screen (PWA or after dismissing install prompt)
+    if (!notificationsDone && (isInPWA || (pendingCheckId && installDismissed))) {
       return (
         <EnableNotificationsScreen
           onComplete={async () => {
@@ -958,6 +973,10 @@ export default function Home() {
       );
     }
 
+    // Wait for loadRealData to finish hydrating suggestions before setting up
+    // the friend gate — otherwise hydrateFriends overwrites the check author
+    if (!feedLoaded) return null;
+
     // Set up friend gate with check author suggestion if applicable
     if (!friendGateInitRef.current) {
       friendGateInitRef.current = true;
@@ -967,10 +986,6 @@ export default function Home() {
           let checkId = pendingCheckId;
           if (!checkId) {
             checkId = await db.getReferralCheckId();
-          }
-          // Persist to DB so it survives PWA reinstall/re-auth
-          if (checkId && pendingCheckId) {
-            db.setReferralCheckId(checkId).catch(() => {});
           }
           if (checkId) {
             const authorProfile = await db.getCheckAuthorProfile(checkId);
@@ -1403,9 +1418,13 @@ export default function Home() {
             }
             setOnboardingFriendGate(false);
             setOnboardingCheckAuthorId(null);
-            // Skip first check screen for shared check flow — they already have one to respond to
-            if (!localStorage.getItem("pendingCheckId") && !activeSharedCheckId) {
+            // Skip first check screen if user already has checks or came from shared check
+            if (!localStorage.getItem("pendingCheckId") && !activeSharedCheckId && checksHook.checks.length === 0) {
               setShowFirstCheck(true);
+            } else {
+              // Shared check flow: show glow on + button to prompt first check
+              setShowAddGlow(true);
+              localStorage.setItem("showAddGlow", "true");
             }
           }}
         />
