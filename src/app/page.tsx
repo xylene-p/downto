@@ -973,6 +973,10 @@ export default function Home() {
       );
     }
 
+    // Wait for loadRealData to finish hydrating suggestions before setting up
+    // the friend gate — otherwise hydrateFriends overwrites the check author
+    if (!feedLoaded) return null;
+
     // Set up friend gate with check author suggestion if applicable
     if (!friendGateInitRef.current) {
       friendGateInitRef.current = true;
@@ -982,10 +986,6 @@ export default function Home() {
           let checkId = pendingCheckId;
           if (!checkId) {
             checkId = await db.getReferralCheckId();
-          }
-          // Persist to DB so it survives PWA reinstall/re-auth
-          if (checkId && pendingCheckId) {
-            db.setReferralCheckId(checkId).catch(() => {});
           }
           if (checkId) {
             const authorProfile = await db.getCheckAuthorProfile(checkId);
