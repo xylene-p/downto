@@ -102,6 +102,8 @@ export default function Home() {
 
   // ─── Misc page-level state ──────────────────────────────────────────────
   const [selectedSquad, setSelectedSquad] = useState<Squad | null>(null);
+  const selectedSquadIdRef = useRef<string | null>(null);
+  selectedSquadIdRef.current = selectedSquad?.id ?? null;
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [onboardingFriendGate, setOnboardingFriendGate] = useState(false);
   const friendGateInitRef = useRef(false);
@@ -185,8 +187,9 @@ export default function Home() {
     userId,
     isDemoMode,
     onUnreadSquadIds: (ids) => {
+      const openId = selectedSquadIdRef.current;
       squadsHook.setSquads((prev) => prev.map((s) =>
-        ids.includes(s.id) ? { ...s, hasUnread: true } : s
+        ids.includes(s.id) && s.id !== openId ? { ...s, hasUnread: true } : s
       ));
     },
   });
@@ -491,6 +494,12 @@ export default function Home() {
 
     const channel = db.subscribeToNotifications(userId, async (newNotif) => {
       if (newNotif.type === "squad_message" || newNotif.type === "squad_mention") {
+        // Skip notifications about own messages and for the currently-open squad
+        if (newNotif.related_user_id === userId) return;
+        if (newNotif.related_squad_id && newNotif.related_squad_id === selectedSquadIdRef.current) {
+          db.markSquadNotificationsRead(newNotif.related_squad_id).catch(() => {});
+          return;
+        }
         notificationsHook.setHasUnreadSquadMessage(true);
         notificationsHook.setUnreadSquadCount((prev) => prev + 1);
         if (newNotif.related_squad_id) {
