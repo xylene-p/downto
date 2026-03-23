@@ -242,7 +242,7 @@ export default function CheckCard({
               if (parts.length === 0) return null;
               return <p className="font-mono text-xs text-neutral-500 m-0 mt-2">{parts.join(" · ")}</p>;
             })()}
-            {(check.isYours || check.isCoAuthor) && !check.squadId && check.responses.some(r => r.status === "down") && (
+            {(check.isYours || check.isCoAuthor) && !check.squadId && myCheckResponses[check.id] !== "down" && check.responses.some(r => r.status === "down") && (
               <button
                 onClick={(e) => { e.stopPropagation(); startSquadFromCheck(check); }}
                 className="bg-transparent text-dt border border-dt rounded-md py-1 px-2 font-mono text-tiny font-bold cursor-pointer mt-1.5"
@@ -363,7 +363,7 @@ export default function CheckCard({
                   })()}
                 </div>
               )}
-              {(check.isYours || check.isCoAuthor) && check.squadId && (
+              {(check.isYours || check.isCoAuthor) && check.squadId && myCheckResponses[check.id] !== "down" && (
                 <div className="flex justify-end mt-1">
                   <button onClick={(e) => { e.stopPropagation(); onNavigateToGroups(check.squadId!); }}
                     className="bg-purple-500/10 text-purple-500 border-none rounded-lg py-1.5 px-2 font-mono text-tiny font-bold cursor-pointer whitespace-nowrap"
