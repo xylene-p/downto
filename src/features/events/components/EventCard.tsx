@@ -217,8 +217,8 @@ const EventCard = ({
           )}
         </div>
 
-        {/* Social preview — only show once social data is hydrated (peopleDown populated or user in pool) */}
-        {(event.peopleDown.length > 0 || event.userInPool) && (
+        {/* Social preview */}
+        {(event.peopleDown.length > 0 || event.userInPool || event.isDown) && (
           <div
             onClick={onOpenSocial}
             style={{
@@ -265,8 +265,8 @@ const EventCard = ({
                 )}
                 <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
                   {event.peopleDown.length === 0 && !event.userInPool ? (
-                    <span style={{ fontFamily: font.mono, fontSize: 11, color: color.pool }}>
-                      Looking for a squad?
+                    <span style={{ fontFamily: font.mono, fontSize: 11, color: event.isDown ? color.accent : color.pool }}>
+                      {event.isDown ? "You're down" : "Looking for a squad?"}
                     </span>
                   ) : hasPool || event.userInPool ? (
                     <>
