@@ -68,13 +68,11 @@ const SquadChat = ({
   const [showImOutConfirm, setShowImOutConfirm] = useState(false);
   const [kickTarget, setKickTarget] = useState<{ name: string; userId: string } | null>(null);
   const [showSquadPopup, setShowSquadPopup] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [datePickerValue, setDatePickerValue] = useState("");
-  const [settingDate, setSettingDate] = useState(false);
-  const [dateLocked, setDateLocked] = useState(false);
-  const [timeLocked, setTimeLocked] = useState(false);
-  const [dateDismissed, setDateDismissed] = useState(false);
-  const [timeDismissed, setTimeDismissed] = useState(false);
+  const [showEditEvent, setShowEditEvent] = useState(false);
+  const [editEventTitle, setEditEventTitle] = useState("");
+  const [editWhenInput, setEditWhenInput] = useState("");
+  const [editWhereInput, setEditWhereInput] = useState("");
+  const [savingEvent, setSavingEvent] = useState(false);
   const [dateConfirmStatus, setDateConfirmStatus] = useState<'yes' | 'no' | 'pending' | 'none' | 'loading'>('loading');
   const [dateConfirms, setDateConfirms] = useState<Map<string, 'yes' | 'no' | null>>(new Map());
   const [confirmLoading, setConfirmLoading] = useState(false);
@@ -426,7 +424,7 @@ const SquadChat = ({
         squad={localSquad}
         dateConfirms={dateConfirms}
         userId={userId}
-        hasOpenModal={showSquadPopup || showDatePicker}
+        hasOpenModal={showSquadPopup || showEditEvent}
         onBack={onClose}
         onOpenSettings={() => setShowSquadPopup(true)}
       />
@@ -690,201 +688,185 @@ const SquadChat = ({
         </div>
       )}
 
-      {/* Date picker modal */}
-      {showDatePicker && (() => {
-        const natural = parseNaturalDate(datePickerValue);
-        const parsedISO = natural?.iso ?? parseDateToISO(datePickerValue);
-        const parsedLabel = natural?.label ?? (parsedISO
-          ? new Date(parsedISO + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
-          : null);
-        const detectedTime = parseNaturalTime(datePickerValue);
-        const isValid = !!parsedISO;
-        const hasDate = !!parsedLabel && !dateDismissed;
-        const hasTime = !!detectedTime && !timeDismissed;
-        const bothLocked = hasDate && dateLocked && hasTime && timeLocked;
-        const submitLabel = settingDate ? "..." : (bothLocked ? "Lock it in" : "Propose");
+      {/* Edit event modal — matches CreateModal interest check form */}
+      {showEditEvent && (() => {
+        const handleSaveEvent = async () => {
+          if (!localSquad?.id) return;
+          setSavingEvent(true);
+          try {
+            // Save title if changed
+            const trimmedTitle = editEventTitle.trim();
+            if (trimmedTitle && trimmedTitle !== localSquad.name) {
+              await db.updateSquadName(localSquad.id, trimmedTitle);
+              setLocalSquad((prev) => ({ ...prev, name: trimmedTitle }));
+              onSquadUpdate((prev) => prev.map((s) => s.id === localSquad.id ? { ...s, name: trimmedTitle } : s));
+            }
+
+            // Save location if changed
+            const trimmedLocation = editWhereInput.trim() || null;
+            if (trimmedLocation !== (localSquad.meetingSpot || null)) {
+              await db.updateSquadLogistics(localSquad.id, { meeting_spot: trimmedLocation ?? undefined });
+              setLocalSquad((prev) => ({ ...prev, meetingSpot: trimmedLocation ?? undefined }));
+              onSquadUpdate((prev) => prev.map((s) => s.id === localSquad.id ? { ...s, meetingSpot: trimmedLocation ?? undefined } : s));
+            }
+
+            // Parse when input for date/time
+            const whenVal = editWhenInput.trim();
+            const parsedDate = whenVal ? parseNaturalDate(whenVal) : null;
+            const dateISO = parsedDate?.iso ?? (whenVal ? parseDateToISO(whenVal) : null) ?? null;
+            const parsedTime = whenVal ? parseNaturalTime(whenVal) : null;
+            if (dateISO && onSetSquadDate) {
+              await onSetSquadDate(localSquad.id, dateISO, parsedTime, false);
+              setLocalSquad((prev) => ({
+                ...prev,
+                eventIsoDate: dateISO,
+                eventTime: parsedTime ?? prev.eventTime,
+                dateStatus: 'proposed',
+                graceStartedAt: undefined,
+              }));
+            }
+
+            setShowEditEvent(false);
+          } catch {
+            // Error handled by parent
+          } finally {
+            setSavingEvent(false);
+          }
+        };
+
         return (
           <div
             style={{
               position: "fixed",
-              top: 0, left: 0, right: 0, bottom: 0,
-              background: "rgba(0,0,0,0.3)",
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "center",
-              paddingTop: "20vh",
+              inset: 0,
               zIndex: 9999,
+              display: "flex",
+              alignItems: "flex-end",
+              justifyContent: "center",
             }}
-            onClick={() => setShowDatePicker(false)}
           >
             <div
+              onClick={() => setShowEditEvent(false)}
               style={{
-                background: color.deep,
-                border: `1px solid ${color.border}`,
-                borderRadius: 16,
-                padding: "24px 20px",
-                maxWidth: 300,
-                width: "90%",
-                textAlign: "center",
+                position: "absolute",
+                inset: 0,
+                background: "rgba(0,0,0,0.7)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
               }}
-              onClick={(e) => e.stopPropagation()}
+            />
+            <div
+              style={{
+                position: "relative",
+                background: color.surface,
+                borderRadius: "24px 24px 0 0",
+                width: "100%",
+                maxWidth: 420,
+                padding: "20px 24px 0",
+                maxHeight: "80vh",
+                display: "flex",
+                flexDirection: "column",
+                animation: "slideUp 0.3s ease-out",
+              }}
             >
-              <p style={{ fontFamily: font.serif, fontSize: 18, color: color.text, marginBottom: 6 }}>
-                Set date &amp; time
-              </p>
-              <p style={{ fontFamily: font.mono, fontSize: 11, color: color.dim, marginBottom: 16 }}>
-                Lock in when this is happening
-              </p>
-              <input
-                type="text"
-                value={datePickerValue}
-                onChange={(e) => setDatePickerValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && isValid && !settingDate) {
-                    e.preventDefault();
-                    (e.target as HTMLInputElement).closest("div")?.querySelector<HTMLButtonElement>("button:last-child")?.click();
-                  }
-                }}
-                placeholder="e.g. friday at 7pm, mar 7, tomorrow"
-                autoFocus
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box",
-                  background: color.card,
-                  border: `1px solid ${isValid ? color.accent : color.border}`,
-                  borderRadius: 10,
-                  padding: "10px 12px",
-                  color: color.text,
-                  fontFamily: font.mono,
-                  fontSize: 13,
-                  outline: "none",
-                  marginBottom: (hasDate || hasTime) ? 8 : 16,
-                }}
-              />
-              {(hasDate || hasTime) && (
-                <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap", marginBottom: 12 }}>
-                  {hasDate && (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        padding: "6px 10px",
-                        background: dateLocked ? "rgba(232,255,90,0.08)" : "transparent",
-                        borderRadius: 8,
-                        border: dateLocked ? "1px solid rgba(232,255,90,0.2)" : "1px dashed rgba(232,255,90,0.35)",
-                        userSelect: "none",
-                      }}
-                    >
-                      <span style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600 }}>
-                        📅 {parsedLabel}
-                      </span>
-                      <button
-                        onClick={() => setDateLocked((v) => !v)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          padding: 0,
-                          fontFamily: font.mono,
-                          fontSize: 9,
-                          color: dateLocked ? color.accent : color.dim,
-                          fontWeight: 600,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {dateLocked ? "locked" : "flexible"}
-                      </button>
-                    </div>
-                  )}
-                  {hasTime && (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        padding: "6px 10px",
-                        background: timeLocked ? "rgba(232,255,90,0.08)" : "transparent",
-                        borderRadius: 8,
-                        border: timeLocked ? "1px solid rgba(232,255,90,0.2)" : "1px dashed rgba(232,255,90,0.35)",
-                        userSelect: "none",
-                      }}
-                    >
-                      <span style={{ fontFamily: font.mono, fontSize: 11, color: color.accent, fontWeight: 600 }}>
-                        🕐 {detectedTime}
-                      </span>
-                      <button
-                        onClick={() => setTimeLocked((v) => !v)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          padding: 0,
-                          fontFamily: font.mono,
-                          fontSize: 9,
-                          color: timeLocked ? color.accent : color.dim,
-                          fontWeight: 600,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {timeLocked ? "locked" : "flexible"}
-                      </button>
-                    </div>
-                  )}
+              {/* Drag handle */}
+              <div style={{ width: 40, height: 4, background: color.faint, borderRadius: 2, margin: "0 auto 20px" }} />
+
+              <div style={{ overflowY: "auto", overflowX: "hidden", flex: 1, paddingBottom: 24 }}>
+                {/* Title */}
+                <h2 style={{ fontFamily: font.serif, fontSize: 18, color: color.text, margin: "0 0 20px", fontWeight: 400 }}>
+                  Edit event
+                </h2>
+
+                {/* Event title textarea */}
+                <div style={{ marginBottom: 16 }}>
+                  <textarea
+                    value={editEventTitle}
+                    onChange={(e) => setEditEventTitle(e.target.value.slice(0, 280))}
+                    placeholder="What's the plan?"
+                    autoFocus
+                    rows={3}
+                    style={{
+                      width: "100%",
+                      background: color.deep,
+                      border: `1px solid ${color.borderMid}`,
+                      borderRadius: 12,
+                      padding: "14px 16px",
+                      color: color.text,
+                      fontFamily: font.mono,
+                      fontSize: 13,
+                      outline: "none",
+                      resize: "none",
+                      lineHeight: 1.5,
+                      boxSizing: "border-box",
+                    }}
+                  />
                 </div>
-              )}
-              <div style={{ display: "flex", gap: 10 }}>
+
+                {/* When / Where inputs */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 4 }}>
+                  <input
+                    type="text"
+                    placeholder="tmr 7pm"
+                    value={editWhenInput}
+                    onChange={(e) => setEditWhenInput(e.target.value)}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      padding: "10px 12px",
+                      background: color.deep,
+                      border: `1px solid ${color.borderMid}`,
+                      borderRadius: 10,
+                      fontFamily: font.mono,
+                      fontSize: 11,
+                      color: color.text,
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="where?"
+                    value={editWhereInput}
+                    onChange={(e) => setEditWhereInput(e.target.value)}
+                    style={{
+                      flex: 0.6,
+                      minWidth: 0,
+                      padding: "10px 12px",
+                      background: color.deep,
+                      border: `1px solid ${color.borderMid}`,
+                      borderRadius: 10,
+                      fontFamily: font.mono,
+                      fontSize: 11,
+                      color: color.text,
+                      outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Save button */}
+              <div style={{ padding: "12px 0 24px", flexShrink: 0 }}>
                 <button
-                  onClick={() => setShowDatePicker(false)}
+                  onClick={handleSaveEvent}
+                  disabled={savingEvent}
                   style={{
-                    flex: 1,
-                    padding: "10px 0",
-                    background: "none",
-                    border: `1px solid ${color.border}`,
-                    borderRadius: 10,
-                    color: color.text,
-                    fontFamily: font.mono,
-                    fontSize: 12,
-                    cursor: "pointer",
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  disabled={!isValid || settingDate}
-                  onClick={async () => {
-                    if (!parsedISO || !localSquad?.id || !onSetSquadDate) return;
-                    setSettingDate(true);
-                    try {
-                      await onSetSquadDate(localSquad.id, parsedISO, detectedTime, bothLocked);
-                      setLocalSquad((prev) => ({
-                        ...prev,
-                        eventIsoDate: parsedISO,
-                        eventTime: detectedTime ?? prev.eventTime,
-                        dateFlexible: !dateLocked,
-                        timeFlexible: !timeLocked,
-                        dateStatus: bothLocked ? 'locked' : 'proposed',
-                        graceStartedAt: undefined,
-                      }));
-                      setShowDatePicker(false);
-                    } catch {
-                      // Error handled by parent
-                    } finally {
-                      setSettingDate(false);
-                    }
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: "10px 0",
-                    background: isValid && !settingDate ? color.accent : color.borderMid,
+                    width: "100%",
+                    background: !savingEvent ? color.accent : color.borderMid,
+                    color: !savingEvent ? "#000" : color.dim,
                     border: "none",
-                    borderRadius: 10,
-                    color: isValid && !settingDate ? "#000" : color.dim,
+                    borderRadius: 12,
+                    padding: "14px",
                     fontFamily: font.mono,
                     fontSize: 12,
-                    cursor: isValid && !settingDate ? "pointer" : "default",
                     fontWeight: 700,
+                    cursor: !savingEvent ? "pointer" : "default",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
                   }}
                 >
-                  {submitLabel}
+                  {savingEvent ? "Saving..." : "Save"}
                 </button>
               </div>
             </div>
@@ -897,9 +879,9 @@ const SquadChat = ({
         flex: 1,
         display: "flex",
         flexDirection: "column",
-        filter: (showSquadPopup || showDatePicker) ? 'blur(4px)' : 'none',
-        opacity: (showSquadPopup || showDatePicker) ? 0.3 : 1,
-        pointerEvents: (showSquadPopup || showDatePicker) ? 'none' : 'auto',
+        filter: (showSquadPopup || showEditEvent) ? 'blur(4px)' : 'none',
+        opacity: (showSquadPopup || showEditEvent) ? 0.3 : 1,
+        pointerEvents: (showSquadPopup || showEditEvent) ? 'none' : 'auto',
         transition: 'filter 0.2s, opacity 0.2s',
         minHeight: 0,
       }}>
@@ -1127,18 +1109,17 @@ const SquadChat = ({
           onClose={() => setShowSquadPopup(false)}
           onRequestLeave={() => setShowLeaveConfirm(true)}
           onRequestKick={(target) => setKickTarget(target)}
-          onOpenDatePicker={onSetSquadDate ? () => {
+          onOpenDatePicker={() => {
             setShowSquadPopup(false);
+            setEditEventTitle(localSquad.name || "");
             const dateLabel = localSquad.eventIsoDate
               ? new Date(localSquad.eventIsoDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
               : "";
-            setDatePickerValue(dateLabel);
-            setDateLocked(false);
-            setTimeLocked(false);
-            setDateDismissed(false);
-            setTimeDismissed(false);
-            setShowDatePicker(true);
-          } : undefined}
+            const timeLabel = localSquad.eventTime || "";
+            setEditWhenInput([dateLabel, timeLabel].filter(Boolean).join(" "));
+            setEditWhereInput(localSquad.meetingSpot || "");
+            setShowEditEvent(true);
+          }}
           onViewProfile={onViewProfile}
           onUpdateSquadSize={onUpdateSquadSize}
           onSetMemberRole={onSetMemberRole}

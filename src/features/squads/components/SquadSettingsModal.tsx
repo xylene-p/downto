@@ -136,7 +136,7 @@ export default function SquadSettingsModal({
                   onClick={onOpenDatePicker}
                   className="bg-transparent border-none border-b border-neutral-900 text-white font-mono text-xs py-3 cursor-pointer text-center w-full"
                 >
-                  Set plans
+                  Edit event
                 </button>
               )}
               <button
