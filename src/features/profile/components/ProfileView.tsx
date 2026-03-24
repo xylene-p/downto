@@ -762,15 +762,16 @@ const ProfileView = ({
       <div
         onContextMenu={(e) => e.preventDefault()}
         onPointerDown={(e) => {
+          const el = e.currentTarget;
           const timer = setTimeout(() => {
             const buildId = process.env.NEXT_PUBLIC_BUILD_ID ?? "dev";
             navigator.clipboard.writeText(buildId).then(() => {
               showToast?.("Build ID copied");
             }).catch(() => {});
           }, 500);
-          const cancel = () => { clearTimeout(timer); e.currentTarget.removeEventListener("pointerup", cancel); e.currentTarget.removeEventListener("pointerleave", cancel); };
-          e.currentTarget.addEventListener("pointerup", cancel);
-          e.currentTarget.addEventListener("pointerleave", cancel);
+          const cancel = () => { clearTimeout(timer); el.removeEventListener("pointerup", cancel); el.removeEventListener("pointerleave", cancel); };
+          el.addEventListener("pointerup", cancel);
+          el.addEventListener("pointerleave", cancel);
         }}
         style={{
           padding: "14px 0",
