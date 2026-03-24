@@ -350,8 +350,61 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Scrape the Instagram page directly for embedded JSON data
     const canonicalUrl = `https://www.instagram.com/${igMatch[1]}/${igMatch[2]}/`;
+    const shortCode = igMatch[2];
+
+    // Use Apify Instagram Scraper for reliable data extraction
+    const apifyToken = process.env.APIFY_TOKEN;
+    if (apifyToken) {
+      try {
+        const apifyRes = await fetch(
+          `https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items?token=${apifyToken}&timeout=120`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              directUrls: [canonicalUrl],
+              resultsType: 'posts',
+              resultsLimit: 1,
+            }),
+          }
+        );
+
+        if (apifyRes.ok) {
+          const items = await apifyRes.json();
+          if (Array.isArray(items) && items.length > 0 && !items[0].error) {
+            const post = items[0];
+            const caption = post.caption || "";
+            const authorName = post.ownerUsername || "";
+            const imageUrl = post.displayUrl || (post.images?.[0]) || "";
+
+            const eventDetails = parseEventDetails(caption, authorName);
+
+            // Use locationName from Apify if venue wasn't parsed from caption
+            if ((!eventDetails.venue || eventDetails.venue === "TBD") && post.locationName) {
+              eventDetails.venue = strip(post.locationName).slice(0, 100);
+            }
+
+            const hostedThumbnail = await uploadEventImage(imageUrl, `ig-${shortCode}`);
+
+            return NextResponse.json({
+              type: "event" as const,
+              ...eventDetails,
+              thumbnail: hostedThumbnail,
+              authorUrl: `https://www.instagram.com/${authorName}/`,
+              isPublicPost: true,
+              rawCaption: caption,
+              igUrl: canonicalUrl,
+            });
+          }
+        }
+      } catch (apifyErr) {
+        logError("scrape:apify", apifyErr);
+        // Fall through to direct fetch
+      }
+    }
+
+    // Fallback: direct fetch with Googlebot UA (may not get images)
     const response = await fetch(canonicalUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
@@ -367,23 +420,15 @@ export async function POST(request: NextRequest) {
 
     const html = await response.text();
 
-    // Extract caption from embedded JSON (Instagram embeds post data in the page)
     const captionMatch = html.match(/"caption":\{[^}]*"text":"((?:[^"\\]|\\.)*)"/);
     let caption = "";
     if (captionMatch) {
-      try {
-        // Use JSON.parse to properly decode all unicode escapes
-        caption = JSON.parse(`"${captionMatch[1]}"`);
-      } catch {
-        caption = captionMatch[1];
-      }
+      try { caption = JSON.parse(`"${captionMatch[1]}"`); } catch { caption = captionMatch[1]; }
     }
 
-    // Extract author from og:url (format: instagram.com/username/p/...)
     const authorMatch = html.match(/<meta property="og:url" content="https:\/\/www\.instagram\.com\/([^/]+)\//);
     const authorName = authorMatch ? authorMatch[1] : "";
 
-    // Extract image with multi-fallback: embedded JSON first, then og:image
     const displayUrlMatch = html.match(/"display_url"\s*:\s*"((?:[^"\\]|\\.)*)"/);
     const thumbnailSrcMatch = html.match(/"thumbnail_src"\s*:\s*"((?:[^"\\]|\\.)*)"/);
     const ogImageMatch = html.match(/<meta property="og:image" content="([^"]+)"/);
@@ -406,10 +451,8 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-    // Parse event details from caption
     const eventDetails = parseEventDetails(caption, authorName);
-
-    const hostedThumbnail = await uploadEventImage(thumbnail, `ig-${igMatch[2]}`);
+    const hostedThumbnail = await uploadEventImage(thumbnail, `ig-${shortCode}`);
 
     return NextResponse.json({
       type: "event" as const,
