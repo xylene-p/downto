@@ -69,12 +69,35 @@ const EventCard = ({
       }`}
       style={{
         background: "rgba(232, 255, 90, 0.03)",
-        borderLeftWidth: 3,
-        borderLeftColor: color.accent,
+        position: "relative",
         ...(isNew ? { animation: "accentGlow 2s ease-out forwards" } : {}),
       }}
     >
-      <div className="p-3.5">
+      {/* Background image from scraped IG post */}
+      {event.image && event.image !== "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&q=80" && (
+        <>
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundImage: `url(${event.image})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              opacity: 0.08,
+              borderRadius: "inherit",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.6) 100%)",
+              borderRadius: "inherit",
+            }}
+          />
+        </>
+      )}
+      <div className="p-3.5" style={{ position: "relative" }}>
         {/* Header: title + edit */}
         <div className="flex justify-between items-start mb-2.5">
           <h3
