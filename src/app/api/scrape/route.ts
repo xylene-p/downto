@@ -5,6 +5,73 @@ import { uploadEventImage } from "@/lib/supabase-admin";
 /** Strip HTML tags and trim */
 const strip = (s: string) => s.replace(/<[^>]*>/g, "").trim();
 
+/** Normalize a parsed date string to "Wed, Mar 26" format */
+function normalizeDate(raw: string, caption: string): string | null {
+  const now = new Date();
+  const lower = raw.toLowerCase().trim();
+
+  // "tonight" / "tomorrow"
+  if (lower === "tonight") {
+    return now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  }
+  if (lower === "tomorrow") {
+    const d = new Date(now); d.setDate(d.getDate() + 1);
+    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  }
+
+  // Day name like "Saturday" — find next occurrence, also check for "the 28th" nearby
+  const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const dayIdx = dayNames.indexOf(lower);
+  if (dayIdx !== -1) {
+    // Check if caption has "the Nth" or just a number near the day name
+    const dayNumMatch = caption.match(new RegExp(raw + "[\\s,]*(?:the\\s+)?(\\d{1,2})(?:st|nd|rd|th)?", "i"));
+    if (dayNumMatch) {
+      const dayNum = parseInt(dayNumMatch[1]);
+      // Try current month first, then next month
+      for (let mOff = 0; mOff <= 1; mOff++) {
+        const d = new Date(now.getFullYear(), now.getMonth() + mOff, dayNum);
+        if (d.getDay() === dayIdx && d >= new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
+          return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+        }
+      }
+    }
+    // No day number — find next occurrence of this weekday
+    const d = new Date(now);
+    while (d.getDay() !== dayIdx) d.setDate(d.getDate() + 1);
+    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  }
+
+  // "this weekend" / "this saturday" etc.
+  if (lower.startsWith("this ")) {
+    const target = lower.replace("this ", "");
+    if (target === "weekend") {
+      const d = new Date(now);
+      while (d.getDay() !== 6) d.setDate(d.getDate() + 1);
+      return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    }
+    const tIdx = dayNames.indexOf(target);
+    if (tIdx !== -1) {
+      const d = new Date(now);
+      while (d.getDay() !== tIdx) d.setDate(d.getDate() + 1);
+      return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    }
+  }
+
+  // "Feb 14", "March 28" etc. — parse and format
+  const monthDateMatch = raw.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2})/i);
+  if (monthDateMatch) {
+    const parsed = new Date(`${monthDateMatch[1]} ${monthDateMatch[2]}, ${now.getFullYear()}`);
+    if (!isNaN(parsed.getTime())) {
+      if (parsed < new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7)) {
+        parsed.setFullYear(parsed.getFullYear() + 1);
+      }
+      return parsed.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+    }
+  }
+
+  return null;
+}
+
 // Extract event details from Instagram caption using heuristics
 function parseEventDetails(caption: string, authorName: string) {
   const lines = caption.split('\n').filter(l => l.trim());
@@ -30,6 +97,12 @@ function parseEventDetails(caption: string, authorName: string) {
       date = match[0];
       break;
     }
+  }
+
+  // Normalize date to "Wed, Mar 26" format
+  if (date !== "TBD") {
+    const normalized = normalizeDate(date, caption);
+    if (normalized) date = normalized;
   }
 
   // Look for time patterns
