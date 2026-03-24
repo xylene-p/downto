@@ -34,6 +34,7 @@ export interface Event {
   rawDate?: string;
   poolCount?: number;
   userInPool?: boolean;
+  createdAt?: string;
 }
 
 export interface InterestCheck {
@@ -68,6 +69,7 @@ export interface InterestCheck {
   isCoAuthor?: boolean;
   pendingTagForYou?: boolean;
   commentCount?: number;
+  createdAt?: string;
 }
 
 export interface ScrapedEvent {
