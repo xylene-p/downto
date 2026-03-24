@@ -56,6 +56,7 @@ export function useEvents({ userId, isDemoMode, showToast, loadRealDataRef }: Us
           peopleDown: prevPeopleDown.get(se.event!.id) ?? [],
           neighborhood: se.event!.neighborhood ?? undefined,
           rawDate: se.event!.date ?? undefined,
+          createdAt: se.event!.created_at ?? undefined,
         })),
         ...friendsEvents
           .filter((e) => !savedEventIdSet.has(e.id))
@@ -82,6 +83,7 @@ export function useEvents({ userId, isDemoMode, showToast, loadRealDataRef }: Us
             peopleDown: prevPeopleDown.get(e.id) ?? [],
             neighborhood: e.neighborhood ?? undefined,
             rawDate: e.date ?? undefined,
+            createdAt: e.created_at ?? undefined,
           })),
       ];
       return combined

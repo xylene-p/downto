@@ -96,6 +96,7 @@ export default function FeedView({
   } = useFeedContext();
 
   const [showHidden, setShowHidden] = useState(false);
+  const [sortBy, setSortBy] = useState<"recent" | "upcoming">("recent");
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
 
   // Batch-fetch initial comment counts for badges
@@ -107,17 +108,42 @@ export default function FeedView({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checks.map(c => c.id).join(","), isDemoMode]);
 
-  const visibleChecks = checks
-    .filter(c => !hiddenCheckIds.has(c.id) && c.expiresIn !== "expired")
-    .sort((a, b) => {
-      const tierOf = (c: InterestCheck) => (c.expiresIn !== "open" ? 0 : c.eventDate ? 1 : 2);
-      const ta = tierOf(a), tb = tierOf(b);
-      if (ta !== tb) return ta - tb;
-      if (ta === 0) return b.expiryPercent - a.expiryPercent;
-      if (ta === 1) return (a.eventDate ?? "").localeCompare(b.eventDate ?? "");
-      return 0;
-    });
+  const visibleChecks = checks.filter(c => !hiddenCheckIds.has(c.id) && c.expiresIn !== "expired");
   const hiddenChecks = checks.filter(c => hiddenCheckIds.has(c.id));
+
+  // Pinned tier: expiring checks sorted by urgency (highest expiryPercent first)
+  const pinnedChecks = visibleChecks
+    .filter(c => c.expiresIn !== "open")
+    .sort((a, b) => b.expiryPercent - a.expiryPercent);
+
+  // Chrono tier: open checks + all events, sorted by date descending
+  type FeedItem =
+    | { kind: "check"; data: InterestCheck }
+    | { kind: "event"; data: Event };
+
+  const chronoItems: FeedItem[] = [
+    ...visibleChecks.filter(c => c.expiresIn === "open").map(c => ({ kind: "check" as const, data: c })),
+    ...events.map(e => ({ kind: "event" as const, data: e })),
+  ];
+
+  if (sortBy === "recent") {
+    chronoItems.sort((a, b) => (b.data.createdAt ?? "").localeCompare(a.data.createdAt ?? ""));
+  } else {
+    const getEventDate = (item: FeedItem): string => {
+      if (item.kind === "check") return item.data.eventDate ?? "";
+      return item.data.rawDate ?? "";
+    };
+    chronoItems.sort((a, b) => {
+      const da = getEventDate(a), db = getEventDate(b);
+      // Items with dates first, then dateless items
+      if (da && !db) return -1;
+      if (!da && db) return 1;
+      if (!da && !db) return (b.data.createdAt ?? "").localeCompare(a.data.createdAt ?? "");
+      return da.localeCompare(db);
+    });
+  }
+
+  const hasContent = checks.length > 0 || events.length > 0;
 
   return (
     <>
@@ -129,12 +155,10 @@ export default function FeedView({
         />
       )}
       <div className="pt-2 px-4">
-        {checks.length > 0 && (
-          <div className="mb-6">
-            <div className="font-mono text-tiny uppercase tracking-[0.15em] text-neutral-500 mb-3 px-1">
-              Pulse
-            </div>
-            {visibleChecks.map(check => (
+        {hasContent ? (
+          <>
+            {/* Pinned: expiring checks */}
+            {pinnedChecks.map(check => (
               <CheckCard
                 key={check.id}
                 check={check}
@@ -152,6 +176,60 @@ export default function FeedView({
               />
             ))}
 
+            {/* Sort toggle */}
+            {chronoItems.length > 0 && (
+              <div className="flex gap-2 mb-3 px-1">
+                <button
+                  onClick={() => setSortBy("recent")}
+                  className={`font-mono text-tiny uppercase tracking-[0.08em] font-bold px-2.5 py-1 rounded-lg border cursor-pointer transition-colors ${
+                    sortBy === "recent"
+                      ? "bg-dt text-black border-dt"
+                      : "bg-transparent text-neutral-500 border-neutral-800"
+                  }`}
+                >Recent</button>
+                <button
+                  onClick={() => setSortBy("upcoming")}
+                  className={`font-mono text-tiny uppercase tracking-[0.08em] font-bold px-2.5 py-1 rounded-lg border cursor-pointer transition-colors ${
+                    sortBy === "upcoming"
+                      ? "bg-dt text-black border-dt"
+                      : "bg-transparent text-neutral-500 border-neutral-800"
+                  }`}
+                >Upcoming</button>
+              </div>
+            )}
+
+            {/* Chrono: open checks + events interleaved */}
+            {chronoItems.map(item =>
+              item.kind === "check" ? (
+                <CheckCard
+                  key={item.data.id}
+                  check={item.data}
+                  userId={userId}
+                  isDemoMode={isDemoMode}
+                  profile={profile}
+                  friends={friends}
+                  sharedCheckId={sharedCheckId}
+                  initialCommentCount={commentCounts[item.data.id] ?? 0}
+                  startSquadFromCheck={startSquadFromCheck}
+                  onNavigateToGroups={onNavigateToGroups}
+                  onViewProfile={onViewProfile}
+                  showToast={showToast}
+                  loadRealData={loadRealData}
+                />
+              ) : (
+                <EventCard
+                  key={item.data.id}
+                  event={item.data}
+                  onToggleSave={() => toggleSave(item.data.id)}
+                  onToggleDown={() => toggleDown(item.data.id)}
+                  onOpenSocial={() => onOpenSocial(item.data)}
+                  onLongPress={(item.data.createdBy === userId || !item.data.createdBy || isDemoMode) ? () => onEditEvent(item.data) : undefined}
+                  isNew={item.data.id === newlyAddedEventId}
+                />
+              )
+            )}
+
+            {/* Hidden checks section */}
             {hiddenChecks.length > 0 && (
               <div>
                 <button
@@ -190,29 +268,10 @@ export default function FeedView({
                 ))}
               </div>
             )}
-          </div>
-        )}
-
-        {events.length > 0 ? (
-          <>
-            <div className="font-mono text-tiny uppercase tracking-[0.15em] text-neutral-500 mb-3 px-1">
-              Events
-            </div>
-            {events.map(e => (
-              <EventCard
-                key={e.id}
-                event={e}
-                onToggleSave={() => toggleSave(e.id)}
-                onToggleDown={() => toggleDown(e.id)}
-                onOpenSocial={() => onOpenSocial(e)}
-                onLongPress={(e.createdBy === userId || !e.createdBy || isDemoMode) ? () => onEditEvent(e) : undefined}
-                isNew={e.id === newlyAddedEventId}
-              />
-            ))}
           </>
-        ) : checks.length === 0 ? (
+        ) : (
           <FeedEmptyState onOpenAdd={onOpenAdd} onOpenFriends={onOpenFriends} />
-        ) : null}
+        )}
       </div>
     </>
   );
