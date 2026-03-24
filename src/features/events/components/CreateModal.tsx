@@ -717,8 +717,8 @@ const AddModal = ({
                   }}
                 >
                   {([
-                    { value: 'public' as const, label: 'Public', desc: 'Everyone on down to' },
-                    { value: 'friends' as const, label: 'Friends', desc: 'Friends & friends of friends' },
+                    { value: 'public' as const, label: 'Public', desc: 'Everyone' },
+                    { value: 'friends' as const, label: 'Friends', desc: 'Friends & FoF' },
                   ]).map((opt) => (
                     <button
                       key={opt.value}
