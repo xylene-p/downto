@@ -69,8 +69,6 @@ const EventCard = ({
       }`}
       style={{
         background: "rgba(232, 255, 90, 0.03)",
-        borderLeftWidth: 3,
-        borderLeftColor: color.accent,
         position: "relative",
         ...(isNew ? { animation: "accentGlow 2s ease-out forwards" } : {}),
       }}
