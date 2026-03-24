@@ -749,6 +749,18 @@ const ProfileView = ({
         </div>
       )}
       <div
+        onContextMenu={(e) => e.preventDefault()}
+        onPointerDown={(e) => {
+          const timer = setTimeout(() => {
+            const buildId = process.env.NEXT_PUBLIC_BUILD_ID ?? "dev";
+            navigator.clipboard.writeText(buildId).then(() => {
+              showToast?.("Build ID copied");
+            }).catch(() => {});
+          }, 500);
+          const cancel = () => { clearTimeout(timer); e.currentTarget.removeEventListener("pointerup", cancel); e.currentTarget.removeEventListener("pointerleave", cancel); };
+          e.currentTarget.addEventListener("pointerup", cancel);
+          e.currentTarget.addEventListener("pointerleave", cancel);
+        }}
         style={{
           padding: "14px 0",
           borderBottom: `1px solid ${color.border}`,
@@ -757,6 +769,8 @@ const ProfileView = ({
           color: color.muted,
           display: "flex",
           justifyContent: "space-between",
+          cursor: "pointer",
+          userSelect: "none",
         }}
       >
         <span>About</span>
