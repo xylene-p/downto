@@ -108,9 +108,13 @@ const EditCheckModal = ({
         m === f.name.split(' ')[0]?.toLowerCase()
       ))
       .map(f => f.id);
-    // Filter out already-tagged co-authors
-    const existingIds = new Set((check.coAuthors ?? []).map(ca => ca.userId));
-    const newTagIds = taggedIds.filter(id => !existingIds.has(id));
+    // Filter out co-authors that are already pending or accepted (allow re-tagging declined)
+    const activeIds = new Set(
+      (check.coAuthors ?? [])
+        .filter(ca => ca.status === 'pending' || ca.status === 'accepted')
+        .map(ca => ca.userId)
+    );
+    const newTagIds = taggedIds.filter(id => !activeIds.has(id));
 
     // Resolve date: manual > detected > existing check > null
     const resolvedDateLabel = manualDate || detectedDate?.label || check.eventDateLabel || null;
