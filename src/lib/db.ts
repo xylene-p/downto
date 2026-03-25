@@ -865,6 +865,17 @@ export async function respondToCheck(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
+  // Guard: don't allow responses to expired checks
+  const { data: check } = await supabase
+    .from('interest_checks')
+    .select('expires_at')
+    .eq('id', checkId)
+    .single();
+
+  if (check?.expires_at && new Date(check.expires_at) < new Date()) {
+    throw new Error('Check has expired');
+  }
+
   const { data, error } = await supabase
     .from('check_responses')
     .upsert({

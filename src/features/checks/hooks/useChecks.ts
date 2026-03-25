@@ -79,6 +79,7 @@ function transformCheck(c: ActiveCheck, userId: string | null): InterestCheck {
     letterboxdUrl: c.letterboxd_url ?? undefined,
     vibes: mm?.vibes,
     createdAt: c.created_at,
+    expiresAt: c.expires_at ?? undefined,
     coAuthors,
     isCoAuthor,
     pendingTagForYou,
@@ -453,6 +454,35 @@ export function useChecks({ userId, isDemoMode, profile, friendCount, showToast,
       db.unhideCheck(checkId).catch((err) => logError("unhideCheck", err, { checkId }));
     }
   };
+
+  // Recalculate expiry every 30s so stale checks auto-hide
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setChecks(prev => {
+        let changed = false;
+        const updated = prev.map(c => {
+          if (!c.expiresAt || !c.createdAt || c.expiresIn === "open") return c;
+          const now = new Date();
+          const expires = new Date(c.expiresAt);
+          const created = new Date(c.createdAt);
+          const totalDuration = expires.getTime() - created.getTime();
+          const msElapsed = now.getTime() - created.getTime();
+          const expiryPercent = Math.min(100, (msElapsed / totalDuration) * 100);
+          const msRemaining = expires.getTime() - now.getTime();
+          const hoursRemaining = Math.floor(msRemaining / (1000 * 60 * 60));
+          const minsRemaining = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60));
+          const expiresIn = hoursRemaining > 0 ? `${hoursRemaining}h` : minsRemaining > 0 ? `${minsRemaining}m` : "expired";
+          if (c.expiresIn !== expiresIn || Math.abs(c.expiryPercent - expiryPercent) > 1) {
+            changed = true;
+            return { ...c, expiresIn, expiryPercent };
+          }
+          return c;
+        });
+        return changed ? updated : prev;
+      });
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Subscribe to realtime interest check changes
   useEffect(() => {

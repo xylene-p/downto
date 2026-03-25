@@ -74,6 +74,7 @@ export interface InterestCheck {
   pendingTagForYou?: boolean;
   commentCount?: number;
   createdAt?: string;
+  expiresAt?: string;
 }
 
 export interface ScrapedEvent {

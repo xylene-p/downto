@@ -315,6 +315,7 @@ export default function CheckCard({
               {!check.isYours && (
                 <div className="flex gap-1.5 items-center ml-auto">
                   <button
+                    disabled={check.expiresIn === "expired" && !myCheckResponses[check.id]}
                     onClick={() => {
                       if (myCheckResponses[check.id] === "down" || myCheckResponses[check.id] === "waitlist") {
                         if (!isDemoMode && check.id) {
@@ -326,12 +327,14 @@ export default function CheckCard({
                         respondToCheck(check.id);
                       }
                     }}
-                    className={`rounded-lg py-1.5 px-2.5 font-mono text-tiny font-bold cursor-pointer whitespace-nowrap ${
-                      myCheckResponses[check.id] === "down"
-                        ? "bg-dt text-black border-none"
+                    className={`rounded-lg py-1.5 px-2.5 font-mono text-tiny font-bold whitespace-nowrap ${
+                      check.expiresIn === "expired" && !myCheckResponses[check.id]
+                        ? "bg-transparent text-neutral-700 border border-neutral-900 cursor-default opacity-50"
+                        : myCheckResponses[check.id] === "down"
+                        ? "bg-dt text-black border-none cursor-pointer"
                         : myCheckResponses[check.id] === "waitlist"
-                        ? "bg-transparent text-neutral-500 border border-dashed border-neutral-800"
-                        : "bg-transparent text-white border border-neutral-800"
+                        ? "bg-transparent text-neutral-500 border border-dashed border-neutral-800 cursor-pointer"
+                        : "bg-transparent text-white border border-neutral-800 cursor-pointer"
                     }`}
                   >
                     {myCheckResponses[check.id] === "down" ? "✓ Down" : myCheckResponses[check.id] === "waitlist" ? "✓ Waitlisted" : "Down"}

@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   // Only allow responding to checks that have been explicitly shared
   const { data: check, error: checkError } = await admin
     .from('interest_checks')
-    .select('id, shared_at, archived_at')
+    .select('id, shared_at, archived_at, expires_at')
     .eq('id', checkId)
     .single();
 
@@ -29,6 +29,9 @@ export async function POST(req: NextRequest) {
   }
   if (check.archived_at) {
     return NextResponse.json({ error: 'Check is archived' }, { status: 410 });
+  }
+  if (check.expires_at && new Date(check.expires_at) < new Date()) {
+    return NextResponse.json({ error: 'Check has expired' }, { status: 410 });
   }
 
   const { error: upsertError } = await admin
