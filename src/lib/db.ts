@@ -69,6 +69,20 @@ export async function getProfileById(id: string): Promise<Profile | null> {
   return data;
 }
 
+export async function getCalendarToken(): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('calendar_token')
+    .eq('id', user.id)
+    .single();
+
+  if (error || !data?.calendar_token) return null;
+  return data.calendar_token;
+}
+
 export async function getFriendshipWith(userId: string): Promise<{ id: string; status: string; isRequester: boolean } | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;

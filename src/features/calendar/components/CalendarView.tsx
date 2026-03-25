@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { font, color } from "@/lib/styles";
 import type { Event, InterestCheck } from "@/lib/ui-types";
 import EventCard from "@/features/events/components/EventCard";
+import { generateICSCalendar, downloadICS, buildGoogleCalendarUrl, type ICSEventParams } from "@/lib/ics";
+import * as db from "@/lib/db";
 
 const CHECK_DOT_COLOR = "#AF52DE";
 
@@ -34,6 +36,75 @@ const CalendarView = ({
 }) => {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncSelected, setSyncSelected] = useState<Set<string>>(new Set());
+  const [syncTab, setSyncTab] = useState<"export" | "subscribe">("export");
+  const [calendarToken, setCalendarToken] = useState<string | null>(null);
+  const [tokenLoading, setTokenLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Convert Event or Check to ICS params
+  const eventToICS = (e: Event): ICSEventParams => ({
+    uid: e.id,
+    title: e.title,
+    date: e.rawDate ?? "",
+    time: e.time,
+    venue: e.venue,
+  });
+  const checkToICS = (c: InterestCheck): ICSEventParams => ({
+    uid: c.id,
+    title: c.text,
+    date: c.eventDate ?? "",
+    time: c.eventTime,
+    venue: c.location,
+  });
+
+  // Swipe-to-dismiss for sync modal
+  const syncTouchStartY = useRef(0);
+  const [syncDragOffset, setSyncDragOffset] = useState(0);
+  const syncScrollRef = useRef<HTMLDivElement>(null);
+  const syncIsDragging = useRef(false);
+  const [syncClosing, setSyncClosing] = useState(false);
+
+  const closeSyncModal = () => {
+    setSyncClosing(true);
+    setTimeout(() => { setShowSyncModal(false); setSyncClosing(false); setSyncDragOffset(0); }, 200);
+  };
+
+  const syncHandleSwipeStart = (e: React.TouchEvent) => {
+    syncTouchStartY.current = e.touches[0].clientY;
+    syncIsDragging.current = false;
+  };
+  const syncHandleSwipeMove = (e: React.TouchEvent) => {
+    const dy = e.touches[0].clientY - syncTouchStartY.current;
+    if (dy > 0) { syncIsDragging.current = true; setSyncDragOffset(dy); }
+  };
+  const syncHandleSwipeEnd = () => {
+    if (syncDragOffset > 60) closeSyncModal();
+    else setSyncDragOffset(0);
+    syncIsDragging.current = false;
+  };
+  const syncHandleScrollTouchStart = (e: React.TouchEvent) => {
+    syncTouchStartY.current = e.touches[0].clientY;
+    syncIsDragging.current = false;
+  };
+  const syncHandleScrollTouchMove = (e: React.TouchEvent) => {
+    const dy = e.touches[0].clientY - syncTouchStartY.current;
+    const atTop = syncScrollRef.current ? syncScrollRef.current.scrollTop <= 0 : true;
+    if (atTop && dy > 0) { syncIsDragging.current = true; e.preventDefault(); setSyncDragOffset(dy); }
+  };
+  const syncHandleScrollTouchEnd = () => {
+    if (syncIsDragging.current) syncHandleSwipeEnd();
+  };
+
+  const toggleSyncItem = (id: string) => {
+    setSyncSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // Sync selectedEvent with latest events prop
   useEffect(() => {
@@ -49,6 +120,58 @@ const CalendarView = ({
   const calendarChecks = checks.filter(
     (c) => c.eventDate && (myCheckResponses[c.id] || c.authorId === userId)
   );
+
+  // All exportable items for sync modal
+  const allExportable: { id: string; label: string; sub: string; params: ICSEventParams }[] = [
+    ...saved.filter((e) => e.rawDate).map((e) => ({
+      id: e.id,
+      label: e.title,
+      sub: [e.date, e.time].filter(Boolean).join(" · "),
+      params: eventToICS(e),
+    })),
+    ...calendarChecks.filter((c) => c.eventDate).map((c) => ({
+      id: `check-${c.id}`,
+      label: c.text,
+      sub: [c.eventDate, c.eventTime].filter(Boolean).join(" · "),
+      params: checkToICS(c),
+    })),
+  ];
+
+  const openSyncModal = () => {
+    setSyncSelected(new Set(allExportable.map((e) => e.id)));
+    setSyncTab("export");
+    setCopied(false);
+    setShowSyncModal(true);
+    // Fetch calendar token for subscribe tab
+    if (!calendarToken && !tokenLoading) {
+      setTokenLoading(true);
+      db.getCalendarToken().then((t) => { setCalendarToken(t); setTokenLoading(false); }).catch(() => setTokenLoading(false));
+    }
+  };
+
+  const webcalUrl = calendarToken
+    ? `webcal://${typeof window !== "undefined" ? window.location.host : ""}/api/calendar/${calendarToken}`
+    : null;
+  const httpsCalUrl = calendarToken
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/api/calendar/${calendarToken}`
+    : null;
+
+  const copySubscribeUrl = async () => {
+    if (!webcalUrl) return;
+    try { await navigator.clipboard.writeText(webcalUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch {}
+  };
+
+  const handleSync = (target: "google" | "ics") => {
+    const selected = allExportable.filter((e) => syncSelected.has(e.id));
+    if (selected.length === 0) return;
+    if (target === "google" && selected.length === 1) {
+      window.open(buildGoogleCalendarUrl(selected[0].params), "_blank");
+    } else {
+      const cal = generateICSCalendar(selected.map((e) => e.params));
+      downloadICS("downto-calendar.ics", cal);
+    }
+    setShowSyncModal(false);
+  };
 
   // Build a 2-week grid starting from Monday of the current week
   const today = new Date();
@@ -268,15 +391,41 @@ const CalendarView = ({
 
       <div
         style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 12,
+        }}
+      >
+        <span style={{
           fontFamily: font.mono,
           fontSize: 10,
           textTransform: "uppercase",
           letterSpacing: "0.15em",
           color: color.dim,
-          marginBottom: 12,
-        }}
-      >
-        {countLabel}
+        }}>
+          {countLabel}
+        </span>
+        {totalItems > 0 && (
+          <button
+            onClick={openSyncModal}
+            style={{
+              background: "transparent",
+              border: `1px solid ${color.borderMid}`,
+              borderRadius: 8,
+              padding: "4px 10px",
+              fontFamily: font.mono,
+              fontSize: 9,
+              fontWeight: 700,
+              color: color.dim,
+              cursor: "pointer",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+            }}
+          >
+            Sync
+          </button>
+        )}
       </div>
 
       {totalItems === 0 ? (
@@ -329,7 +478,7 @@ const CalendarView = ({
                     {eDateDay}
                   </div>
                 </div>
-                <div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div
                     style={{
                       fontFamily: font.serif,
@@ -502,6 +651,9 @@ const CalendarView = ({
 
       {selectedEvent && (
         <div
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
           style={{
             position: "fixed",
             inset: 0,
@@ -555,6 +707,306 @@ const CalendarView = ({
                   : undefined
               }
             />
+          </div>
+        </div>
+      )}
+
+      {/* Sync modal */}
+      {showSyncModal && (
+        <div
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            onClick={closeSyncModal}
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(0,0,0,0.7)",
+              backdropFilter: syncClosing ? "blur(0px)" : "blur(8px)",
+              WebkitBackdropFilter: syncClosing ? "blur(0px)" : "blur(8px)",
+              opacity: syncClosing ? 0 : 1,
+              transition: "opacity 0.2s ease, backdrop-filter 0.2s ease, -webkit-backdrop-filter 0.2s ease",
+            }}
+          />
+          <div
+            style={{
+              position: "relative",
+              background: color.surface,
+              borderRadius: "24px 24px 0 0",
+              maxWidth: 420,
+              width: "100%",
+              maxHeight: "75vh",
+              display: "flex",
+              flexDirection: "column",
+              animation: syncClosing ? undefined : "slideUp 0.3s ease-out",
+              transform: syncClosing ? "translateY(100%)" : `translateY(${syncDragOffset}px)`,
+              transition: syncClosing ? "transform 0.2s ease-in" : (syncDragOffset === 0 ? "transform 0.2s ease-out" : "none"),
+            }}
+          >
+            {/* Drag handle + header */}
+            <div
+              onTouchStart={syncHandleSwipeStart}
+              onTouchMove={syncHandleSwipeMove}
+              onTouchEnd={syncHandleSwipeEnd}
+              style={{ touchAction: "none", padding: "16px 20px 0" }}
+            >
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+                <div style={{ width: 40, height: 4, background: color.faint, borderRadius: 2 }} />
+              </div>
+              <h3 style={{ fontFamily: font.serif, fontSize: 18, color: color.text, margin: "0 0 12px", fontWeight: 400 }}>
+                Sync to Calendar
+              </h3>
+
+              {/* Tabs */}
+              <div style={{ display: "flex", gap: 0, marginBottom: 12, borderBottom: `1px solid ${color.border}` }}>
+                {(["export", "subscribe"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setSyncTab(tab)}
+                    style={{
+                      flex: 1,
+                      padding: "8px 0",
+                      background: "transparent",
+                      border: "none",
+                      borderBottom: syncTab === tab ? `2px solid ${color.accent}` : "2px solid transparent",
+                      fontFamily: font.mono,
+                      fontSize: 11,
+                      fontWeight: syncTab === tab ? 700 : 400,
+                      color: syncTab === tab ? color.accent : color.dim,
+                      cursor: "pointer",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    {tab === "export" ? "Export" : "Auto Sync"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tab content */}
+            {syncTab === "export" ? (
+              <>
+                {/* Select all / count */}
+                <div style={{ padding: "0 20px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <span style={{ fontFamily: font.mono, fontSize: 10, color: color.dim }}>
+                    {syncSelected.size} of {allExportable.length} selected
+                  </span>
+                  <button
+                    onClick={() => {
+                      if (syncSelected.size === allExportable.length) setSyncSelected(new Set());
+                      else setSyncSelected(new Set(allExportable.map((e) => e.id)));
+                    }}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      fontFamily: font.mono,
+                      fontSize: 10,
+                      color: color.accent,
+                      cursor: "pointer",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      padding: "4px 0",
+                    }}
+                  >
+                    {syncSelected.size === allExportable.length ? "Deselect All" : "Select All"}
+                  </button>
+                </div>
+
+                {/* Selectable event list */}
+                <div
+                  ref={syncScrollRef}
+                  onTouchStart={syncHandleScrollTouchStart}
+                  onTouchMove={syncHandleScrollTouchMove}
+                  onTouchEnd={syncHandleScrollTouchEnd}
+                  style={{ flex: 1, overflowY: "auto", padding: "0 20px", overscrollBehavior: "contain" }}
+                >
+                  {allExportable.map((item) => {
+                    const selected = syncSelected.has(item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => toggleSyncItem(item.id)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                          padding: "10px 0",
+                          borderBottom: `1px solid ${color.border}`,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <div style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: 6,
+                          border: `2px solid ${selected ? color.accent : color.borderMid}`,
+                          background: selected ? color.accent : "transparent",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                          transition: "all 0.15s",
+                        }}>
+                          {selected && <span style={{ color: "#000", fontSize: 12, lineHeight: 1 }}>✓</span>}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontFamily: font.mono,
+                            fontSize: 12,
+                            color: selected ? color.text : color.muted,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}>
+                            {item.label}
+                          </div>
+                          <div style={{ fontFamily: font.mono, fontSize: 10, color: color.faint }}>
+                            {item.sub}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Export action buttons */}
+                <div style={{ padding: "16px 20px calc(16px + env(safe-area-inset-bottom, 0px))", display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => handleSync("google")}
+                    disabled={syncSelected.size === 0}
+                    style={{
+                      flex: 1,
+                      padding: "12px 0",
+                      background: "transparent",
+                      border: `1px solid ${syncSelected.size > 0 ? color.borderMid : color.border}`,
+                      borderRadius: 12,
+                      color: syncSelected.size > 0 ? color.text : color.faint,
+                      fontFamily: font.mono,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: syncSelected.size > 0 ? "pointer" : "default",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    Google Cal
+                  </button>
+                  <button
+                    onClick={() => handleSync("ics")}
+                    disabled={syncSelected.size === 0}
+                    style={{
+                      flex: 1,
+                      padding: "12px 0",
+                      background: syncSelected.size > 0 ? color.accent : color.border,
+                      border: "none",
+                      borderRadius: 12,
+                      color: syncSelected.size > 0 ? "#000" : color.faint,
+                      fontFamily: font.mono,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: syncSelected.size > 0 ? "pointer" : "default",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    Download .ics
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Subscribe tab */
+              <div style={{ padding: "0 20px calc(20px + env(safe-area-inset-bottom, 0px))" }}>
+                <p style={{ fontFamily: font.mono, fontSize: 11, color: color.muted, lineHeight: 1.6, marginBottom: 16 }}>
+                  Subscribe once and your calendar app will automatically stay in sync. New events you save will appear automatically — no duplicates.
+                </p>
+
+                {tokenLoading ? (
+                  <div style={{ fontFamily: font.mono, fontSize: 11, color: color.faint, textAlign: "center", padding: 20 }}>
+                    Loading...
+                  </div>
+                ) : webcalUrl ? (
+                  <>
+                    {/* URL display */}
+                    <div style={{
+                      background: color.deep,
+                      border: `1px solid ${color.border}`,
+                      borderRadius: 10,
+                      padding: "10px 12px",
+                      marginBottom: 12,
+                      fontFamily: font.mono,
+                      fontSize: 10,
+                      color: color.dim,
+                      wordBreak: "break-all",
+                      lineHeight: 1.5,
+                    }}>
+                      {webcalUrl}
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <a
+                        href={webcalUrl}
+                        style={{
+                          display: "block",
+                          padding: "12px 0",
+                          background: color.accent,
+                          border: "none",
+                          borderRadius: 12,
+                          color: "#000",
+                          fontFamily: font.mono,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                          textAlign: "center",
+                          textDecoration: "none",
+                        }}
+                      >
+                        Subscribe in Calendar App
+                      </a>
+                      <button
+                        onClick={copySubscribeUrl}
+                        style={{
+                          padding: "12px 0",
+                          background: "transparent",
+                          border: `1px solid ${color.borderMid}`,
+                          borderRadius: 12,
+                          color: copied ? color.accent : color.text,
+                          fontFamily: font.mono,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                        }}
+                      >
+                        {copied ? "Copied!" : "Copy URL"}
+                      </button>
+                    </div>
+
+                    <p style={{ fontFamily: font.mono, fontSize: 9, color: color.faint, lineHeight: 1.5, marginTop: 14, textAlign: "center" }}>
+                      Works with Apple Calendar, Google Calendar, Outlook, and any app that supports webcal subscriptions. Your calendar will refresh automatically.
+                    </p>
+                  </>
+                ) : (
+                  <div style={{ fontFamily: font.mono, fontSize: 11, color: color.faint, textAlign: "center", padding: 20 }}>
+                    Could not load subscription URL.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
