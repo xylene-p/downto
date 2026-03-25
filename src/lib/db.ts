@@ -948,8 +948,8 @@ export async function tagCoAuthors(checkId: string, userIds: string[]): Promise<
   const { error } = await supabase
     .from('check_co_authors')
     .upsert(
-      userIds.map(uid => ({ check_id: checkId, user_id: uid, invited_by: user.id })),
-      { onConflict: 'check_id,user_id', ignoreDuplicates: true }
+      userIds.map(uid => ({ check_id: checkId, user_id: uid, invited_by: user.id, status: 'pending' })),
+      { onConflict: 'check_id,user_id', ignoreDuplicates: false }
     );
 
   if (error) throw error;
