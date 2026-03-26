@@ -364,6 +364,23 @@ export default function Home() {
         if (newNotif.related_user_id === userId) return;
         if (newNotif.related_squad_id && newNotif.related_squad_id === selectedSquadIdRef.current) {
           db.markSquadNotificationsRead(newNotif.related_squad_id).catch(() => {});
+          // Clear OS push notifications for this squad since user is in the chat
+          if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.getRegistration().then((reg) => {
+              if (!reg) return;
+              const tags = ["squad_message", "squad_invite", "squad_mention", "date_confirm", "poll_created"];
+              tags.forEach((tag) => {
+                reg.getNotifications({ tag: `${tag}-${newNotif.related_squad_id}` }).then((notifs) => {
+                  notifs.forEach((n) => n.close());
+                });
+              });
+              // Update app badge
+              reg.getNotifications().then((all) => {
+                if (all.length > 0) navigator.setAppBadge?.(all.length);
+                else navigator.clearAppBadge?.();
+              });
+            });
+          }
           return;
         }
         notificationsHook.setHasUnreadSquadMessage(true);
