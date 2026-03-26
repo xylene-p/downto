@@ -114,7 +114,7 @@ export interface Squad {
   waitlistedMembers?: { name: string; avatar: string; userId: string }[];
   downResponders?: { name: string; avatar: string; userId: string }[];
   dateStatus?: 'proposed' | 'locked';
-  messages: { sender: string; text: string; time: string; isYou?: boolean; messageType?: 'date_confirm' | 'poll'; messageId?: string }[];
+  messages: { id?: string; sender: string; text: string; time: string; isYou?: boolean; messageType?: 'date_confirm' | 'poll'; messageId?: string }[];
   lastMsg: string;
   time: string;
   meetingSpot?: string;
