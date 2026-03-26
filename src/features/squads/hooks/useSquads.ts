@@ -156,6 +156,7 @@ export function useSquads({ userId, isDemoMode, profile, checksRef, dispatch, sh
         .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       const lastRawMessage = sortedRawMessages.length > 0 ? sortedRawMessages[sortedRawMessages.length - 1] : null;
       const messages = sortedRawMessages.map((msg) => ({
+          id: msg.id,
           sender: msg.is_system ? "system" : (msg.sender_id === userId ? "You" : (msg.sender?.display_name ?? "Unknown")),
           text: msg.text,
           time: formatTimeAgo(new Date(msg.created_at)),

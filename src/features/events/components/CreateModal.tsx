@@ -235,6 +235,8 @@ const AddModal = ({
         isPublicPost: data.isPublicPost || false,
         igUrl: data.igUrl,
         diceUrl: data.diceUrl,
+        raUrl: data.raUrl,
+        thumbnail: data.thumbnail,
       });
       setEventVisibility(data.isPublicPost ? 'public' : 'public');
 

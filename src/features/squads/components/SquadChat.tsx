@@ -294,6 +294,7 @@ const SquadChat = ({
     db.getSquadMessages(localSquad.id).then((raw) => {
       if (stale) return;
       const msgs = raw.map((msg) => ({
+        id: msg.id,
         sender: msg.is_system || !msg.sender_id ? "system" : (msg.sender_id === userId ? "You" : (msg.sender?.display_name ?? "Unknown")),
         text: msg.text,
         time: formatTimeAgo(new Date(msg.created_at)),
@@ -302,7 +303,13 @@ const SquadChat = ({
         ...(msg.message_type === 'poll' ? { messageType: 'poll' as const, messageId: msg.id } : {}),
       }));
       const last = msgs.length > 0 ? msgs[msgs.length - 1] : null;
-      setMessages(msgs);
+      // Merge: keep any realtime messages that arrived before this fetch completed
+      setMessages((prev) => {
+        const fetchedIds = new Set(msgs.map((m) => m.id));
+        const realtimeOnly = prev.filter((m) => m.id && !fetchedIds.has(m.id));
+        const merged = [...msgs, ...realtimeOnly];
+        return merged;
+      });
       onSquadUpdateRef.current((prev) =>
         prev.map((s) =>
           s.id === localSquad.id
@@ -323,6 +330,7 @@ const SquadChat = ({
       const isSystem = newMessage.is_system || newMessage.sender_id === null;
       const senderName = isSystem ? "system" : (newMessage.sender?.display_name ?? "Unknown");
       const msg = {
+        id: newMessage.id,
         sender: senderName,
         text: newMessage.text,
         time: "now",
@@ -347,7 +355,10 @@ const SquadChat = ({
         }).catch(() => {});
       }
       const lastMsgPreview = isSystem ? newMessage.text : `${senderName}: ${newMessage.text}`;
-      setMessages((prev) => [...prev, msg]);
+      setMessages((prev) => {
+        if (prev.some((m) => m.id && m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
       // Also update the squad list
       onSquadUpdateRef.current((prev) =>
         prev.map((s) =>
