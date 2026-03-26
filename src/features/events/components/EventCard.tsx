@@ -202,12 +202,14 @@ const EventCard = ({
               >
                 {event.title}
               </h3>
-              <button
-                onClick={(e) => { e.stopPropagation(); setActionsOpen(true); }}
-                className="bg-transparent border-none text-neutral-600 font-mono text-tiny cursor-pointer p-1 shrink-0 ml-2"
-              >
-                ⚙
-              </button>
+              {onLongPress && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setActionsOpen(true); }}
+                  className="bg-transparent border-none text-neutral-600 font-mono text-tiny cursor-pointer p-1 shrink-0 ml-2"
+                >
+                  ⚙
+                </button>
+              )}
             </div>
 
             {/* Date, time, venue */}
