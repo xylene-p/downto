@@ -1,0 +1,67 @@
+name: E2E – Squad Unread Notifications
+
+on:
+  pull_request:
+    paths:
+      - 'src/app/hooks/useRealtimeNotifications.ts'
+      - 'src/features/notifications/**'
+      - 'src/features/squads/**'
+      - 'src/app/components/BottomNav.tsx'
+      - 'src/lib/db.ts'
+      - 'public/sw.js'
+      - 'supabase/migrations/**'
+      - 'e2e/squad-unread*'
+      - 'e2e/helpers/**'
+      - '.github/workflows/e2e-notifications.yml'
+  workflow_dispatch: # manual trigger
+
+jobs:
+  e2e-squad-unread:
+    name: Squad Unread Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase
+        run: |
+          supabase start
+          # Wait for services to be ready
+          sleep 5
+          supabase status
+
+      - name: Run squad unread E2E tests
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+          SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
+        run: npx playwright test e2e/squad-unread.spec.ts --reporter=github
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-squad-unread-results
+          path: test-results/
+          retention-days: 7
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
