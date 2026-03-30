@@ -309,12 +309,17 @@ export default function Home() {
     })();
   }, [isLoggedIn, userId, profile?.onboarded]);
 
-  // Trigger data load when logged in
+  // Trigger data load when logged in + sync timezone
   useEffect(() => {
     if (isLoggedIn) {
       loadRealData();
+      // Sync user's timezone to profile (fire-and-forget)
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz && userId) {
+        db.updateProfile({ timezone: tz } as Partial<Profile>).catch(() => {});
+      }
     }
-  }, [isLoggedIn, loadRealData]);
+  }, [isLoggedIn, loadRealData, userId]);
 
   // Reload data when user returns to the app
   useEffect(() => {
