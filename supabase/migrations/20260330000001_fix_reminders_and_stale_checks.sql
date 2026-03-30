@@ -164,8 +164,11 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =========================================================================
--- 2. Fix reminder timing: use America/New_York timezone
+-- 2. Fix reminder timing: use per-user timezone
 -- =========================================================================
+
+-- Add timezone column to profiles (default America/New_York for existing users)
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS timezone TEXT DEFAULT 'America/New_York';
 
 CREATE OR REPLACE FUNCTION public.process_event_reminders()
 RETURNS void AS $$
@@ -179,17 +182,19 @@ BEGIN
       se.id AS saved_id, se.user_id, se.event_id,
       se.reminded_24h_at, se.reminded_2h_at,
       e.title, e.date, e.time_display, e.venue,
-      public.parse_event_start_hour(e.time_display) AS start_hour
+      public.parse_event_start_hour(e.time_display) AS start_hour,
+      COALESCE(p.timezone, 'America/New_York') AS user_tz
     FROM public.saved_events se
     JOIN public.events e ON se.event_id = e.id
+    JOIN public.profiles p ON p.id = se.user_id
     WHERE e.date IS NOT NULL AND e.date >= CURRENT_DATE
       AND (se.reminded_24h_at IS NULL OR se.reminded_2h_at IS NULL)
   LOOP
-    -- Build event timestamp in America/New_York (events are local NYC time)
+    -- Build event timestamp in the user's local timezone
     IF r.start_hour IS NOT NULL THEN
-      event_ts := ((r.date || ' ' || LPAD(r.start_hour::TEXT, 2, '0') || ':00:00')::TIMESTAMP AT TIME ZONE 'America/New_York');
+      event_ts := ((r.date || ' ' || LPAD(r.start_hour::TEXT, 2, '0') || ':00:00')::TIMESTAMP AT TIME ZONE r.user_tz);
     ELSE
-      event_ts := ((r.date || ' 12:00:00')::TIMESTAMP AT TIME ZONE 'America/New_York');
+      event_ts := ((r.date || ' 12:00:00')::TIMESTAMP AT TIME ZONE r.user_tz);
     END IF;
 
     hours_until := EXTRACT(EPOCH FROM (event_ts - NOW())) / 3600.0;

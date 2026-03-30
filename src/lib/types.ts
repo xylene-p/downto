@@ -12,6 +12,7 @@ export interface Profile {
   ig_handle: string | null;
   onboarded: boolean;
   is_test: boolean;
+  timezone: string;
   created_at: string;
   updated_at: string;
 }
