@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, CSSProperties } from "react";
 import { font, color } from "@/lib/styles";
+import { parseNaturalDate, parseNaturalTime, parseDateToISO } from "@/lib/utils";
 import { useModalTransition } from "@/shared/hooks/useModalTransition";
 import type { Event } from "@/lib/ui-types";
 
@@ -18,8 +19,7 @@ const EditEventModal = ({
 }) => {
   const [title, setTitle] = useState("");
   const [venue, setVenue] = useState("");
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
+  const [whenInput, setWhenInput] = useState("");
   const [vibeText, setVibeText] = useState("");
   const [note, setNote] = useState("");
   const { visible, entering, closing, close } = useModalTransition(open, onClose);
@@ -31,15 +31,17 @@ const EditEventModal = ({
   useEffect(() => {
     if (event && open) {
       setTitle(event.title);
-      setVenue(event.venue);
-      setDate(event.date);
-      setTime(event.time);
+      setVenue(event.venue && event.venue !== "TBD" ? event.venue : "");
+      // Combine date + time into the when input
+      const parts: string[] = [];
+      if (event.date) parts.push(event.date);
+      if (event.time && event.time !== "TBD") parts.push(event.time);
+      setWhenInput(parts.join(" "));
       setVibeText(event.vibe.join(", "));
       setNote(event.note || "");
     }
   }, [event, open]);
 
-  // Lock body scroll when open
   useEffect(() => {
     if (!visible) return;
     document.body.style.overflow = "hidden";
@@ -67,6 +69,23 @@ const EditEventModal = ({
   const handleScrollTouchEnd = () => { if (isDragging.current) finishSwipe(); };
 
   if (!visible || !event) return null;
+
+  const parsedDate = whenInput ? parseNaturalDate(whenInput) : null;
+  const parsedTime = whenInput ? parseNaturalTime(whenInput) : null;
+  const whenPreview = (() => {
+    if (!parsedDate && !parsedTime) return null;
+    const parts: string[] = [];
+    if (parsedDate) parts.push(parsedDate.label);
+    if (parsedTime) parts.push(parsedTime);
+    return parts.join(" ");
+  })();
+
+  // Resolve date/time for save: try parsing, fall back to raw input
+  const resolvedDate = (parsedDate?.label
+    ?? (parseDateToISO(whenInput) ? whenInput : null)
+    ?? whenInput.trim())
+    || event.date;
+  const resolvedTime = parsedTime ?? event.time;
 
   const inputStyle: CSSProperties = {
     background: color.deep,
@@ -114,139 +133,150 @@ const EditEventModal = ({
         }}
       />
       <div
-        ref={scrollRef}
-        onTouchStart={handleScrollTouchStart}
-        onTouchMove={handleScrollTouchMove}
-        onTouchEnd={handleScrollTouchEnd}
         style={{
           position: "relative",
           background: color.surface,
           borderRadius: "24px 24px 0 0",
           width: "100%",
           maxWidth: 420,
-          padding: "32px 24px 40px",
+          padding: "20px 24px 0",
           maxHeight: "80vh",
-          overflowY: isDragging.current ? "hidden" : "auto",
-          overscrollBehavior: "contain",
+          display: "flex",
+          flexDirection: "column",
           animation: closing ? undefined : "slideUp 0.3s ease-out",
           transform: closing ? "translateY(100%)" : `translateY(${dragOffset}px)`,
-          transition: isDragging.current ? "none" : "transform 0.25s ease-out",
+          transition: closing ? "transform 0.2s ease-in" : (dragOffset === 0 ? "transform 0.2s ease-out" : "none"),
         }}
       >
+        {/* Drag handle */}
         <div
-          style={{
-            width: 40,
-            height: 4,
-            background: color.faint,
-            borderRadius: 2,
-            margin: "0 auto 24px",
-          }}
-        />
-        <h3
-          style={{
-            fontFamily: font.serif,
-            fontSize: 22,
-            color: color.text,
-            marginBottom: 20,
-            fontWeight: 400,
-          }}
+          onTouchStart={(e) => { touchStartY.current = e.touches[0].clientY; isDragging.current = false; }}
+          onTouchMove={(e) => { const dy = e.touches[0].clientY - touchStartY.current; if (dy > 0) { isDragging.current = true; setDragOffset(dy); } }}
+          onTouchEnd={finishSwipe}
+          style={{ touchAction: "none" }}
         >
-          Edit event
-        </h3>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div>
-            <div style={labelStyle}>Title</div>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Event name"
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <div style={labelStyle}>Venue</div>
-            <input
-              type="text"
-              value={venue}
-              onChange={(e) => setVenue(e.target.value)}
-              placeholder="Venue"
-              style={inputStyle}
-            />
-          </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <div style={{ flex: 1 }}>
-              <div style={labelStyle}>Date</div>
-              <input
-                type="text"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                placeholder="e.g. Fri, Feb 14"
-                style={inputStyle}
-              />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={labelStyle}>Time</div>
-              <input
-                type="text"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                placeholder="e.g. 9PM–2AM"
-                style={inputStyle}
-              />
-            </div>
-          </div>
-          <div>
-            <div style={labelStyle}>Vibes (comma-separated)</div>
-            <input
-              type="text"
-              value={vibeText}
-              onChange={(e) => setVibeText(e.target.value)}
-              placeholder="e.g. techno, late night"
-              style={inputStyle}
-            />
-          </div>
-          {event?.isPublic && (
-            <div>
-              <div style={labelStyle}>Note</div>
-              <input
-                type="text"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="e.g. DJ set starts at midnight"
-                maxLength={200}
-                style={inputStyle}
-              />
-            </div>
-          )}
+          <div style={{ width: 40, height: 4, background: color.faint, borderRadius: 2, margin: "0 auto 20px" }} />
         </div>
 
-        <button
-          onClick={() => {
-            const vibes = vibeText.split(",").map((v) => v.trim()).filter(Boolean);
-            onSave({ title, venue, date, time, vibe: vibes, note: note.trim() });
-          }}
-          disabled={!title.trim()}
-          style={{
-            width: "100%",
-            marginTop: 20,
-            background: !title.trim() ? color.faint : color.accent,
-            color: "#000",
-            border: "none",
-            borderRadius: 12,
-            padding: "14px",
-            fontFamily: font.mono,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: !title.trim() ? "not-allowed" : "pointer",
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            opacity: !title.trim() ? 0.5 : 1,
-          }}
+        <div
+          ref={scrollRef}
+          onTouchStart={handleScrollTouchStart}
+          onTouchMove={handleScrollTouchMove}
+          onTouchEnd={handleScrollTouchEnd}
+          style={{ overflowY: "auto", overflowX: "hidden", flex: 1, paddingBottom: 24 }}
         >
-          Save Changes
-        </button>
+          <h3
+            style={{
+              fontFamily: font.serif,
+              fontSize: 22,
+              color: color.text,
+              marginBottom: 20,
+              fontWeight: 400,
+            }}
+          >
+            Edit event
+          </h3>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <div style={labelStyle}>Title</div>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Event name"
+                style={inputStyle}
+              />
+            </div>
+
+            {/* When / Where — matching creation flow */}
+            <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <div style={labelStyle}>When</div>
+                <input
+                  type="text"
+                  placeholder="e.g. fri 9pm"
+                  value={whenInput}
+                  onChange={(e) => setWhenInput(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+              <div style={{ flex: 0.6 }}>
+                <div style={labelStyle}>Where</div>
+                <input
+                  type="text"
+                  value={venue}
+                  onChange={(e) => setVenue(e.target.value)}
+                  placeholder="Venue"
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+            {whenPreview && (
+              <div style={{
+                fontFamily: font.mono,
+                fontSize: 10,
+                color: color.dim,
+                marginTop: -8,
+                paddingLeft: 2,
+              }}>
+                {whenPreview}
+              </div>
+            )}
+
+            <div>
+              <div style={labelStyle}>Vibes (comma-separated)</div>
+              <input
+                type="text"
+                value={vibeText}
+                onChange={(e) => setVibeText(e.target.value)}
+                placeholder="e.g. techno, late night"
+                style={inputStyle}
+              />
+            </div>
+            {event?.isPublic && (
+              <div>
+                <div style={labelStyle}>Note</div>
+                <input
+                  type="text"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="e.g. DJ set starts at midnight"
+                  maxLength={200}
+                  style={inputStyle}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Save button */}
+          <div style={{ padding: "20px 0 0", flexShrink: 0 }}>
+            <button
+              onClick={() => {
+                const vibes = vibeText.split(",").map((v) => v.trim()).filter(Boolean);
+                onSave({ title, venue, date: resolvedDate, time: resolvedTime, vibe: vibes, note: note.trim() });
+              }}
+              disabled={!title.trim()}
+              style={{
+                width: "100%",
+                background: title.trim() ? color.accent : color.borderMid,
+                color: title.trim() ? "#000" : color.dim,
+                border: "none",
+                borderRadius: 12,
+                padding: "14px",
+                fontFamily: font.mono,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: title.trim() ? "pointer" : "not-allowed",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                opacity: title.trim() ? 1 : 0.5,
+              }}
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
