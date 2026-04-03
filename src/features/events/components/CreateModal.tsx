@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { font, color } from '@/lib/styles';
 import { useModalTransition } from '@/shared/hooks/useModalTransition';
 import type { ScrapedEvent } from '@/lib/ui-types';
 import { parseNaturalDate, parseNaturalTime, sanitize } from '@/lib/utils';
 import { logWarn } from '@/lib/logger';
 import * as db from '@/lib/db';
 import { API_BASE } from '@/lib/db';
+import cn from '@/lib/tailwindMerge';
 
 interface CheckMovie {
   title: string;
@@ -271,41 +271,25 @@ const AddModal = ({
   if (!visible) return null;
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 100,
-        display: 'flex',
-        alignItems: 'flex-end',
-        justifyContent: 'center',
-      }}
-    >
+    <div className="fixed inset-0 z-100 flex items-end justify-center">
       <div
         onClick={close}
+        className="absolute inset-0 transition-all duration-300 ease-in-out"
         style={{
-          position: 'absolute',
-          inset: 0,
           background: 'rgba(0,0,0,0.7)',
           backdropFilter: entering || closing ? 'blur(0px)' : 'blur(8px)',
           WebkitBackdropFilter: entering || closing ? 'blur(0px)' : 'blur(8px)',
           opacity: entering || closing ? 0 : 1,
-          transition:
-            'opacity 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease',
         }}
       />
       <div
         ref={modalRef}
+        className="relative w-full bg-surface overflow-y-auto overscroll-contain"
         style={{
-          position: 'relative',
-          background: color.surface,
           borderRadius: '24px 24px 0 0',
-          width: '100%',
           maxWidth: 420,
           maxHeight: '85dvh',
-          overflowY: 'auto',
           WebkitOverflowScrolling: 'touch',
-          overscrollBehavior: 'contain',
           padding: '0 24px calc(24px + env(safe-area-inset-bottom, 0px))',
           animation: closing ? 'none' : 'slideUp 0.3s ease-out',
           transform: closing ? 'translateY(100%)' : undefined,
@@ -342,65 +326,33 @@ const AddModal = ({
               }
             }
           }}
-          style={{
-            padding: '20px 0 12px',
-            touchAction: 'none',
-            cursor: 'grab',
-          }}
+          className="pt-5 pb-3 touch-none cursor-grab"
         >
-          <div
-            style={{
-              width: 40,
-              height: 4,
-              background: color.faint,
-              borderRadius: 2,
-              margin: '0 auto',
-            }}
-          />
+          <div className="w-10 h-1 bg-faint rounded-sm mx-auto" />
         </div>
         {/* Mode toggle */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        <div className="flex gap-2 mb-5">
           <button
             onClick={() => setMode('idea')}
-            style={{
-              flex: 1,
-              background: mode === 'idea' ? color.accent : 'transparent',
-              color: mode === 'idea' ? '#000' : color.dim,
-              border: mode === 'idea' ? 'none' : `1px solid ${color.borderMid}`,
-              borderRadius: 10,
-              padding: '10px',
-              fontFamily: font.mono,
-              fontSize: 11,
-              fontWeight: mode === 'idea' ? 700 : 400,
-              cursor: 'pointer',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-            }}
+            className={cn(
+              'flex-1 rounded-lg p-2.5 font-mono text-xs uppercase cursor-pointer',
+              mode === 'idea'
+                ? 'bg-dt text-black border-none font-bold'
+                : 'bg-transparent text-dim border border-border-mid'
+            )}
+            style={{ letterSpacing: '0.08em' }}
           >
             Interest Check
           </button>
           <button
             onClick={() => setMode('paste')}
-            style={{
-              flex: 1,
-              background:
-                mode === 'paste' || mode === 'manual'
-                  ? color.accent
-                  : 'transparent',
-              color: mode === 'paste' || mode === 'manual' ? '#000' : color.dim,
-              border:
-                mode === 'paste' || mode === 'manual'
-                  ? 'none'
-                  : `1px solid ${color.borderMid}`,
-              borderRadius: 10,
-              padding: '10px',
-              fontFamily: font.mono,
-              fontSize: 11,
-              fontWeight: mode === 'paste' || mode === 'manual' ? 700 : 400,
-              cursor: 'pointer',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-            }}
+            className={cn(
+              'flex-1 rounded-lg p-2.5 font-mono text-xs uppercase cursor-pointer',
+              mode === 'paste' || mode === 'manual'
+                ? 'bg-dt text-black border-none font-bold'
+                : 'bg-transparent text-dim border border-border-mid'
+            )}
+            style={{ letterSpacing: '0.08em' }}
           >
             Save Event
           </button>
@@ -408,7 +360,7 @@ const AddModal = ({
 
         {mode === 'paste' && (
           <>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+            <div className="flex gap-2 mb-5">
               <textarea
                 ref={inputRef}
                 value={url}
@@ -426,83 +378,34 @@ const AddModal = ({
                 }}
                 placeholder="paste link"
                 rows={1}
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  background: color.deep,
-                  border: `1px solid ${color.borderMid}`,
-                  borderRadius: 12,
-                  padding: '14px 16px',
-                  color: color.text,
-                  fontFamily: font.mono,
-                  fontSize: 13,
-                  lineHeight: '1.4',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  resize: 'none',
-                  overflow: 'hidden',
-                  maxHeight: 100,
-                }}
+                className="flex-1 min-w-0 bg-deep border border-border-mid rounded-xl px-4 py-3.5 text-primary font-mono text-sm leading-snug outline-none transition-colors duration-200 resize-none overflow-hidden"
+                style={{ maxHeight: 100 }}
               />
               <button
                 onClick={handlePull}
-                style={{
-                  background: color.accent,
-                  color: '#000',
-                  border: 'none',
-                  borderRadius: 12,
-                  padding: '14px 20px',
-                  fontFamily: font.mono,
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
+                className="bg-dt text-black border-none rounded-xl px-5 py-3.5 font-mono text-sm font-bold cursor-pointer"
               >
                 {loading ? '...' : 'Pull'}
               </button>
             </div>
 
             {!loading && !scraped && !error && (
-              <div
-                style={{
-                  padding: '12px 14px',
-                  background: color.deep,
-                  borderRadius: 10,
-                  marginBottom: 14,
-                  border: `1px solid ${color.borderLight}`,
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: font.mono,
-                    fontSize: 11,
-                    color: color.muted,
-                    lineHeight: 1.5,
-                  }}
-                >
+              <div className="p-3 bg-deep rounded-lg mb-3.5 border border-border-light">
+                <div className="font-mono text-xs text-muted leading-normal">
                   Paste an Instagram or Dice link to pull event details.
                 </div>
               </div>
             )}
 
             {loading && (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: 20,
-                  color: color.dim,
-                  fontFamily: font.mono,
-                  fontSize: 12,
-                }}
-              >
+              <div className="text-center p-5 text-dim font-mono text-xs">
                 <div
+                  className="mx-auto mb-3 rounded-full"
                   style={{
                     width: 24,
                     height: 24,
-                    border: `2px solid ${color.borderMid}`,
-                    borderTopColor: color.accent,
-                    borderRadius: '50%',
-                    margin: '0 auto 12px',
+                    border: '2px solid #333',
+                    borderTopColor: '#e8ff5a',
                     animation: 'spin 0.8s linear infinite',
                   }}
                 />
@@ -514,22 +417,13 @@ const AddModal = ({
 
             {error && (
               <div
+                className="rounded-xl px-4 py-3.5 mb-4"
                 style={{
                   background: 'rgba(255,100,100,0.1)',
                   border: '1px solid rgba(255,100,100,0.3)',
-                  borderRadius: 12,
-                  padding: '14px 16px',
-                  marginBottom: 16,
                 }}
               >
-                <div
-                  style={{
-                    fontFamily: font.mono,
-                    fontSize: 12,
-                    color: '#ff6b6b',
-                    marginBottom: 10,
-                  }}
-                >
+                <div className="font-mono text-xs text-danger mb-2.5">
                   {error}
                 </div>
                 <button
@@ -537,16 +431,7 @@ const AddModal = ({
                     setMode('manual');
                     setError(null);
                   }}
-                  style={{
-                    background: 'transparent',
-                    color: color.accent,
-                    border: `1px solid ${color.accent}`,
-                    borderRadius: 8,
-                    padding: '8px 14px',
-                    fontFamily: font.mono,
-                    fontSize: 11,
-                    cursor: 'pointer',
-                  }}
+                  className="bg-transparent text-dt border border-dt rounded-lg px-3.5 py-2 font-mono text-xs cursor-pointer"
                 >
                   Enter manually instead
                 </button>
@@ -554,44 +439,16 @@ const AddModal = ({
             )}
 
             {scraped && (
-              <div
-                style={{
-                  background: color.deep,
-                  borderRadius: 16,
-                  padding: 20,
-                  border: `1px solid ${color.borderLight}`,
-                  animation: 'fadeIn 0.3s ease',
-                }}
-              >
+              <div className="bg-deep rounded-2xl p-5 border border-border-light animate-fade-in">
                 <input
                   type="text"
                   value={scraped.title}
                   onChange={(e) =>
                     setScraped({ ...scraped, title: e.target.value })
                   }
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    background: 'transparent',
-                    border: 'none',
-                    borderBottom: `1px solid ${color.borderMid}`,
-                    borderRadius: 0,
-                    padding: '4px 0',
-                    fontFamily: font.serif,
-                    fontSize: 22,
-                    color: color.text,
-                    marginBottom: 8,
-                    outline: 'none',
-                  }}
+                  className="w-full box-border bg-transparent border-none border-b border-b-border-mid rounded-none py-1 px-0 font-serif text-2xl text-primary mb-2 outline-none"
                 />
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 8,
-                    marginBottom: 12,
-                  }}
-                >
+                <div className="flex flex-col gap-2 mb-3">
                   <input
                     type="text"
                     value={scraped.venue === 'TBD' ? '' : scraped.venue}
@@ -599,18 +456,9 @@ const AddModal = ({
                       setScraped({ ...scraped, venue: e.target.value })
                     }
                     placeholder="Venue"
-                    style={{
-                      background: color.surface,
-                      border: `1px solid ${color.borderMid}`,
-                      borderRadius: 10,
-                      padding: '10px 12px',
-                      color: color.text,
-                      fontFamily: font.mono,
-                      fontSize: 12,
-                      outline: 'none',
-                    }}
+                    className="bg-surface border border-border-mid rounded-lg py-2.5 px-3 text-primary font-mono text-xs outline-none"
                   />
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div className="flex gap-2">
                     <input
                       type="text"
                       value={scraped.date === 'TBD' ? '' : scraped.date}
@@ -618,19 +466,7 @@ const AddModal = ({
                         setScraped({ ...scraped, date: e.target.value })
                       }
                       placeholder="Date"
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        background: color.surface,
-                        border: `1px solid ${color.borderMid}`,
-                        borderRadius: 10,
-                        padding: '10px 12px',
-                        color: color.text,
-                        fontFamily: font.mono,
-                        fontSize: 12,
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                      }}
+                      className="flex-1 min-w-0 bg-surface border border-border-mid rounded-lg py-2.5 px-3 text-primary font-mono text-xs outline-none box-border"
                     />
                     <input
                       type="text"
@@ -639,19 +475,7 @@ const AddModal = ({
                         setScraped({ ...scraped, time: e.target.value })
                       }
                       placeholder="Time"
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        background: color.surface,
-                        border: `1px solid ${color.borderMid}`,
-                        borderRadius: 10,
-                        padding: '10px 12px',
-                        color: color.text,
-                        fontFamily: font.mono,
-                        fontSize: 12,
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                      }}
+                      className="flex-1 min-w-0 bg-surface border border-border-mid rounded-lg py-2.5 px-3 text-primary font-mono text-xs outline-none box-border"
                     />
                   </div>
                   <input
@@ -667,44 +491,21 @@ const AddModal = ({
                       })
                     }
                     placeholder="Vibes (comma separated)"
-                    style={{
-                      background: color.surface,
-                      border: `1px solid ${color.borderMid}`,
-                      borderRadius: 10,
-                      padding: '10px 12px',
-                      color: color.text,
-                      fontFamily: font.mono,
-                      fontSize: 12,
-                      outline: 'none',
-                    }}
+                    className="bg-surface border border-border-mid rounded-lg py-2.5 px-3 text-primary font-mono text-xs outline-none"
                   />
                 </div>
                 {/* Social signal — shows when existing event has people down */}
                 {socialSignal && (
                   <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '10px 14px',
-                      background: 'rgba(232,255,90,0.06)',
-                      borderRadius: 10,
-                      marginBottom: 14,
-                      border: `1px solid ${color.border}`,
-                    }}
+                    className="flex items-center gap-2 py-2.5 px-3.5 rounded-lg mb-3.5 border border-border"
+                    style={{ background: 'rgba(232,255,90,0.06)' }}
                   >
-                    <span style={{ fontSize: 14 }}>👥</span>
-                    <span
-                      style={{
-                        fontFamily: font.mono,
-                        fontSize: 12,
-                        color: color.text,
-                      }}
-                    >
+                    <span className="text-sm">👥</span>
+                    <span className="font-mono text-xs text-primary">
                       {socialSignal.totalDown}{' '}
                       {socialSignal.totalDown === 1 ? 'person' : 'people'} down
                       {socialSignal.friendsDown > 0 && (
-                        <span style={{ color: color.accent }}>
+                        <span className="text-dt">
                           {' '}
                           · {socialSignal.friendsDown}{' '}
                           {socialSignal.friendsDown === 1
@@ -716,15 +517,7 @@ const AddModal = ({
                   </div>
                 )}
                 {/* Visibility selector */}
-                <div
-                  style={{
-                    display: 'flex',
-                    borderRadius: 10,
-                    border: `1px solid ${color.borderMid}`,
-                    overflow: 'hidden',
-                    marginBottom: 14,
-                  }}
-                >
+                <div className="flex rounded-lg border border-border-mid overflow-hidden mb-3.5">
                   {([
                     { value: 'public' as const, label: 'Public', desc: 'Everyone on down to' },
                     { value: 'friends' as const, label: 'Friends', desc: 'Friends & friends of friends' },
@@ -732,30 +525,23 @@ const AddModal = ({
                     <button
                       key={opt.value}
                       onClick={() => setEventVisibility(opt.value)}
+                      className={cn(
+                        'flex-1 py-2.5 px-2 border-none cursor-pointer text-center',
+                        eventVisibility === opt.value ? 'bg-transparent' : 'bg-transparent',
+                        opt.value === 'public' ? 'border-r border-r-border-mid' : ''
+                      )}
                       style={{
-                        flex: 1,
-                        padding: '10px 8px',
                         background: eventVisibility === opt.value ? 'rgba(232,255,90,0.08)' : 'transparent',
-                        border: 'none',
-                        borderRight: opt.value === 'public' ? `1px solid ${color.borderMid}` : 'none',
-                        cursor: 'pointer',
-                        textAlign: 'center',
+                        borderRight: opt.value === 'public' ? '1px solid #333' : 'none',
                       }}
                     >
-                      <div style={{
-                        fontFamily: font.mono,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: eventVisibility === opt.value ? color.accent : color.dim,
-                        marginBottom: 2,
-                      }}>
+                      <div className={cn(
+                        'font-mono text-xs font-bold mb-0.5',
+                        eventVisibility === opt.value ? 'text-dt' : 'text-dim'
+                      )}>
                         {opt.label}
                       </div>
-                      <div style={{
-                        fontFamily: font.mono,
-                        fontSize: 9,
-                        color: color.faint,
-                      }}>
+                      <div className="font-mono text-faint" style={{ fontSize: 9 }}>
                         {opt.desc}
                       </div>
                     </button>
@@ -768,19 +554,7 @@ const AddModal = ({
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   maxLength={200}
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    background: color.deep,
-                    color: color.text,
-                    border: `1px solid ${color.borderMid}`,
-                    borderRadius: 10,
-                    padding: '10px 12px',
-                    fontFamily: font.mono,
-                    fontSize: 12,
-                    marginBottom: 14,
-                    outline: 'none',
-                  }}
+                  className="w-full box-border bg-deep text-primary border border-border-mid rounded-lg py-2.5 px-3 font-mono text-xs mb-3.5 outline-none"
                 />
                 <button
                   onClick={async () => {
@@ -791,20 +565,8 @@ const AddModal = ({
                     await onSubmit(submitted, eventVisibility);
                     close();
                   }}
-                  style={{
-                    width: '100%',
-                    background: color.accent,
-                    color: '#000',
-                    border: 'none',
-                    borderRadius: 12,
-                    padding: '14px',
-                    fontFamily: font.mono,
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                  }}
+                  className="w-full bg-dt text-black border-none rounded-xl py-3.5 font-mono text-sm font-bold cursor-pointer uppercase"
+                  style={{ letterSpacing: '0.1em' }}
                 >
                   {eventVisibility === 'public'
                     ? 'Save & Share Publicly →'
@@ -830,35 +592,19 @@ const AddModal = ({
                         close();
                       }}
                       disabled={!scrapedParsedDate}
-                      style={{
-                        width: '100%',
-                        background: 'transparent',
-                        color: scrapedParsedDate ? color.accent : color.dim,
-                        border: `1px solid ${scrapedParsedDate ? color.accent : color.borderMid}`,
-                        borderRadius: 12,
-                        padding: '14px',
-                        fontFamily: font.mono,
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: scrapedParsedDate ? 'pointer' : 'not-allowed',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.1em',
-                        marginTop: 8,
-                      }}
+                      className={cn(
+                        'w-full bg-transparent rounded-xl py-3.5 font-mono text-sm font-bold uppercase mt-2',
+                        scrapedParsedDate
+                          ? 'text-dt border border-dt cursor-pointer'
+                          : 'text-dim border border-border-mid cursor-not-allowed'
+                      )}
+                      style={{ letterSpacing: '0.1em' }}
                     >
                       {scrapedParsedDate ? 'Send as Interest Check →' : 'No date found — can\u2019t send as check'}
                     </button>
                   );
                 })()}
-                <p
-                  style={{
-                    fontFamily: font.mono,
-                    fontSize: 10,
-                    color: color.faint,
-                    marginTop: 8,
-                    textAlign: 'center',
-                  }}
-                >
+                <p className="font-mono text-tiny text-faint mt-2 text-center">
                   sent to your friends & their friends
                 </p>
               </div>
@@ -868,16 +614,8 @@ const AddModal = ({
 
         {mode === 'idea' && (
           <>
-            <div style={{ marginBottom: 16 }}>
-              <p
-                style={{
-                  fontFamily: font.mono,
-                  fontSize: 11,
-                  color: color.dim,
-                  marginBottom: 12,
-                  lineHeight: 1.6,
-                }}
-              >
+            <div className="mb-4">
+              <p className="font-mono text-xs text-dim mb-3" style={{ lineHeight: 1.6 }}>
                 Got an idea? See if your friends are down.
               </p>
               <textarea
@@ -954,21 +692,8 @@ const AddModal = ({
                 }}
                 maxLength={280}
                 placeholder={checkPlaceholder}
-                style={{
-                  width: '100%',
-                  background: color.deep,
-                  border: `1px solid ${color.borderMid}`,
-                  borderRadius: 12,
-                  padding: '14px 16px',
-                  color: color.text,
-                  fontFamily: font.mono,
-                  fontSize: 13,
-                  outline: 'none',
-                  resize: 'none',
-                  height: 72,
-                  lineHeight: 1.5,
-                  boxSizing: 'border-box',
-                }}
+                className="w-full bg-deep border border-border-mid rounded-xl px-4 py-3.5 text-primary font-mono text-sm outline-none resize-none leading-normal box-border"
+                style={{ height: 72 }}
               />
               {/* @mention autocomplete dropdown */}
               {mentionQuery !== null &&
@@ -980,16 +705,7 @@ const AddModal = ({
                   );
                   if (filtered.length === 0) return null;
                   return (
-                    <div
-                      style={{
-                        background: color.deep,
-                        border: `1px solid ${color.borderMid}`,
-                        borderRadius: 10,
-                        marginTop: 4,
-                        maxHeight: 140,
-                        overflowY: 'auto',
-                      }}
-                    >
+                    <div className="bg-deep border border-border-mid rounded-lg mt-1 max-h-36 overflow-y-auto">
                       {filtered.slice(0, 6).map((f) => (
                         <button
                           key={f.id}
@@ -1005,42 +721,12 @@ const AddModal = ({
                             setMentionIdx(-1);
                             ideaRef.current?.focus();
                           }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            width: '100%',
-                            padding: '8px 12px',
-                            background: 'transparent',
-                            border: 'none',
-                            cursor: 'pointer',
-                            borderBottom: `1px solid ${color.border}`,
-                          }}
+                          className="flex items-center gap-2 w-full py-2 px-3 bg-transparent border-none cursor-pointer border-b border-b-border"
                         >
-                          <div
-                            style={{
-                              width: 24,
-                              height: 24,
-                              borderRadius: '50%',
-                              background: color.borderLight,
-                              color: color.dim,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontFamily: font.mono,
-                              fontSize: 10,
-                              fontWeight: 700,
-                            }}
-                          >
+                          <div className="w-6 h-6 rounded-full bg-border-light text-dim flex items-center justify-center font-mono text-tiny font-bold">
                             {f.avatar}
                           </div>
-                          <span
-                            style={{
-                              fontFamily: font.mono,
-                              fontSize: 12,
-                              color: color.text,
-                            }}
-                          >
+                          <span className="font-mono text-xs text-primary">
                             {f.name}
                           </span>
                         </button>
@@ -1050,24 +736,15 @@ const AddModal = ({
                 })()}
             </div>
             {/* When / Where inputs */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+            <div className="flex gap-2 mb-1">
               <input
                 type="text"
                 placeholder="when? (e.g. tmr 7pm)"
                 value={whenInput}
                 onChange={(e) => setWhenInput(e.target.value)}
+                className="flex-1 min-w-0 py-2.5 px-3 bg-deep rounded-lg font-mono text-xs text-primary outline-none box-border"
                 style={{
-                  flex: 1,
-                  minWidth: 0,
-                  padding: '10px 12px',
-                  background: color.deep,
-                  border: `1px solid ${idea.trim() && !parsedDate ? '#ff6b6b44' : color.borderMid}`,
-                  borderRadius: 10,
-                  fontFamily: font.mono,
-                  fontSize: 11,
-                  color: color.text,
-                  outline: 'none',
-                  boxSizing: 'border-box',
+                  border: `1px solid ${idea.trim() && !parsedDate ? '#ff6b6b44' : '#333'}`,
                 }}
               />
               <input
@@ -1075,126 +752,53 @@ const AddModal = ({
                 placeholder="where?"
                 value={whereInput}
                 onChange={(e) => setWhereInput(e.target.value)}
-                style={{
-                  flex: 0.6,
-                  minWidth: 0,
-                  padding: '10px 12px',
-                  background: color.deep,
-                  border: `1px solid ${color.borderMid}`,
-                  borderRadius: 10,
-                  fontFamily: font.mono,
-                  fontSize: 11,
-                  color: color.text,
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
+                className="min-w-0 py-2.5 px-3 bg-deep border border-border-mid rounded-lg font-mono text-xs text-primary outline-none box-border"
+                style={{ flex: 0.6 }}
               />
             </div>
             {whenPreview && (
-              <div
-                style={{
-                  fontFamily: font.mono,
-                  fontSize: 10,
-                  color: color.dim,
-                  marginBottom: 8,
-                  paddingLeft: 2,
-                }}
-              >
+              <div className="font-mono text-tiny text-dim mb-2" style={{ paddingLeft: 2 }}>
                 {whenPreview}
               </div>
             )}
             {!whenPreview && idea.trim() && !parsedDate && (
-              <div
-                style={{
-                  fontFamily: font.mono,
-                  fontSize: 10,
-                  color: '#ff6b6b',
-                  marginBottom: 8,
-                  paddingLeft: 2,
-                }}
-              >
+              <div className="font-mono text-tiny text-danger mb-2" style={{ paddingLeft: 2 }}>
                 add a date (e.g. &quot;fri&quot;, &quot;3/14&quot;, &quot;next sat&quot;)
               </div>
             )}
-            {!whenPreview && (!idea.trim() || parsedDate) && <div style={{ marginBottom: 8 }} />}
+            {!whenPreview && (!idea.trim() || parsedDate) && <div className="mb-2" />}
             {/* Movie preview from detected Letterboxd link */}
             {checkMovieLoading && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  marginBottom: 12,
-                  padding: '10px 12px',
-                  background: color.deep,
-                  borderRadius: 10,
-                  border: `1px solid ${color.borderLight}`,
-                }}
-              >
+              <div className="flex items-center gap-2 mb-3 py-2.5 px-3 bg-deep rounded-lg border border-border-light">
                 <div
+                  className="rounded-full shrink-0"
                   style={{
                     width: 16,
                     height: 16,
-                    border: `2px solid ${color.borderMid}`,
-                    borderTopColor: color.accent,
-                    borderRadius: '50%',
+                    border: '2px solid #333',
+                    borderTopColor: '#e8ff5a',
                     animation: 'spin 0.8s linear infinite',
-                    flexShrink: 0,
                   }}
                 />
-                <span
-                  style={{
-                    fontFamily: font.mono,
-                    fontSize: 11,
-                    color: color.dim,
-                  }}
-                >
+                <span className="font-mono text-xs text-dim">
                   fetching movie details...
                 </span>
               </div>
             )}
             {checkMovie && !checkMovieLoading && (
-              <div
-                style={{
-                  marginBottom: 12,
-                  padding: 12,
-                  background: color.deep,
-                  borderRadius: 12,
-                  border: `1px solid ${color.borderLight}`,
-                  animation: 'fadeIn 0.3s ease',
-                }}
-              >
-                <div style={{ display: 'flex', gap: 12 }}>
+              <div className="mb-3 p-3 bg-deep rounded-xl border border-border-light animate-fade-in">
+                <div className="flex gap-3">
                   {checkMovie.thumbnail && (
                     <img
                       src={checkMovie.thumbnail}
                       alt={checkMovie.title}
-                      style={{
-                        width: 60,
-                        height: 90,
-                        objectFit: 'cover',
-                        borderRadius: 8,
-                        flexShrink: 0,
-                      }}
+                      className="object-cover rounded-lg shrink-0"
+                      style={{ width: 60, height: 90 }}
                     />
                   )}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontFamily: font.serif,
-                          fontSize: 17,
-                          color: color.text,
-                          lineHeight: 1.2,
-                          marginBottom: 3,
-                        }}
-                      >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start">
+                      <div className="font-serif text-primary leading-tight mb-0.5" style={{ fontSize: 17 }}>
                         {checkMovie.title}
                       </div>
                       <button
@@ -1202,47 +806,24 @@ const AddModal = ({
                           setCheckMovie(null);
                           checkMovieUrlRef.current = null;
                         }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: color.dim,
-                          fontFamily: font.mono,
-                          fontSize: 14,
-                          cursor: 'pointer',
-                          padding: '0 2px',
-                          lineHeight: 1,
-                          flexShrink: 0,
-                        }}
+                        className="bg-none border-none text-dim font-mono text-sm cursor-pointer px-0.5 leading-none shrink-0"
                       >
                         ×
                       </button>
                     </div>
-                    <div
-                      style={{
-                        fontFamily: font.mono,
-                        fontSize: 11,
-                        color: color.muted,
-                        marginBottom: 4,
-                      }}
-                    >
+                    <div className="font-mono text-xs text-muted mb-1">
                       {checkMovie.year}
                       {checkMovie.director && ` · ${checkMovie.director}`}
                     </div>
                     {checkMovie.vibes && checkMovie.vibes.length > 0 && (
-                      <div
-                        style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}
-                      >
+                      <div className="flex flex-wrap gap-0.5">
                         {checkMovie.vibes.slice(0, 4).map((v) => (
                           <span
                             key={v}
+                            className="text-dt px-1.5 py-0.5 rounded-xl font-mono uppercase"
                             style={{
                               background: '#1f1f1f',
-                              color: color.accent,
-                              padding: '2px 6px',
-                              borderRadius: 12,
-                              fontFamily: font.mono,
                               fontSize: 9,
-                              textTransform: 'uppercase',
                               letterSpacing: '0.08em',
                             }}
                           >
@@ -1256,20 +837,11 @@ const AddModal = ({
               </div>
             )}
             {/* Timer picker */}
-            <div style={{ marginBottom: 16 }}>
-              <div
-                style={{
-                  fontFamily: font.mono,
-                  fontSize: 10,
-                  color: color.dim,
-                  marginBottom: 8,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.15em',
-                }}
-              >
+            <div className="mb-4">
+              <div className="font-mono text-tiny text-dim mb-2 uppercase" style={{ letterSpacing: '0.15em' }}>
                 Expires in
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className="flex gap-2">
                 {[
                   { label: '1h', hours: 1 as number | null },
                   { label: '4h', hours: 4 as number | null },
@@ -1280,20 +852,12 @@ const AddModal = ({
                   <button
                     key={opt.label}
                     onClick={() => setCheckTimer(opt.hours)}
-                    style={{
-                      flex: 1,
-                      padding: '10px 0',
-                      background:
-                        checkTimer === opt.hours ? color.accent : 'transparent',
-                      color: checkTimer === opt.hours ? '#000' : color.muted,
-                      border: `1px solid ${checkTimer === opt.hours ? color.accent : color.borderMid}`,
-                      borderRadius: 10,
-                      fontFamily: font.mono,
-                      fontSize: 12,
-                      fontWeight: checkTimer === opt.hours ? 700 : 400,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                    }}
+                    className={cn(
+                      'flex-1 py-2.5 rounded-lg font-mono text-xs cursor-pointer transition-all duration-150 ease-in-out',
+                      checkTimer === opt.hours
+                        ? 'bg-dt text-black border border-dt font-bold'
+                        : 'bg-transparent text-muted border border-border-mid'
+                    )}
                   >
                     {opt.label}
                   </button>
@@ -1301,20 +865,11 @@ const AddModal = ({
               </div>
             </div>
             {/* Squad size picker */}
-            <div style={{ marginBottom: 16 }}>
-              <div
-                style={{
-                  fontFamily: font.mono,
-                  fontSize: 10,
-                  color: color.dim,
-                  marginBottom: 8,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.15em',
-                }}
-              >
+            <div className="mb-4">
+              <div className="font-mono text-tiny text-dim mb-2 uppercase" style={{ letterSpacing: '0.15em' }}>
                 Squad size
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className="flex gap-2">
                 {[
                   { label: '3', value: 3 },
                   { label: '4', value: 4 },
@@ -1329,24 +884,14 @@ const AddModal = ({
                     <button
                       key={opt.label}
                       onClick={() => !disabled && setSquadSize(opt.value)}
-                      style={{
-                        flex: 1,
-                        padding: '10px 0',
-                        background: selected ? color.accent : 'transparent',
-                        color: disabled
-                          ? color.faint
-                          : selected
-                            ? '#000'
-                            : color.muted,
-                        border: `1px solid ${selected ? color.accent : disabled ? color.border : color.borderMid}`,
-                        borderRadius: 10,
-                        fontFamily: font.mono,
-                        fontSize: 12,
-                        fontWeight: selected ? 700 : 400,
-                        cursor: disabled ? 'default' : 'pointer',
-                        opacity: disabled ? 0.4 : 1,
-                        transition: 'all 0.15s ease',
-                      }}
+                      className={cn(
+                        'flex-1 py-2.5 rounded-lg font-mono text-xs transition-all duration-150 ease-in-out',
+                        selected
+                          ? 'bg-dt text-black border border-dt font-bold'
+                          : disabled
+                            ? 'bg-transparent text-faint border border-border cursor-default opacity-40'
+                            : 'bg-transparent text-muted border border-border-mid cursor-pointer'
+                      )}
                     >
                       {opt.label}
                     </button>
@@ -1360,14 +905,7 @@ const AddModal = ({
                       ? 'unlimited'
                       : Math.max(0, squadSize - minSquadSize);
                   return (
-                    <div
-                      style={{
-                        fontFamily: font.mono,
-                        fontSize: 10,
-                        color: color.dim,
-                        marginTop: 6,
-                      }}
-                    >
+                    <div className="font-mono text-tiny text-dim mt-1.5">
                       {`you + ${taggedCoAuthorCount} tagged · ${openSlots} open slot${openSlots !== 1 && openSlots !== 'unlimited' ? 's' : openSlots === 'unlimited' ? 's' : ''}`}
                     </div>
                   );
@@ -1414,32 +952,17 @@ const AddModal = ({
                 }
               }}
               disabled={!idea.trim() || !parsedDate}
-              style={{
-                width: '100%',
-                background: idea.trim() && parsedDate ? color.accent : color.borderMid,
-                color: idea.trim() && parsedDate ? '#000' : color.dim,
-                border: 'none',
-                borderRadius: 12,
-                padding: '14px',
-                fontFamily: font.mono,
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: idea.trim() && parsedDate ? 'pointer' : 'not-allowed',
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-              }}
+              className={cn(
+                'w-full border-none rounded-xl py-3.5 font-mono text-sm font-bold uppercase',
+                idea.trim() && parsedDate
+                  ? 'bg-dt text-black cursor-pointer'
+                  : 'bg-border-mid text-dim cursor-not-allowed'
+              )}
+              style={{ letterSpacing: '0.1em' }}
             >
               {checkMovie ? 'Send Movie Check →' : 'Send Interest Check →'}
             </button>
-            <p
-              style={{
-                fontFamily: font.mono,
-                fontSize: 10,
-                color: color.faint,
-                marginTop: 12,
-                textAlign: 'center',
-              }}
-            >
+            <p className="font-mono text-tiny text-faint mt-3 text-center">
               sent to your friends & their friends
               {checkTimer ? ` · expires in ${checkTimer}h` : ''}
             </p>
@@ -1448,9 +971,9 @@ const AddModal = ({
 
         {mode === 'manual' && (
           <>
-            <div style={{ marginBottom: 16 }}>
+            <div className="mb-4">
               {/* Event / Movie toggle */}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+              <div className="flex gap-1.5 mb-3.5">
                 {(['EVENT', 'MOVIE'] as const).map((label) => {
                   const active = label === 'MOVIE' ? movieMode : !movieMode;
                   return (
@@ -1464,43 +987,25 @@ const AddModal = ({
                           setMovieSearching(false);
                         }
                       }}
-                      style={{
-                        flex: 1,
-                        padding: '8px 0',
-                        background: active ? color.accent : 'transparent',
-                        color: active ? '#000' : color.muted,
-                        border: `1px solid ${active ? color.accent : color.borderMid}`,
-                        borderRadius: 10,
-                        fontFamily: font.mono,
-                        fontSize: 11,
-                        fontWeight: active ? 700 : 400,
-                        cursor: 'pointer',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.08em',
-                        transition: 'all 0.15s ease',
-                      }}
+                      className={cn(
+                        'flex-1 py-2 rounded-lg font-mono text-xs uppercase cursor-pointer transition-all duration-150 ease-in-out',
+                        active
+                          ? 'bg-dt text-black border border-dt font-bold'
+                          : 'bg-transparent text-muted border border-border-mid'
+                      )}
+                      style={{ letterSpacing: '0.08em' }}
                     >
                       {label}
                     </button>
                   );
                 })}
               </div>
-              <p
-                style={{
-                  fontFamily: font.mono,
-                  fontSize: 11,
-                  color: color.dim,
-                  marginBottom: 16,
-                  lineHeight: 1.6,
-                }}
-              >
+              <p className="font-mono text-xs text-dim mb-4" style={{ lineHeight: 1.6 }}>
                 {movieMode
                   ? 'Search for a movie to create a screening event'
                   : 'Enter event details manually'}
               </p>
-              <div
-                style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
-              >
+              <div className="flex flex-col gap-2.5">
                 <input
                   type="text"
                   value={manual.title}
@@ -1542,143 +1047,63 @@ const AddModal = ({
                     movieMode ? 'Movie title (e.g., The Bride)' : 'Event name'
                   }
                   maxLength={100}
-                  style={{
-                    background: color.deep,
-                    border: `1px solid ${color.borderMid}`,
-                    borderRadius: 10,
-                    padding: '12px 14px',
-                    color: color.text,
-                    fontFamily: font.mono,
-                    fontSize: 13,
-                    outline: 'none',
-                  }}
+                  className="bg-deep border border-border-mid rounded-lg py-3 px-3.5 text-primary font-mono text-sm outline-none"
                 />
                 {/* Movie search loading */}
                 {movieMode && movieSearching && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '10px 12px',
-                      background: color.deep,
-                      borderRadius: 10,
-                      border: `1px solid ${color.borderLight}`,
-                    }}
-                  >
+                  <div className="flex items-center gap-2 py-2.5 px-3 bg-deep rounded-lg border border-border-light">
                     <div
+                      className="rounded-full shrink-0"
                       style={{
                         width: 16,
                         height: 16,
-                        border: `2px solid ${color.borderMid}`,
-                        borderTopColor: color.accent,
-                        borderRadius: '50%',
+                        border: '2px solid #333',
+                        borderTopColor: '#e8ff5a',
                         animation: 'spin 0.8s linear infinite',
-                        flexShrink: 0,
                       }}
                     />
-                    <span
-                      style={{
-                        fontFamily: font.mono,
-                        fontSize: 11,
-                        color: color.dim,
-                      }}
-                    >
+                    <span className="font-mono text-xs text-dim">
                       searching letterboxd...
                     </span>
                   </div>
                 )}
                 {/* Movie match preview */}
                 {movieMode && manualMovie && !movieSearching && (
-                  <div
-                    style={{
-                      padding: 12,
-                      background: color.deep,
-                      borderRadius: 12,
-                      border: `1px solid ${color.borderLight}`,
-                      animation: 'fadeIn 0.3s ease',
-                    }}
-                  >
-                    <div style={{ display: 'flex', gap: 12 }}>
+                  <div className="p-3 bg-deep rounded-xl border border-border-light animate-fade-in">
+                    <div className="flex gap-3">
                       {manualMovie.thumbnail && (
                         <img
                           src={manualMovie.thumbnail}
                           alt={manualMovie.title}
-                          style={{
-                            width: 60,
-                            height: 90,
-                            objectFit: 'cover',
-                            borderRadius: 8,
-                            flexShrink: 0,
-                          }}
+                          className="object-cover rounded-lg shrink-0"
+                          style={{ width: 60, height: 90 }}
                         />
                       )}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'flex-start',
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontFamily: font.serif,
-                              fontSize: 17,
-                              color: color.text,
-                              lineHeight: 1.2,
-                              marginBottom: 3,
-                            }}
-                          >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start">
+                          <div className="font-serif text-primary leading-tight mb-0.5" style={{ fontSize: 17 }}>
                             {manualMovie.title}
                           </div>
                           <button
                             onClick={() => setManualMovie(null)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: color.dim,
-                              fontFamily: font.mono,
-                              fontSize: 14,
-                              cursor: 'pointer',
-                              padding: '0 2px',
-                              lineHeight: 1,
-                              flexShrink: 0,
-                            }}
+                            className="bg-none border-none text-dim font-mono text-sm cursor-pointer px-0.5 leading-none shrink-0"
                           >
                             ×
                           </button>
                         </div>
-                        <div
-                          style={{
-                            fontFamily: font.mono,
-                            fontSize: 11,
-                            color: color.muted,
-                            marginBottom: 4,
-                          }}
-                        >
+                        <div className="font-mono text-xs text-muted mb-1">
                           {manualMovie.year}
                           {manualMovie.director && ` · ${manualMovie.director}`}
                         </div>
                         {manualMovie.vibes && manualMovie.vibes.length > 0 && (
-                          <div
-                            style={{
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              gap: 3,
-                            }}
-                          >
+                          <div className="flex flex-wrap gap-0.5">
                             {manualMovie.vibes.slice(0, 4).map((v) => (
                               <span
                                 key={v}
+                                className="text-dt px-1.5 py-0.5 rounded-xl font-mono uppercase"
                                 style={{
                                   background: '#1f1f1f',
-                                  color: color.accent,
-                                  padding: '2px 6px',
-                                  borderRadius: 12,
-                                  fontFamily: font.mono,
                                   fontSize: 9,
-                                  textTransform: 'uppercase',
                                   letterSpacing: '0.08em',
                                 }}
                               >
@@ -1696,14 +1121,7 @@ const AddModal = ({
                   !manualMovie &&
                   !movieSearching &&
                   manual.title.trim().length >= 3 && (
-                    <div
-                      style={{
-                        fontFamily: font.mono,
-                        fontSize: 10,
-                        color: color.faint,
-                        padding: '4px 0',
-                      }}
-                    >
+                    <div className="font-mono text-tiny text-faint py-1 px-0">
                       No match found — you can still save the event manually
                     </div>
                   )}
@@ -1718,18 +1136,9 @@ const AddModal = ({
                   }
                   placeholder="Venue"
                   maxLength={100}
-                  style={{
-                    background: color.deep,
-                    border: `1px solid ${color.borderMid}`,
-                    borderRadius: 10,
-                    padding: '12px 14px',
-                    color: color.text,
-                    fontFamily: font.mono,
-                    fontSize: 13,
-                    outline: 'none',
-                  }}
+                  className="bg-deep border border-border-mid rounded-lg py-3 px-3.5 text-primary font-mono text-sm outline-none"
                 />
-                <div style={{ display: 'flex', gap: 10 }}>
+                <div className="flex gap-2.5">
                   <input
                     type="text"
                     value={manual.date}
@@ -1741,17 +1150,7 @@ const AddModal = ({
                     }
                     placeholder="Date (e.g., Sat, Feb 15)"
                     maxLength={50}
-                    style={{
-                      flex: 1,
-                      background: color.deep,
-                      border: `1px solid ${color.borderMid}`,
-                      borderRadius: 10,
-                      padding: '12px 14px',
-                      color: color.text,
-                      fontFamily: font.mono,
-                      fontSize: 13,
-                      outline: 'none',
-                    }}
+                    className="flex-1 bg-deep border border-border-mid rounded-lg py-3 px-3.5 text-primary font-mono text-sm outline-none"
                   />
                   <input
                     type="text"
@@ -1764,17 +1163,7 @@ const AddModal = ({
                     }
                     placeholder="Time"
                     maxLength={50}
-                    style={{
-                      flex: 1,
-                      background: color.deep,
-                      border: `1px solid ${color.borderMid}`,
-                      borderRadius: 10,
-                      padding: '12px 14px',
-                      color: color.text,
-                      fontFamily: font.mono,
-                      fontSize: 13,
-                      outline: 'none',
-                    }}
+                    className="flex-1 bg-deep border border-border-mid rounded-lg py-3 px-3.5 text-primary font-mono text-sm outline-none"
                   />
                 </div>
                 {!movieMode && (
@@ -1789,16 +1178,7 @@ const AddModal = ({
                     }
                     placeholder="Vibes (comma separated, e.g., techno, late night)"
                     maxLength={100}
-                    style={{
-                      background: color.deep,
-                      border: `1px solid ${color.borderMid}`,
-                      borderRadius: 10,
-                      padding: '12px 14px',
-                      color: color.text,
-                      fontFamily: font.mono,
-                      fontSize: 13,
-                      outline: 'none',
-                    }}
+                    className="bg-deep border border-border-mid rounded-lg py-3 px-3.5 text-primary font-mono text-sm outline-none"
                   />
                 )}
               </div>
@@ -1843,22 +1223,13 @@ const AddModal = ({
                 }
               }}
               disabled={!manual.title.trim()}
-              style={{
-                width: '100%',
-                background: manual.title.trim()
-                  ? color.accent
-                  : color.borderMid,
-                color: manual.title.trim() ? '#000' : color.dim,
-                border: 'none',
-                borderRadius: 12,
-                padding: '14px',
-                fontFamily: font.mono,
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: manual.title.trim() ? 'pointer' : 'not-allowed',
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-              }}
+              className={cn(
+                'w-full border-none rounded-xl py-3.5 font-mono text-sm font-bold uppercase',
+                manual.title.trim()
+                  ? 'bg-dt text-black cursor-pointer'
+                  : 'bg-border-mid text-dim cursor-not-allowed'
+              )}
+              style={{ letterSpacing: '0.1em' }}
             >
               {movieMode && manualMovie
                 ? 'Save Movie Night →'
@@ -1866,17 +1237,7 @@ const AddModal = ({
             </button>
             <button
               onClick={() => setMode('paste')}
-              style={{
-                width: '100%',
-                marginTop: 10,
-                background: 'transparent',
-                color: color.dim,
-                border: 'none',
-                padding: '10px',
-                fontFamily: font.mono,
-                fontSize: 11,
-                cursor: 'pointer',
-              }}
+              className="w-full mt-2.5 bg-transparent text-dim border-none p-2.5 font-mono text-xs cursor-pointer"
             >
               ← Back to paste link
             </button>
