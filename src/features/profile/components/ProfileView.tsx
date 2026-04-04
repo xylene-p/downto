@@ -6,6 +6,12 @@ import { API_BASE } from "@/lib/db";
 import cn from "@/lib/tailwindMerge";
 import type { Friend, AvailabilityStatus } from "@/lib/ui-types";
 import { AVAILABILITY_OPTIONS, EXPIRY_OPTIONS } from "@/lib/ui-types";
+import { themes } from "@/lib/themes";
+import type { ThemeName } from "@/lib/themes";
+import { applyTheme } from "@/app/components/ThemeHydrator";
+
+const THEME_STORAGE_KEY = "downto-theme";
+const THEME_NAMES = Object.keys(themes) as ThemeName[];
 
 const ProfileView = ({
   friends,
@@ -62,6 +68,12 @@ const ProfileView = ({
   const [editingIg, setEditingIg] = useState(false);
   const [igInput, setIgInput] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [activeTheme, setActiveTheme] = useState<ThemeName | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY) as ThemeName | null;
+    if (stored && stored in themes) setActiveTheme(stored);
+  }, []);
 
   const handleStatusSelect = (status: AvailabilityStatus) => {
     if (status === "open") {
@@ -234,6 +246,39 @@ const ProfileView = ({
       </div>
       <span className="text-dim text-sm">→</span>
     </button>
+
+    {/* Theme Switcher */}
+    <div className="mt-6 bg-card rounded-2xl p-4 border border-border">
+      <div
+        className="font-mono text-tiny uppercase text-faint mb-3.5"
+        style={{ letterSpacing: "0.15em" }}
+      >
+        Theme
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {THEME_NAMES.map((name) => {
+          const isActive = activeTheme === name;
+          return (
+            <button
+              key={name}
+              onClick={() => {
+                setActiveTheme(name);
+                localStorage.setItem(THEME_STORAGE_KEY, name);
+                applyTheme(name);
+              }}
+              className={cn(
+                "rounded-xl py-2 px-3.5 font-mono text-xs cursor-pointer transition-all duration-200",
+                isActive
+                  ? "bg-dt text-black font-bold border border-transparent"
+                  : "bg-transparent text-muted border border-border-mid"
+              )}
+            >
+              {name}
+            </button>
+          );
+        })}
+      </div>
+    </div>
 
     {/* Availability Meter */}
     <div
