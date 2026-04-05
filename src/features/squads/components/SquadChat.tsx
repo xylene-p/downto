@@ -81,7 +81,7 @@ const SquadChat = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [entering, setEntering] = useState(true);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
-  const [showImOutConfirm, setShowImOutConfirm] = useState(false);
+  // showImOutConfirm removed — "can't make it" is now a soft inline action
   const [kickTarget, setKickTarget] = useState<{ name: string; userId: string } | null>(null);
   const [showSquadPopup, setShowSquadPopup] = useState(false);
   const [showEditEvent, setShowEditEvent] = useState(false);
@@ -451,8 +451,23 @@ const SquadChat = ({
     isDragging.current = false;
   };
 
+  // Backdrop opacity: fully opaque when open, fades as user swipes to dismiss
+  const backdropOpacity = closing ? 0 : entering ? 0 : dragX > 0 ? Math.max(0, 1 - dragX / 300) : 1;
+
   return (
     <>
+    {/* Dark overlay that covers underlying content during swipe-to-dismiss */}
+    <div
+      className="fixed inset-0 z-[48]"
+      style={{
+        backgroundColor: `rgba(0,0,0,${0.7 * backdropOpacity})`,
+        backdropFilter: `blur(${8 * backdropOpacity}px)`,
+        WebkitBackdropFilter: `blur(${8 * backdropOpacity}px)`,
+        opacity: (entering && backdropOpacity === 0) ? 0 : 1,
+        transition: closing ? "opacity 0.25s ease-in" : entering ? "opacity 0.3s ease-out" : "none",
+        pointerEvents: backdropOpacity === 0 ? "none" : "auto",
+      }}
+    />
     {/* Full-screen backdrop so iOS keyboard gap shows bg color, not content behind */}
     <div
       className="fixed inset-0 bg-bg z-[49]"
@@ -526,55 +541,7 @@ const SquadChat = ({
         </div>
       )}
 
-      {/* I'm out confirmation */}
-      {showImOutConfirm && (
-        <div
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]"
-          onClick={() => setShowImOutConfirm(false)}
-        >
-          <div
-            className="bg-deep border border-border rounded-2xl px-5 py-6 w-[90%] max-w-[300px] text-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="font-serif text-lg text-primary mb-1.5" style={{ fontWeight: 400 }}>
-              Can&apos;t make it?
-            </p>
-            <p className="font-mono text-xs text-dim mb-5">
-              You&apos;ll be removed from this squad and lose access to the chat.
-            </p>
-            <div className="flex gap-2.5">
-              <button
-                onClick={() => setShowImOutConfirm(false)}
-                className="flex-1 py-2.5 bg-transparent border border-border rounded-lg text-primary font-mono text-xs cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  if (localSquad?.id && onConfirmDate) {
-                    setConfirmLoading(true);
-                    try {
-                      await onConfirmDate(localSquad.id, 'no');
-                      setDateConfirmStatus('no');
-                      if (userId) setDateConfirms((prev) => new Map(prev).set(userId, 'no'));
-                      onSquadUpdate((prev) => prev.filter((s) => s.id !== localSquad.id));
-                      onClose();
-                    } catch (err) {
-                      logError('dateConfirm', err);
-                    } finally {
-                      setConfirmLoading(false);
-                    }
-                  }
-                  setShowImOutConfirm(false);
-                }}
-                className="flex-1 py-2.5 bg-[#ff4444] border-none rounded-lg text-white font-mono text-xs font-bold cursor-pointer"
-              >
-                I&apos;m out
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* I'm out confirmation removed — "can't make it" is now a soft action */}
 
       {/* Kick member confirmation */}
       {kickTarget && localSquad && (
@@ -799,6 +766,13 @@ const SquadChat = ({
       ) : (
       <div className="border-t border-border">
         {/* Sticky date confirm bar */}
+        {dateConfirmStatus === 'no' && !confirmLoading && localSquad.dateStatus === 'proposed' && (
+          <div className="border-t border-border px-5 py-3 flex items-center justify-center bg-card">
+            <span className="font-mono text-xs text-faint">
+              can&apos;t make it
+            </span>
+          </div>
+        )}
         {(dateConfirmStatus === 'pending' || (dateConfirmStatus === 'loading' && localSquad.dateStatus === 'proposed')) && !confirmLoading && (
           <div className="border-t border-border px-5 py-3 flex flex-col items-center gap-2.5 bg-card">
             <span className="font-mono text-tiny text-dim">
@@ -824,10 +798,22 @@ const SquadChat = ({
                 STILL DOWN
               </button>
               <button
-                onClick={() => setShowImOutConfirm(true)}
+                onClick={async () => {
+                  if (!localSquad?.id || confirmLoading) return;
+                  setConfirmLoading(true);
+                  try {
+                    await onConfirmDate?.(localSquad.id, 'no');
+                    setDateConfirmStatus('no');
+                    if (userId) setDateConfirms((prev) => new Map(prev).set(userId, 'no'));
+                  } catch (err) {
+                    logError('dateConfirm', err);
+                  } finally {
+                    setConfirmLoading(false);
+                  }
+                }}
                 className="bg-transparent text-primary border border-border-mid rounded-lg px-4 py-1.5 font-mono text-xs font-bold cursor-pointer"
               >
-                I&apos;M OUT
+                CAN&apos;T MAKE IT
               </button>
             </div>
           </div>
