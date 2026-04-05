@@ -278,7 +278,7 @@ const ProfileView = ({
           );
         })}
       </div>
-    </div>
+    </div>}
 
     {/* Availability Meter */}
     <div
