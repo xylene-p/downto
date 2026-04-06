@@ -5,17 +5,17 @@ import { color } from "@/lib/styles";
 import type { Tab } from "@/lib/ui-types";
 import { TABS } from "@/lib/ui-types";
 
-const tabIcons: Record<Tab, string> = { feed: "⚡", calendar: "📅", groups: "👥", profile: "⚙" };
-const tabLabels: Record<Tab, string> = { feed: "Feed", calendar: "Cal", groups: "Squads", profile: "You" };
+const tabIcons: Record<Tab, string> = { feed: "⚡", plans: "📋", profile: "⚙" };
+const tabLabels: Record<Tab, string> = { feed: "Feed", plans: "Plans", profile: "You" };
 
 const BottomNav = ({
   tab,
   onTabChange,
-  hasGroupsUnread,
+  hasPlansUnread,
 }: {
   tab: Tab;
   onTabChange: (t: Tab) => void;
-  hasGroupsUnread: boolean;
+  hasPlansUnread: boolean;
 }) => {
   const prevTab = useRef(tab);
   const highlightRef = useRef<HTMLDivElement>(null);
@@ -35,9 +35,9 @@ const BottomNav = ({
     const max = Math.max(from, to);
 
     setSettled(false);
-    const cell = (i: number) => `calc(${i} * (100% - 8px) / 4 + 4px)`;
-    const cellW = "calc((100% - 8px) / 4)";
-    const cellWExpanded = "calc((100% - 8px) / 4 + 20px)";
+    const cell = (i: number) => `calc(${i} * (100% - 8px) / 3 + 4px)`;
+    const cellW = "calc((100% - 8px) / 3)";
+    const cellWExpanded = "calc((100% - 8px) / 3 + 20px)";
 
     // Start from current position
     el.style.transition = "none";
@@ -47,7 +47,7 @@ const BottomNav = ({
 
     // Slide + expand (shift left by 10px to stay centered during stretch)
     el.style.transition = "left 0.15s ease-out, width 0.15s ease-out";
-    el.style.left = `calc(${to} * (100% - 8px) / 4 + 4px - 10px)`;
+    el.style.left = `calc(${to} * (100% - 8px) / 3 + 4px - 10px)`;
     el.style.width = cellWExpanded;
 
     // Settle: shrink back to normal at final position
@@ -65,7 +65,7 @@ const BottomNav = ({
   const idx = TABS.indexOf(tab);
 
   return (
-    <div className="shrink-0 px-4 pb-4 bg-bg">
+    <div className="shrink-0 px-4 pb-2 bg-bg">
       <div
         className="flex bg-card rounded-[18px] p-1 border border-border relative items-stretch"
         style={{ height: 60 }}
@@ -75,8 +75,8 @@ const BottomNav = ({
           ref={highlightRef}
           className="absolute top-1 bottom-1 bg-border-light rounded-xl opacity-30"
           style={{
-            left: `calc(${idx} * (100% - 8px) / 4 + 4px)`,
-            width: "calc((100% - 8px) / 4)",
+            left: `calc(${idx} * (100% - 8px) / 3 + 4px)`,
+            width: "calc((100% - 8px) / 3)",
             ...(settled ? { transition: "none" } : {}),
           }}
         />
@@ -100,9 +100,9 @@ const BottomNav = ({
             >
               {tabLabels[t]}
             </span>
-            {t === "groups" && hasGroupsUnread && (
+            {t === "plans" && hasPlansUnread && (
               <div
-                data-testid="squads-unread-dot"
+                data-testid="plans-unread-dot"
                 className="absolute top-1 right-2 w-[7px] h-[7px] rounded-full bg-[#ff3b30]"
               />
             )}
