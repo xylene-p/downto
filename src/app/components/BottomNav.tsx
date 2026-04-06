@@ -5,17 +5,17 @@ import { color } from "@/lib/styles";
 import type { Tab } from "@/lib/ui-types";
 import { TABS } from "@/lib/ui-types";
 
-const tabIcons: Record<Tab, string> = { feed: "⚡", plans: "📋", profile: "⚙" };
-const tabLabels: Record<Tab, string> = { feed: "Feed", plans: "Plans", profile: "You" };
+const tabIcons: Record<Tab, string> = { feed: "⚡", squads: "👥", profile: "⚙" };
+const tabLabels: Record<Tab, string> = { feed: "Feed", squads: "Squads", profile: "You" };
 
 const BottomNav = ({
   tab,
   onTabChange,
-  hasPlansUnread,
+  hasSquadsUnread,
 }: {
   tab: Tab;
   onTabChange: (t: Tab) => void;
-  hasPlansUnread: boolean;
+  hasSquadsUnread: boolean;
 }) => {
   const prevTab = useRef(tab);
   const highlightRef = useRef<HTMLDivElement>(null);
@@ -65,7 +65,7 @@ const BottomNav = ({
   const idx = TABS.indexOf(tab);
 
   return (
-    <div className="shrink-0 px-4 pb-2 bg-bg">
+    <div className="shrink-0 px-4 pb-4 bg-bg">
       <div
         className="flex bg-card rounded-[18px] p-1 border border-border relative items-stretch"
         style={{ height: 60 }}
@@ -100,9 +100,9 @@ const BottomNav = ({
             >
               {tabLabels[t]}
             </span>
-            {t === "plans" && hasPlansUnread && (
+            {t === "squads" && hasSquadsUnread && (
               <div
-                data-testid="plans-unread-dot"
+                data-testid="squads-unread-dot"
                 className="absolute top-1 right-2 w-[7px] h-[7px] rounded-full bg-[#ff3b30]"
               />
             )}

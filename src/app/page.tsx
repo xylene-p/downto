@@ -20,7 +20,6 @@ import FeedView from "@/features/feed/components/FeedView";
 import { FeedContext } from "@/features/checks/context/FeedContext";
 import FriendsModal from "@/features/friends/components/FriendsModal";
 import OnboardingFriendsPopup from "@/features/friends/components/OnboardingFriendsPopup";
-import CalendarView from "@/features/calendar/components/CalendarView";
 import GroupsView from "@/features/squads/components/GroupsView";
 import SquadChat from "@/features/squads/components/SquadChat";
 import ProfileView from "@/features/profile/components/ProfileView";
@@ -255,7 +254,7 @@ export default function Home() {
     handleTouchEnd: handlePullEnd,
   } = usePullToRefresh({
     onRefresh: loadRealData,
-    enabledTabs: ["feed", "calendar", "groups"],
+    enabledTabs: ["feed", "squads"],
     chatOpen,
     tab,
   });
@@ -365,14 +364,14 @@ export default function Home() {
             setSquadChatOrigin(tab);
             squadsHook.setAutoSelectSquadId(relatedId);
           } else {
-            setTab('groups');
+            setTab('squads');
           }
         } else if (nType === 'date_confirm') {
           if (relatedId) {
             setSquadChatOrigin(tab);
             squadsHook.setAutoSelectSquadId(relatedId);
           } else {
-            setTab('groups');
+            setTab('squads');
           }
         } else if (nType === 'check_response' || nType === 'friend_check' || nType === 'check_tag') {
           setTab('feed');
@@ -792,7 +791,7 @@ export default function Home() {
               if (squadId) {
                 squadsHook.setAutoSelectSquadId(squadId);
               } else {
-                setTab("groups");
+                setTab("squads");
               }
             }}
             onViewProfile={(uid) => setViewingUserId(uid)}
@@ -805,31 +804,16 @@ export default function Home() {
             onEnableNotifications={handleTogglePush}
           />
         )}
-        {feedLoaded && tab === "calendar" && (
-          <CalendarView
-            events={events}
-            checks={checksHook.checks}
-            myCheckResponses={checksHook.myCheckResponses}
-            onToggleSave={toggleSave}
-            onToggleDown={toggleDown}
-            onOpenSocial={(e) => squadsHook.setSocialEvent(e)}
-            onEditEvent={(e) => setEditingEvent(e)}
-            userId={userId ?? undefined}
-            leftChecks={checksHook.leftChecks}
-            onRedownFromLeft={checksHook.redownFromLeft}
-          />
-        )}
-        {feedLoaded && tab === "groups" && (
+        {feedLoaded && tab === "squads" && (
           <GroupsView
             squads={squadsHook.squads}
             onSelectSquad={(squad) => {
               setSelectedSquad(squad);
-              setSquadChatOrigin("groups");
+              setSquadChatOrigin("squads");
               db.markSquadRead(squad.id).catch(() => {});
               if (squad.hasUnread) {
                 squadsHook.setSquads((prev) => prev.map((s) => s.id === squad.id ? { ...s, hasUnread: false } : s));
               }
-              // Clear OS push notifications for this squad
               if ("serviceWorker" in navigator) {
                 navigator.serviceWorker.getRegistration().then((reg) => {
                   if (!reg) return;
@@ -940,13 +924,13 @@ export default function Home() {
           onTabChange={(t) => {
             setTab(t);
             scrollRef.current?.scrollTo(0, 0);
-            if (t === "groups") {
+            if (t === "squads") {
               if (userId) loadRealData();
             }
             if (t === "feed" && userId) loadRealData();
             if (t !== "feed") checksHook.dispatch({ type: CheckActionType.SET_NEWLY_ADDED, checkId: null });
           }}
-          hasGroupsUnread={squadsHook.squads.some((s) => s.hasUnread) || notificationsHook.notifications.some((n) => n.type === "squad_invite" && !n.is_read)}
+          hasSquadsUnread={squadsHook.squads.some((s) => s.hasUnread) || notificationsHook.notifications.some((n) => n.type === "squad_invite" && !n.is_read)}
         />
       </div>
 
@@ -987,7 +971,7 @@ export default function Home() {
         onGoToSquad={(squadId) => {
           squadsHook.setSocialEvent(null);
           squadsHook.setAutoSelectSquadId(squadId);
-          setTab("groups");
+          setTab("squads");
         }}
         onRequestToJoin={squadsHook.handleRequestToJoin}
         pendingRequestSquadIds={squadsHook.pendingRequestSquadIds}
@@ -1010,7 +994,7 @@ export default function Home() {
             if (action.squadId) {
               squadsHook.setAutoSelectSquadId(action.squadId);
             } else {
-              setTab("groups");
+              setTab("squads");
             }
           } else if (action.type === "feed") {
             setTab("feed");
