@@ -61,9 +61,7 @@
 @layer base {
   html, body {
     overflow: hidden;
-    height: 100%;
     overscroll-behavior: none;
-    background: #0a0a0a;
   }
 
   ::-webkit-scrollbar {

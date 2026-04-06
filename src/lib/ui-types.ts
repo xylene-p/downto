@@ -141,7 +141,7 @@ export interface Friend {
 
 export type AvailabilityStatus = "open" | "not-available" | "awkward";
 
-export const TABS = ["feed", "calendar", "groups", "profile"] as const;
+export const TABS = ["feed", "squads", "profile"] as const;
 export type Tab = (typeof TABS)[number];
 
 export const AVAILABILITY_OPTIONS: { value: AvailabilityStatus; label: string; emoji: string; color: string }[] = [

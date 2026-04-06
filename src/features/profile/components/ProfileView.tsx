@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { Profile } from "@/lib/types";
+import * as db from "@/lib/db";
 import { API_BASE } from "@/lib/db";
 import cn from "@/lib/tailwindMerge";
 import type { Friend, AvailabilityStatus } from "@/lib/ui-types";
@@ -523,6 +524,22 @@ const ProfileView = ({
           </span>
         </div>
       )}
+      <div
+        onClick={async () => {
+          try {
+            const token = await db.getCalendarToken();
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const url = `webcal://${window.location.host}/api/calendar/${token}?tz=${encodeURIComponent(tz)}`;
+            window.location.href = url;
+          } catch {
+            showToast?.("Could not generate calendar link");
+          }
+        }}
+        className="py-3.5 border-b border-border font-mono text-xs text-muted flex justify-between items-center cursor-pointer"
+      >
+        <span>Sync to Calendar</span>
+        <span className="text-faint text-xs">Subscribe →</span>
+      </div>
       {profile?.is_test && onUpdateProfile && (
         <div
           onClick={async () => {

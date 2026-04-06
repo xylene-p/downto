@@ -7,7 +7,7 @@ export function useAppNavigation() {
   const [tab, setTab] = useState<Tab>(() => {
     if (typeof window !== "undefined") {
       const p = new URLSearchParams(window.location.search).get("tab");
-      if (p === "feed" || p === "groups" || p === "profile" || p === "calendar") return p;
+      if (p === "feed" || p === "squads" || p === "profile") return p;
     }
     return "feed";
   });

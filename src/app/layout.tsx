@@ -71,13 +71,13 @@ export default function RootLayout({
           input, textarea, select { font-size: 16px !important; }
         `}</style>
       </head>
-      <body className="h-full bg-neutral-950 font-mono font-normal text-neutral-500 antialiased">
+      <body className="flex min-h-screen justify-center bg-bg font-mono font-normal text-neutral-500 antialiased">
         <ThemeHydrator />
         <NativeStatusBar />
         <Grain />
         <DevProdBanner />
         <UpdateBanner />
-        <div className="mx-auto flex h-dvh w-full max-w-105 flex-col">
+        <div className="mx-auto flex w-full max-w-105 flex-col">
           {children}
         </div>
       </body>
