@@ -1,4 +1,4 @@
-export type ThemeName = "katsu" | "orlando" | "justin";
+export type ThemeName = "guava" | "acid" | "firefly";
 
 export interface ThemeTokens {
   // Core palette

@@ -139,7 +139,7 @@ export default function Home() {
       setEvents((prev) =>
         prev.map((e) => e.id === eventId ? { ...e, isDown: true, saved: true } : e)
       );
-      showToast("You're down! \u{1F919}");
+      showToast("You're down! ✦");
     },
   });
 
@@ -258,6 +258,7 @@ export default function Home() {
     enabledTabs: ["feed", "squads"],
     chatOpen,
     tab,
+    disabled: !feedLoaded,
   });
 
   // ─── Effects ────────────────────────────────────────────────────────────
@@ -714,8 +715,9 @@ export default function Home() {
         onOpenAdd={() => { setAddModalOpen(true); clearAddGlowRef.current(); }}
         glowAdd={onboarding.showAddGlow}
         sortBy={sortBy}
-        onSortChange={setSortBy}
+        onSortChange={(s) => { setSortBy(s); scrollRef.current?.scrollTo({ top: 0 }); }}
         showSort={tab === 'feed'}
+        scrolled={scrolledDown}
       />
 
       {/* Scroll area with fade edges */}
@@ -729,19 +731,12 @@ export default function Home() {
             opacity: scrolledDown ? 1 : 0,
           }}
         />
-        {/* Bottom fade */}
-        <div
-          className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none"
-          style={{
-            height: 15,
-            background: `linear-gradient(transparent, ${color.bg})`,
-          }}
-        />
+        {/* Bottom fade — removed for cleaner look */}
         {/* Scroll container */}
         <div
           ref={scrollRef}
           className="h-full overflow-y-auto"
-          style={{ paddingTop: `calc(env(safe-area-inset-top, 16px) + ${(tab === 'feed' ? HEADER_HEIGHT_WITH_TABS_PX : HEADER_HEIGHT_PX) + HEADER_OFFSET_PX}px)` }}
+          style={{ paddingTop: `calc(env(safe-area-inset-top, 16px) + ${(tab === 'feed' ? HEADER_HEIGHT_WITH_TABS_PX : HEADER_HEIGHT_PX) + HEADER_OFFSET_PX}px)`, paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))" }}
           onScroll={() => {
             const scrolled = (scrollRef.current?.scrollTop ?? 0) > 0;
             if (scrolled !== scrolledDown) setScrolledDown(scrolled);
@@ -756,7 +751,7 @@ export default function Home() {
         <div
           ref={spinnerWrapRef}
           className="absolute left-0 right-0 flex justify-center"
-          style={{ top: -50, willChange: "transform, opacity" }}
+          style={{ top: -50, willChange: "transform, opacity", opacity: 0 }}
         >
           <div
             ref={spinnerRef}
@@ -817,7 +812,7 @@ export default function Home() {
             onDismissInstallBanner={!onboarding.installDismissed ? onboarding.dismissInstall : onboarding.dismissNotifBanner}
             onEnableNotifications={handleTogglePush}
             sortBy={sortBy}
-            onSortChange={setSortBy}
+            onSortChange={(s) => { setSortBy(s); scrollRef.current?.scrollTo({ top: 0 }); }}
           />
         )}
         {feedLoaded && tab === "squads" && (
