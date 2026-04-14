@@ -83,10 +83,10 @@ const EventCard = ({
       <button
         onClick={onToggleDown}
         className={cn(
-          "flex-1 rounded-lg py-1.5 font-mono text-tiny font-bold cursor-pointer uppercase tracking-[0.08em] border",
+          "rounded-full py-1.5 px-3 font-mono text-tiny font-bold cursor-pointer whitespace-nowrap",
           event.isDown
-            ? "bg-down-active-bg text-down-active-text border-none"
-            : "bg-down-idle-bg text-dt border-down-idle-border"
+            ? "bg-dt text-on-accent border-none"
+            : "bg-transparent text-primary border border-border-mid"
         )}
       >
         {event.isDown ? <><span>DOWN</span><svg width="12" height="12" viewBox="0 0 256 256" fill="currentColor" className="inline ml-1"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg></> : "DOWN ?"}
