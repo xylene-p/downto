@@ -35,7 +35,7 @@ const isCapacitorBuild = process.env.CAPACITOR_BUILD === "true";
 
 const nextConfig: NextConfig = {
   ...(isCapacitorBuild && { output: "export" }),
-  allowedDevOrigins: ["http://127.0.0.1"],
+  allowedDevOrigins: ["http://127.0.0.1", "*.ngrok-free.dev"],
   reactStrictMode: true,
   typescript: {
     // Type errors are caught in dev/IDE; skip during build to save ~8s on Vercel
