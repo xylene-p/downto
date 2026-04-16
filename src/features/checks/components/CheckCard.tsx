@@ -181,7 +181,7 @@ export default function CheckCard({
           </div>
         )}
         <div
-          className={`p-4 ${(check.isYours || check.isCoAuthor) ? "cursor-pointer" : ""}`}
+          className={`p-4 ${isCommentsOpen ? "pb-10" : ""} ${(check.isYours || check.isCoAuthor) ? "cursor-pointer" : ""}`}
           onClick={(check.isYours || check.isCoAuthor) ? (e) => {
             // Only open modal if click wasn't on an interactive element
             const target = e.target as HTMLElement;
