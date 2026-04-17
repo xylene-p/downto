@@ -426,6 +426,21 @@ export default function CheckCard({
             </div>
           )}
 
+          {/* Add comment link when no comments exist */}
+          {!hasComments && !isCommentsOpen && (
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                openComments();
+                setCommentsEverOpened(true);
+                setIsCommentsOpen(true);
+              }}
+              className="mt-3 cursor-pointer"
+            >
+              <span className="font-mono text-tiny text-faint">add a comment…</span>
+            </div>
+          )}
+
           </div>
         </div>
       </div>
