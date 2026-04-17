@@ -8,7 +8,7 @@ import type { ThemeName, ThemeTokens } from "./types";
 
 export const themes: Record<ThemeName, ThemeTokens> = { guava, acid, firefly, midnight, monochrome };
 
-export const DEFAULT_THEME: ThemeName = "monochrome";
+export const DEFAULT_THEME: ThemeName = "guava";
 
 export function getThemeName(): ThemeName {
   const envTheme = process.env.NEXT_PUBLIC_THEME as ThemeName | undefined;
