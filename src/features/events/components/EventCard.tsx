@@ -166,15 +166,15 @@ const EventCard = ({
                   <span className="bg-dt text-on-accent font-mono text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none ml-2">new</span>
                 )}
               </div>
-              <p className="font-mono text-xs text-muted m-0 mt-2">
-                <span className="text-dt">
+              <div className="flex justify-between items-baseline mt-2">
+                <span className="font-mono text-xs text-muted">
                   {event.date}
-                  {event.time && event.time !== "TBD" && ` ${event.time}`}
+                  {event.time && event.time !== "TBD" && ` · ${event.time}`}
                 </span>
                 {event.venue && event.venue !== "TBD" && (
-                  <span>{" · "}{event.venue}</span>
+                  <span className="font-mono text-xs text-muted text-right">{event.venue}</span>
                 )}
-              </p>
+              </div>
             </div>
           </div>
 
@@ -197,7 +197,7 @@ const EventCard = ({
               className={cn(
                 "rounded-full py-1.5 px-3 font-mono text-tiny font-bold whitespace-nowrap cursor-pointer shrink-0",
                 event.isDown
-                  ? "bg-dt text-bg border-none"
+                  ? "bg-dt text-on-accent border-none"
                   : "bg-[#F5F7EA] text-dt border border-[#CDC999]"
               )}
             >
