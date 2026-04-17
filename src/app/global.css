@@ -78,6 +78,12 @@
   border-color: transparent !important;
 }
 
+/* Author's own check card - pale green wash, no border */
+.check-mine {
+  background-color: #F0FFD8 !important;
+  border-color: transparent !important;
+}
+
 @layer base {
   html, body {
     overflow: hidden;
