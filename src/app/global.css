@@ -39,7 +39,7 @@
 
   /* Font family */
   --font-serif: var(--font-inter), sans-serif;
-  --font-mono: var(--font-inter), sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), monospace;
 
   --animate-fade-in: fadeIn 0.3s ease;
   --animate-slide-up: slideUp 0.3s ease-out;
@@ -71,6 +71,7 @@
 .font-mono {
   letter-spacing: -0.02em;
   font-weight: 300;
+  -webkit-text-stroke: 0.15px;
 }
 
 .font-serif {

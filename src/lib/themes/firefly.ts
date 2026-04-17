@@ -28,7 +28,7 @@ export const firefly: ThemeTokens = {
 
   onAccent: "#fff",
 
-  fontMono: "var(--font-inter), sans-serif",
+  fontMono: "var(--font-ibm-plex-mono), monospace",
   fontSerif: "var(--font-inter), sans-serif",
 
   themeColor: "#F0FFD4",
