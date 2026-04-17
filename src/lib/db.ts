@@ -1087,12 +1087,12 @@ export async function getEventCommentCounts(eventIds: string[]): Promise<Record<
 
 export function subscribeToEventComments(eventId: string, onComment: (comment: CheckComment) => void) {
   return supabase
-    .channel(\`event_comments:\${eventId}\`)
+    .channel(`event_comments:${eventId}`)
     .on('postgres_changes', {
       event: 'INSERT',
       schema: 'public',
       table: 'check_comments',
-      filter: \`event_id=eq.\${eventId}\`,
+      filter: `event_id=eq.${eventId}`,
     }, (payload) => onComment(payload.new as CheckComment))
     .subscribe();
 }

@@ -45,10 +45,9 @@ export default function CheckCommentsSection({
   };
 
   return (
-    <div>
-      <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5">
       {comments.length === 0 ? (
-        <span className="font-mono text-tiny text-dim py-0.5">no comments yet</span>
+        <span className="font-mono text-tiny text-faint py-0.5">no comments yet</span>
       ) : (
         <>
           {(showAll ? comments : comments.slice(-3)).map((c) => (
@@ -71,14 +70,14 @@ export default function CheckCommentsSection({
           {!showAll && comments.length > 3 && (
             <button
               onClick={() => setShowAll(true)}
-              className="font-mono text-tiny text-dim cursor-pointer bg-transparent border-none p-0 mt-0.5"
+              className="font-mono text-tiny text-faint cursor-pointer bg-transparent border-none p-0"
             >
               + {comments.length - 3} more
             </button>
           )}
         </>
       )}
-      <div className="flex gap-2 items-center mt-1.5 min-w-0" onClick={(e) => e.stopPropagation()}>
+      <div className="flex gap-2 items-center mt-1 min-w-0" onClick={(e) => e.stopPropagation()}>
         <input
           ref={inputRef}
           value={text}
@@ -104,7 +103,7 @@ export default function CheckCommentsSection({
             }
             if (e.key === "Enter") handleSubmit();
           }}
-          placeholder="Add a comment…"
+          placeholder="Add a comment\u2026"
           className="flex-1 min-w-0 bg-surface border border-border rounded-lg py-1.5 px-2.5 font-mono text-xs text-primary outline-none"
         />
         <button

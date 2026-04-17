@@ -354,18 +354,6 @@ export default function CheckCard({
               </div>
             )}
 
-                  </div>
-                ) : (
-                  <span className="font-mono text-tiny text-faint">
-                    {initialCommentCount} comment{initialCommentCount !== 1 ? "s" : ""}
-                  </span>
-                )}
-              </div>
-
-            </div>
-          )}
-
-
           </div>
         </div>
       </div>
