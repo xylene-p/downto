@@ -72,6 +72,10 @@
   letter-spacing: 0.04em;
 }
 
+.font-serif {
+  letter-spacing: -0.03em;
+}
+
 /* "Down" state check card - lime wash */
 .check-down {
   background-color: #ECFFA5 !important;
