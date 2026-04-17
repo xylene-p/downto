@@ -283,6 +283,7 @@ export default function FeedView({
                   }
                   onViewProfile={onViewProfile}
                   isNew={item.data.id === newlyAddedEventId || newItemIds.has(item.data.id)}
+                  profile={profile}
                 />
               )
             )}
