@@ -185,13 +185,13 @@ const EventCard = ({
                 <span className="bg-dt text-on-accent font-mono text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none ml-2">new</span>
               )}
             </div>
-            <div className="flex justify-between items-baseline mt-2">
+            <div className="flex flex-wrap justify-between items-baseline gap-x-3 gap-y-1 mt-2">
               <span className="font-mono text-xs text-muted">
                 {event.date}
                 {event.time && event.time !== "TBD" && ` · ${event.time}`}
               </span>
               {event.venue && event.venue !== "TBD" && (
-                <span className="font-mono text-xs text-muted text-right">{event.venue}</span>
+                <span className="font-mono text-xs text-muted">{event.venue}</span>
               )}
             </div>
           </div>
