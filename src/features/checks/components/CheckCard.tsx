@@ -104,14 +104,20 @@ export default function CheckCard({
   const commentsRef = React.useRef<HTMLDivElement>(null);
   const expandedRef = React.useRef<HTMLDivElement>(null);
 
-  // Auto-open comments when there are any, or when navigated via notification
+  // Auto-fetch comments on mount when there are any
   useEffect(() => {
-    if ((hasComments || newlyAddedCheckId === check.id) && !isCommentsOpen) {
+    if (hasComments) {
+      openComments();
+    }
+  }, [check.id]);
+  // Also open when navigated via notification
+  useEffect(() => {
+    if (newlyAddedCheckId === check.id && !isCommentsOpen) {
       openComments();
       setCommentsEverOpened(true);
       setIsCommentsOpen(true);
     }
-  }, [newlyAddedCheckId, check.id, hasComments]);
+  }, [newlyAddedCheckId, check.id]);
   const [editModalOpen, setEditModalOpen] = useState(false);
 
   const { comments, commentCount, openComments, postComment } = useCheckComments({
