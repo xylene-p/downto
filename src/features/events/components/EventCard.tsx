@@ -140,6 +140,7 @@ const EventCard = ({
           onViewProfile={onViewProfile}
           comments={evComments}
           onPostComment={postCmt}
+          onEdit={onEdit}
           onClose={() => setShowDetail(false)}
         />
       )}
@@ -159,7 +160,6 @@ const EventCard = ({
           if (touchMoved.current) return;
           const target = e.target as HTMLElement;
           if (target.closest("button") || target.closest("a") || target.closest("input") || target.closest("textarea")) return;
-          if (onEdit) { onEdit(); return; }
           setShowDetail(true);
         }}
         className={cn(
@@ -254,7 +254,7 @@ interface Comment { id: string; userId: string; userName: string; userAvatar: st
 function EventDetailSheet({
   event, userId, sourceLink, hasDetails,
   poolPeople, poolFriends, poolStrangerCount, nonPoolFriends, mutuals, others, hasPool,
-  actionButtons, onOpenSocial, onViewProfile, comments, onPostComment, onClose,
+  actionButtons, onOpenSocial, onViewProfile, comments, onPostComment, onEdit, onClose,
 }: {
   event: Event;
   userId?: string | null;
@@ -267,6 +267,7 @@ function EventDetailSheet({
   onViewProfile?: (userId: string) => void;
   comments: Comment[];
   onPostComment: (text: string) => void;
+  onEdit?: () => void;
   onClose: () => void;
 }) {
   const { visible, entering, closing, close } = useModalTransition(true, onClose);
@@ -367,6 +368,17 @@ function EventDetailSheet({
             actionButtons={actionButtons} onOpenSocial={onOpenSocial} onViewProfile={onViewProfile}
           />
           <CommentsSection comments={comments} onPost={onPostComment} />
+          {onEdit && (
+            <div className="mt-5 pt-4 border-t border-border">
+              <button
+                onClick={() => { onEdit(); close(); }}
+                className="w-full flex items-center justify-between py-2 font-mono text-xs text-dt font-bold uppercase tracking-[0.06em] cursor-pointer"
+              >
+                <span>Edit event</span>
+                <span className="text-faint">→</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
