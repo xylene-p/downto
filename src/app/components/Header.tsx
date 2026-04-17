@@ -37,11 +37,11 @@ const Header = ({
     {/* Blur layer — smooth 8-stop eased fade */}
     <div className="absolute pointer-events-none transition-opacity duration-300" style={{
       inset: "0 0 -24px 0",
-      opacity: scrolled ? 1 : 0.2,
+      opacity: scrolled ? 1 : 0.5,
       backdropFilter: "blur(40px)",
       WebkitBackdropFilter: "blur(40px)",
-      mask: "linear-gradient(to bottom, black 30%, rgba(0,0,0,0.9) 45%, rgba(0,0,0,0.7) 55%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,0.3) 75%, rgba(0,0,0,0.15) 85%, rgba(0,0,0,0.05) 93%, transparent 100%)",
-      WebkitMaskImage: "linear-gradient(to bottom, black 30%, rgba(0,0,0,0.9) 45%, rgba(0,0,0,0.7) 55%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,0.3) 75%, rgba(0,0,0,0.15) 85%, rgba(0,0,0,0.05) 93%, transparent 100%)",
+      mask: "linear-gradient(to bottom, black 0%, rgba(0,0,0,0.9) 45%, rgba(0,0,0,0.7) 55%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,0.3) 75%, rgba(0,0,0,0.15) 85%, rgba(0,0,0,0.05) 93%, transparent 100%)",
+      WebkitMaskImage: "linear-gradient(to bottom, black 0%, rgba(0,0,0,0.9) 45%, rgba(0,0,0,0.7) 55%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,0.3) 75%, rgba(0,0,0,0.15) 85%, rgba(0,0,0,0.05) 93%, transparent 100%)",
     }} />
     {/* Color tint — smooth fade with noise dithering */}
     <div className="absolute pointer-events-none transition-opacity duration-300" style={{
@@ -59,12 +59,8 @@ const Header = ({
       mask: "linear-gradient(to bottom, transparent 30%, black 60%, transparent 100%)",
       WebkitMaskImage: "linear-gradient(to bottom, transparent 30%, black 60%, transparent 100%)",
     }} />
-    {/* Solid cover behind status bar only */}
-    <div className="absolute top-0 left-0 right-0 pointer-events-none" style={{
-      height: "env(safe-area-inset-top, 16px)",
-      background: "var(--color-bg)",
-    }} />
-    <div className="px-5 pb-1 flex justify-between items-center relative">
+
+    <div className="px-5 pb-0 flex justify-between items-center relative">
       <h1
         className="font-serif text-dt font-normal"
         style={{ fontSize: 24, letterSpacing: "-0.06em" }}
