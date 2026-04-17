@@ -15,7 +15,7 @@ export default function CheckCommentsSection({
   onPost: (text: string, mentions?: string[]) => void;
 }) {
   const [text, setText] = useState("");
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(true);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIdx, setMentionIdx] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
