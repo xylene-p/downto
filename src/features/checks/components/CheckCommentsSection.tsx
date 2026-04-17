@@ -55,10 +55,10 @@ export default function CheckCommentsSection({
               <div className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center font-mono text-[9px] font-bold ${c.isYours ? "bg-dt text-on-accent" : "bg-border-light text-dim"}`}>
                 {c.userAvatar}
               </div>
-              <span className="font-mono text-xs text-muted shrink-0 leading-snug">
+              <span className="font-mono text-tiny text-muted shrink-0 leading-snug">
                 {c.userName}
               </span>
-              <span className="font-mono text-xs text-primary min-w-0 break-words leading-snug">
+              <span className="font-mono text-tiny text-primary min-w-0 break-words leading-snug">
                 {c.text.split(/(@\S+)/g).map((part, pi) =>
                   part.startsWith("@") ? (
                     <span key={pi} className="text-dt font-bold">{part}</span>
