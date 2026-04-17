@@ -23,7 +23,7 @@ function toCommentUI(c: CheckComment, userId: string | null): CommentUI {
     userId: c.user_id,
     text: c.text,
     createdAt: c.created_at,
-    userName: c.user_id === userId ? (profile?.display_name ?? "You") : (c.user?.display_name ?? "Unknown"),
+    userName: c.user?.display_name ?? "Unknown",
     userAvatar: c.user?.avatar_letter ?? "?",
     isYours: c.user_id === userId,
   };
