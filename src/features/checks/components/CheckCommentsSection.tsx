@@ -15,6 +15,7 @@ export default function CheckCommentsSection({
   onPost: (text: string, mentions?: string[]) => void;
 }) {
   const [text, setText] = useState("");
+  const [showAll, setShowAll] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIdx, setMentionIdx] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -50,7 +51,7 @@ export default function CheckCommentsSection({
         <span className="font-mono text-tiny text-dim py-0.5">no comments yet</span>
       ) : (
         <>
-          {comments.map((c) => (
+          {(showAll ? comments : comments.slice(0, 2)).map((c) => (
             <div key={c.id} className="flex items-center gap-2 min-w-0">
               <div className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center font-mono text-[9px] font-bold ${c.isYours ? "bg-dt text-on-accent" : "bg-border-light text-dim"}`}>
                 {c.userAvatar}
@@ -67,6 +68,14 @@ export default function CheckCommentsSection({
               </span>
             </div>
           ))}
+          {!showAll && comments.length > 2 && (
+            <button
+              onClick={() => setShowAll(true)}
+              className="font-mono text-tiny text-dim cursor-pointer bg-transparent border-none p-0 mt-0.5"
+            >
+              + {comments.length - 2} more
+            </button>
+          )}
         </>
       )}
       </div>
