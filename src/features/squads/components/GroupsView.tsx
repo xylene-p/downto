@@ -117,29 +117,15 @@ const SquadRow = ({
             </span>
           )}
         </div>
-        <div className="flex flex-col gap-0.5 mt-0.5">
-          {squad.messages && squad.messages.length > 0 ? (
-            squad.messages.slice(-3).map((m, i) => {
-              const isSys = !m.isYou && m.sender === "system";
-              return (
-                <div key={m.id ?? i} className="font-mono text-[10px] text-dim truncate">
-                  {isSys ? (
-                    <span className="text-faint italic">{m.text}</span>
-                  ) : (
-                    <>
-                      <span className="text-muted">{m.isYou ? "You" : m.sender}:</span>{" "}{m.text}
-                    </>
-                  )}
-                </div>
-              );
-            })
-          ) : hasMessage ? (
-            <div className="font-mono text-[10px] text-dim truncate">
-              {sender ? <><span className="text-muted">{sender}:</span> {text}</> : text}
-            </div>
-          ) : eventCompound ? (
-            <div className="font-mono text-[10px] text-dim truncate">{eventCompound}</div>
-          ) : null}
+        <div className="font-mono text-[10px] text-dim mt-0.5 truncate">
+          {(() => {
+            const userMsgs = squad.messages?.filter((m) => m.sender !== "system") ?? [];
+            const last = userMsgs[userMsgs.length - 1];
+            if (last) return <><span className="text-muted">{last.isYou ? "You" : last.sender}:</span>{" "}{last.text}</>;
+            if (hasMessage) return sender ? <><span className="text-muted">{sender}:</span> {text}</> : text;
+            if (eventCompound) return eventCompound;
+            return null;
+          })()}
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0 self-start pt-1">
