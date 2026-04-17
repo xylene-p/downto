@@ -29,7 +29,7 @@ export const firefly: ThemeTokens = {
   onAccent: "#fff",
 
   fontMono: "var(--font-ibm-plex-mono), monospace",
-  fontSerif: "var(--font-cormorant), serif",
+  fontSerif: "var(--font-spectral), serif",
 
   themeColor: "#F0FFD4",
 };
