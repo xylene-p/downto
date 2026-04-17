@@ -79,8 +79,7 @@ export default function CheckCommentsSection({
           )}
         </>
       )}
-      </div>
-      {showInput && <div className="flex gap-2 items-center mt-2 min-w-0">
+      {showInput && <div className="flex gap-2 items-center mt-1.5 min-w-0" onClick={(e) => e.stopPropagation()}>
         <input
           ref={inputRef}
           value={text}
@@ -145,6 +144,7 @@ export default function CheckCommentsSection({
           </div>
         );
       })()}
+      </div>
     </div>
   );
 }

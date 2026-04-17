@@ -99,7 +99,7 @@ export default function CheckCard({
   } = useFeedContext();
   const [isExpanded, setIsExpanded] = useState(false);
   const hasComments = initialCommentCount > 0;
-  const [showInlineInput, setShowInlineInput] = useState(false);
+
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [commentsEverOpened, setCommentsEverOpened] = useState(false);
   const commentsRef = React.useRef<HTMLDivElement>(null);
@@ -329,13 +329,7 @@ export default function CheckCard({
               )}
 
               <div className="flex gap-1.5 items-center ml-auto flex-wrap justify-end">
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleToggleComments(); }}
-                  className={`rounded-full py-1.5 px-3 font-mono text-tiny cursor-pointer flex items-center gap-1 ${isCommentsOpen ? "bg-[#F5F7EA] border border-dt text-dt" : "bg-[#F5F7EA] border border-[#CDC999] text-dt"}`}
-                >
-                  <svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor"><path d="M132,24A100.11,100.11,0,0,0,32,124v84a16,16,0,0,0,16,16h84a100,100,0,0,0,0-200Zm0,184H48V124a84,84,0,1,1,84,84Z"/></svg>
-                  {commentCount > 0 && <span>{commentCount}</span>}
-                </button>
+
               {!check.isYours && (
                 <>
                   <button
@@ -401,7 +395,9 @@ export default function CheckCard({
               <div
                 onClick={(e) => {
                   e.stopPropagation();
-                  setShowInlineInput(true);
+                  openComments();
+                  setCommentsEverOpened(true);
+                  setIsCommentsOpen(true);
                 }}
                 className="cursor-pointer"
               >
@@ -414,17 +410,7 @@ export default function CheckCard({
                       <span className="text-dim">{comments[comments.length - 1].userName}:</span>{" "}{comments[comments.length - 1].text}
                     </span>
                     {initialCommentCount > 1 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openComments();
-                          setCommentsEverOpened(true);
-                          setIsCommentsOpen(true);
-                        }}
-                        className="font-mono text-tiny text-faint shrink-0 bg-transparent border-none cursor-pointer p-0"
-                      >
-                        view all {initialCommentCount}
-                      </button>
+                      <span className="font-mono text-tiny text-faint shrink-0">+{initialCommentCount - 1}</span>
                     )}
                   </div>
                 ) : (
@@ -433,22 +419,7 @@ export default function CheckCard({
                   </span>
                 )}
               </div>
-              {showInlineInput && (
-                <div className="flex gap-2 items-center mt-2 min-w-0" onClick={(e) => e.stopPropagation()}>
-                  <input
-                    autoFocus
-                    value=""
-                    onChange={() => {}}
-                    onFocus={() => {
-                      openComments();
-                      setCommentsEverOpened(true);
-                      setIsCommentsOpen(true);
-                    }}
-                    placeholder="Add a comment…"
-                    className="flex-1 min-w-0 bg-surface border border-border rounded-lg py-1.5 px-2.5 font-mono text-xs text-primary outline-none"
-                  />
-                </div>
-              )}
+
             </div>
           )}
 
