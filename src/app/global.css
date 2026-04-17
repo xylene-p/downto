@@ -70,7 +70,8 @@
 /* Mono font spacing */
 .font-mono {
   letter-spacing: -0.02em;
-  font-weight: 700;
+  font-weight: 300;
+  -webkit-text-stroke: 0.3px;
 }
 
 .font-serif {
