@@ -5,6 +5,7 @@ import type { Event } from "@/lib/ui-types";
 import { useModalTransition } from "@/shared/hooks/useModalTransition";
 import cn from "@/lib/tailwindMerge";
 import * as db from "@/lib/db";
+import InlineCommentsBox from "@/shared/components/InlineCommentsBox";
 
 const EventCard = ({
   event,
@@ -40,7 +41,7 @@ const EventCard = ({
       })));
     }).catch(() => {});
   }, [event.id, userId]);
-  const postCmt = useCallback(async (text: string) => {
+  const postCmt = useCallback(async (text: string, _mentions?: string[]) => {
     const t = text.trim();
     if (!t || !event.id) return;
     const opt = { id: `opt-${Date.now()}`, userId: userId ?? "", userName: "You", userAvatar: "?", text: t, isYours: true };
@@ -138,8 +139,6 @@ const EventCard = ({
           actionButtons={actionButtons}
           onOpenSocial={onOpenSocial}
           onViewProfile={onViewProfile}
-          comments={evComments}
-          onPostComment={postCmt}
           onEdit={onEdit}
           onClose={() => setShowDetail(false)}
         />
@@ -223,22 +222,14 @@ const EventCard = ({
             </button>
           </div>
 
-          {/* Comment preview: latest comment one-line + count badge */}
-          {evComments.length > 0 && (() => {
-            const latest = evComments[evComments.length - 1];
-            return (
-              <div className="mt-3 flex items-center gap-2 min-w-0">
-                <div className={`w-4 h-4 rounded-full shrink-0 flex items-center justify-center font-mono text-[8px] font-bold ${latest.isYours ? "bg-dt text-on-accent" : "bg-border-light text-dim"}`}>
-                  {latest.userAvatar}
-                </div>
-                <span className="font-mono text-tiny text-muted shrink-0">{latest.userName}</span>
-                <span className="font-mono text-tiny text-primary min-w-0 truncate flex-1">{latest.text}</span>
-                {evComments.length > 1 && (
-                  <span className="font-mono text-tiny text-faint shrink-0">💬 {evComments.length}</span>
-                )}
-              </div>
-            );
-          })()}
+          {/* Inline comments — tap to toggle input */}
+          <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+            <InlineCommentsBox
+              comments={evComments}
+              userId={userId ?? null}
+              onPost={postCmt}
+            />
+          </div>
         </div>
       </div>
     </>
@@ -249,12 +240,10 @@ const EventCard = ({
 
 interface Person { name: string; avatar: string; mutual?: boolean; inPool?: boolean; }
 
-interface Comment { id: string; userId: string; userName: string; userAvatar: string; text: string; isYours: boolean; }
-
 function EventDetailSheet({
   event, userId, sourceLink, hasDetails,
   poolPeople, poolFriends, poolStrangerCount, nonPoolFriends, mutuals, others, hasPool,
-  actionButtons, onOpenSocial, onViewProfile, comments, onPostComment, onEdit, onClose,
+  actionButtons, onOpenSocial, onViewProfile, onEdit, onClose,
 }: {
   event: Event;
   userId?: string | null;
@@ -265,8 +254,6 @@ function EventDetailSheet({
   actionButtons: React.ReactNode;
   onOpenSocial: () => void;
   onViewProfile?: (userId: string) => void;
-  comments: Comment[];
-  onPostComment: (text: string) => void;
   onEdit?: () => void;
   onClose: () => void;
 }) {
@@ -367,7 +354,6 @@ function EventDetailSheet({
             nonPoolFriends={nonPoolFriends} mutuals={mutuals} others={others} hasPool={hasPool}
             actionButtons={actionButtons} onOpenSocial={onOpenSocial} onViewProfile={onViewProfile}
           />
-          <CommentsSection comments={comments} onPost={onPostComment} />
           {onEdit && (
             <div className="mt-5 pt-4 border-t border-border">
               <button
@@ -711,56 +697,6 @@ function SheetHero(props: SheetProps) {
 
       <div className="mt-3">{actionButtons}</div>
     </>
-  );
-}
-
-function CommentsSection({ comments, onPost }: { comments: Comment[]; onPost: (text: string) => void }) {
-  const [text, setText] = useState("");
-  const handlePost = () => {
-    const t = text.trim();
-    if (!t) return;
-    onPost(t);
-    setText("");
-  };
-  return (
-    <div className="mt-5">
-      <div className="font-mono text-[10px] uppercase tracking-[0.15em] text-dim mb-2">Comments</div>
-      <div className="flex flex-col gap-2">
-        {comments.length === 0 && (
-          <div className="font-mono text-tiny text-faint">No comments yet. Be the first.</div>
-        )}
-        {comments.map((cm) => (
-          <div key={cm.id} className="flex items-start gap-2 min-w-0">
-            <div className={cn(
-              "w-5 h-5 rounded-full shrink-0 flex items-center justify-center font-mono text-[9px] font-bold mt-px",
-              cm.isYours ? "bg-dt text-on-accent" : "bg-border-light text-dim"
-            )}>
-              {cm.userAvatar}
-            </div>
-            <div className="min-w-0 flex-1 font-mono text-xs" style={{ lineHeight: 1.5 }}>
-              <span className="text-muted mr-1.5">{cm.userName}</span>
-              <span className="text-primary break-words">{cm.text}</span>
-            </div>
-          </div>
-        ))}
-        <div className="flex gap-2 mt-2">
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value.slice(0, 280))}
-            onKeyDown={(e) => { if (e.key === "Enter") handlePost(); }}
-            placeholder="Add a comment…"
-            className="flex-1 min-w-0 bg-surface border border-border rounded-lg py-1.5 px-2.5 font-mono text-xs text-primary outline-none"
-          />
-          <button
-            onClick={handlePost}
-            disabled={!text.trim()}
-            className="shrink-0 bg-dt text-on-accent rounded-lg py-1.5 px-3 font-mono text-xs font-bold cursor-pointer disabled:opacity-50 disabled:cursor-default"
-          >
-            Post
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }
 
