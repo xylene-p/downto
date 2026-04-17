@@ -98,18 +98,14 @@ export default function CheckCard({
     hideCheck,
   } = useFeedContext();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
-  const [commentsEverOpened, setCommentsEverOpened] = useState(false);
-  const commentsRef = React.useRef<HTMLDivElement>(null);
+  const hasComments = initialCommentCount > 0;
+
   const expandedRef = React.useRef<HTMLDivElement>(null);
 
-  // Auto-open comments when navigated to this check via notification
-  useEffect(() => {
-    if (newlyAddedCheckId === check.id && !isCommentsOpen) {
-      openComments();
-      setIsCommentsOpen(true);
-    }
-  }, [newlyAddedCheckId, check.id]);
+
+
+
+  useEffect(() => { openComments(); }, [check.id]);
   const [editModalOpen, setEditModalOpen] = useState(false);
 
   const { comments, commentCount, openComments, postComment } = useCheckComments({
@@ -119,28 +115,7 @@ export default function CheckCard({
     initialCommentCount,
   });
 
-  const handleToggleComments = async () => {
-    if (!isCommentsOpen) {
-      await openComments();
-      setCommentsEverOpened(true);
-      setIsCommentsOpen(true);
-      setTimeout(() => {
-        const el = commentsRef.current;
-        if (!el) return;
-        const scrollParent = el.closest('[class*="overflow-y"]') || el.closest('[style*="overflow"]');
-        if (scrollParent) {
-          const elRect = el.getBoundingClientRect();
-          const parentRect = scrollParent.getBoundingClientRect();
-          const overflow = elRect.bottom - parentRect.bottom + 80;
-          if (overflow > 0) {
-            scrollParent.scrollBy({ top: overflow, behavior: "smooth" });
-          }
-        }
-      }, 250);
-    } else {
-      setIsCommentsOpen(false);
-    }
-  };
+
 
   const shareCheck = async () => {
     try { await db.markCheckShared(check.id); } catch { /* best-effort */ }
@@ -159,11 +134,12 @@ export default function CheckCard({
 
   return (
     <>
+      <div className="mb-2">
       <div
         ref={check.id === newlyAddedCheckId ? (el) => {
           if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
         } : undefined}
-        className={`overflow-hidden mb-2 ${
+        className={`overflow-hidden relative ${
           myCheckResponses[check.id] === "down" ? "check-down rounded-2xl" :
           (check.isYours || check.isCoAuthor) ? "check-mine rounded-2xl" :
           check.id === newlyAddedCheckId ? "bg-[#FFF5CC] border border-[#E8E0B0] rounded-sm" :
@@ -255,16 +231,15 @@ export default function CheckCard({
               </div>
             </div>
             {(check.eventDateLabel || check.eventTime || check.location) && (() => {
-              const when = [check.eventDateLabel, check.eventTime].filter(Boolean).join(" ");
+              const when = [check.eventDateLabel, check.eventTime].filter(Boolean).join(" · ");
               if (!when && !check.location) return null;
               return (
-                <p className="font-mono text-xs text-muted m-0 mt-2">
-                  {when}
-                  {when && check.location && " · "}
+                <div className="flex justify-between items-baseline mt-2">
+                  {when && <span className="font-mono text-xs text-muted">{when}</span>}
                   {check.location && (
-                    <span>{check.location}</span>
+                    <span className="font-mono text-xs text-muted text-right">{check.location}</span>
                   )}
-                </p>
+                </div>
               );
             })()}
             {(check.isYours || check.isCoAuthor) && !check.squadId && myCheckResponses[check.id] !== "down" && check.responses.some(r => r.status === "down") && (
@@ -319,13 +294,7 @@ export default function CheckCard({
               )}
 
               <div className="flex gap-1.5 items-center ml-auto flex-wrap justify-end">
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleToggleComments(); }}
-                  className={`rounded-full py-1.5 px-3 font-mono text-tiny cursor-pointer flex items-center gap-1 ${isCommentsOpen ? "bg-[#F5F7EA] border border-dt text-dt" : "bg-[#F5F7EA] border border-[#CDC999] text-dt"}`}
-                >
-                  <svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor"><path d="M132,24A100.11,100.11,0,0,0,32,124v84a16,16,0,0,0,16,16h84a100,100,0,0,0,0-200Zm0,184H48V124a84,84,0,1,1,84,84Z"/></svg>
-                  {commentCount > 0 && <span>{commentCount}</span>}
-                </button>
+
               {!check.isYours && (
                 <>
                   <button
@@ -385,24 +354,19 @@ export default function CheckCard({
               </div>
             )}
 
-            {/* Comments section */}
-            <div
-              className="grid transition-[grid-template-rows] duration-200 ease-out"
-              style={{ gridTemplateRows: isCommentsOpen ? "1fr" : "0fr" }}
-            >
-              <div className="overflow-hidden" ref={commentsRef}>
-                {commentsEverOpened && (
-                  <CheckCommentsSection
-                    comments={comments}
-                    userId={userId}
-                    friends={friendsList}
-                    onPost={postComment}
-                  />
-                )}
-              </div>
-            </div>
           </div>
         </div>
+      </div>
+
+      {/* Inline comments — overlaps bottom of card */}
+      <div className="-mt-3 px-1.5 pb-2 relative z-[2]">
+        <CheckCommentsSection
+          comments={comments}
+          userId={userId}
+          friends={friendsList}
+          onPost={postComment}
+        />
+      </div>
       </div>
 
       <EditCheckModal

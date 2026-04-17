@@ -118,19 +118,14 @@ const SquadRow = ({
           )}
         </div>
         <div className="font-mono text-[10px] text-dim mt-0.5 truncate">
-          {hasMessage ? (
-            sender ? (
-              <>
-                <span className="text-muted">{sender}:</span> {text}
-              </>
-            ) : (
-              text
-            )
-          ) : eventCompound ? (
-            eventCompound
-          ) : (
-            ""
-          )}
+          {(() => {
+            const userMsgs = squad.messages?.filter((m) => m.sender !== "system") ?? [];
+            const last = userMsgs[userMsgs.length - 1];
+            if (last) return <><span className="text-muted">{last.isYou ? "You" : last.sender}:</span>{" "}{last.text}</>;
+            if (hasMessage) return sender ? <><span className="text-muted">{sender}:</span> {text}</> : text;
+            if (eventCompound) return eventCompound;
+            return null;
+          })()}
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0 self-start pt-1">

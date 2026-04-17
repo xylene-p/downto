@@ -28,8 +28,8 @@ export const guava: ThemeTokens = {
 
   onAccent: "#fff",
 
-  fontMono: "var(--font-exo), sans-serif",
-  fontSerif: "var(--font-sora), sans-serif",
+  fontMono: "var(--font-ibm-plex-mono), monospace",
+  fontSerif: "var(--font-inter), sans-serif",
 
   themeColor: "#FCFFE2",
 };

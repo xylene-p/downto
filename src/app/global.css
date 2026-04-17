@@ -38,8 +38,8 @@
   --color-neutral-925: #FCFFE2;
 
   /* Font family */
-  --font-serif: var(--font-sora), sans-serif;
-  --font-mono: var(--font-exo), sans-serif;
+  --font-serif: var(--font-inter), sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), monospace;
 
   --animate-fade-in: fadeIn 0.3s ease;
   --animate-slide-up: slideUp 0.3s ease-out;
@@ -69,12 +69,24 @@
 
 /* Mono font spacing */
 .font-mono {
-  letter-spacing: 0.04em;
+  letter-spacing: -0.04em;
+  font-weight: 300;
+  -webkit-text-stroke: 0.15px;
+}
+
+.font-serif {
+  letter-spacing: -0.04em;
 }
 
 /* "Down" state check card - lime wash */
 .check-down {
   background-color: #ECFFA5 !important;
+  border-color: transparent !important;
+}
+
+/* Author's own check card - pale green wash, no border */
+.check-mine {
+  background-color: #F0FFD8 !important;
   border-color: transparent !important;
 }
 

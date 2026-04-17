@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { formatTimeAgo } from "@/lib/utils";
 import type { CommentUI } from "@/features/checks/hooks/useCheckComments";
 
 export default function CheckCommentsSection({
@@ -16,6 +15,8 @@ export default function CheckCommentsSection({
   onPost: (text: string, mentions?: string[]) => void;
 }) {
   const [text, setText] = useState("");
+  const [showInput, setShowInput] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIdx, setMentionIdx] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -45,38 +46,39 @@ export default function CheckCommentsSection({
   };
 
   return (
-    <div className="mt-2.5 border-t border-border pt-2.5">
+    <div className="bg-card border border-[#CDC999] rounded-2xl px-3 py-2.5 flex flex-col gap-1.5 cursor-pointer" onClick={() => !showInput && setShowInput(true)}>
       {comments.length === 0 ? (
-        <span className="font-mono text-tiny text-dim">no comments yet</span>
+        <span className="font-mono text-tiny text-faint py-0.5">no comments yet</span>
       ) : (
-        <div className="flex flex-col gap-2 mb-2">
-          {comments.map((c) => (
-            <div key={c.id} className="flex gap-2 items-start">
-              <div className={`size-5 rounded-full shrink-0 flex items-center justify-center font-mono text-tiny font-bold ${c.isYours ? "bg-dt text-on-accent" : "bg-border-light text-dim"}`}>
+        <>
+          {(showAll ? comments : comments.slice(-3)).map((c) => (
+            <div key={c.id} className="flex items-center gap-2 min-w-0">
+              <div className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center font-mono text-[9px] font-bold ${c.isYours ? "bg-dt text-on-accent" : "bg-border-light text-dim"}`}>
                 {c.userAvatar}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-1.5 mb-0.5">
-                  <span className={`font-mono text-tiny font-semibold ${c.isYours ? "text-dt" : "text-muted"}`}>
-                    {c.userName}
-                  </span>
-                  <span className="font-mono text-tiny text-faint">
-                    {formatTimeAgo(new Date(c.createdAt))}
-                  </span>
-                </div>
-                <p className="font-mono text-xs text-primary m-0 leading-[1.4]">
-                  {c.text.split(/(@\S+)/g).map((part, pi) =>
-                    part.startsWith("@") ? (
-                      <span key={pi} className="text-dt font-bold">{part}</span>
-                    ) : part
-                  )}
-                </p>
-              </div>
+              <span className="font-mono text-tiny text-muted shrink-0 leading-snug">
+                {c.userName}
+              </span>
+              <span className="font-mono text-tiny text-primary min-w-0 break-words leading-snug">
+                {c.text.split(/(@\S+)/g).map((part, pi) =>
+                  part.startsWith("@") ? (
+                    <span key={pi} className="text-dt font-bold">{part}</span>
+                  ) : part
+                )}
+              </span>
             </div>
           ))}
-        </div>
+          {!showAll && comments.length > 3 && (
+            <button
+              onClick={() => setShowAll(true)}
+              className="font-mono text-tiny text-faint cursor-pointer bg-transparent border-none p-0"
+            >
+              + {comments.length - 3} more
+            </button>
+          )}
+        </>
       )}
-      <div className="flex gap-2 items-center mt-2 min-w-0">
+      {showInput && <div className="flex gap-2 items-center mt-1 min-w-0" onClick={(e) => e.stopPropagation()}>
         <input
           ref={inputRef}
           value={text}
@@ -111,8 +113,8 @@ export default function CheckCommentsSection({
         >
           Post
         </button>
-      </div>
-      {mentionQuery !== null && mentionCandidates.length > 0 && (() => {
+      </div>}
+      {showInput && mentionQuery !== null && mentionCandidates.length > 0 && (() => {
         const filtered = mentionCandidates.filter(c => c.name.toLowerCase().includes(mentionQuery));
         if (filtered.length === 0) return null;
         return (

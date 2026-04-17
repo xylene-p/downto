@@ -37,11 +37,11 @@ const Header = ({
     {/* Blur layer — smooth 8-stop eased fade */}
     <div className="absolute pointer-events-none transition-opacity duration-300" style={{
       inset: "0 0 -24px 0",
-      opacity: scrolled ? 1 : 0.2,
+      opacity: scrolled ? 1 : 0.5,
       backdropFilter: "blur(40px)",
       WebkitBackdropFilter: "blur(40px)",
-      mask: "linear-gradient(to bottom, black 30%, rgba(0,0,0,0.9) 45%, rgba(0,0,0,0.7) 55%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,0.3) 75%, rgba(0,0,0,0.15) 85%, rgba(0,0,0,0.05) 93%, transparent 100%)",
-      WebkitMaskImage: "linear-gradient(to bottom, black 30%, rgba(0,0,0,0.9) 45%, rgba(0,0,0,0.7) 55%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,0.3) 75%, rgba(0,0,0,0.15) 85%, rgba(0,0,0,0.05) 93%, transparent 100%)",
+      mask: "linear-gradient(to bottom, black 0%, rgba(0,0,0,0.9) 45%, rgba(0,0,0,0.7) 55%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,0.3) 75%, rgba(0,0,0,0.15) 85%, rgba(0,0,0,0.05) 93%, transparent 100%)",
+      WebkitMaskImage: "linear-gradient(to bottom, black 0%, rgba(0,0,0,0.9) 45%, rgba(0,0,0,0.7) 55%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,0.3) 75%, rgba(0,0,0,0.15) 85%, rgba(0,0,0,0.05) 93%, transparent 100%)",
     }} />
     {/* Color tint — smooth fade with noise dithering */}
     <div className="absolute pointer-events-none transition-opacity duration-300" style={{
@@ -59,12 +59,8 @@ const Header = ({
       mask: "linear-gradient(to bottom, transparent 30%, black 60%, transparent 100%)",
       WebkitMaskImage: "linear-gradient(to bottom, transparent 30%, black 60%, transparent 100%)",
     }} />
-    {/* Solid cover behind status bar only */}
-    <div className="absolute top-0 left-0 right-0 pointer-events-none" style={{
-      height: "env(safe-area-inset-top, 16px)",
-      background: "var(--color-bg)",
-    }} />
-    <div className="px-5 pb-1 flex justify-between items-center relative">
+
+    <div className="px-5 pb-0 flex justify-between items-center relative">
       <h1
         className="font-serif text-dt font-normal"
         style={{ fontSize: 24, letterSpacing: "-0.06em" }}
@@ -72,6 +68,18 @@ const Header = ({
         downto
       </h1>
       <div className="flex items-center gap-2.5">
+        {/* Sort toggle */}
+        {showSort && sortBy && onSortChange && (
+          <button
+            onClick={() => onSortChange(sortBy === 'recent' ? 'upcoming' : 'recent')}
+            className="bg-transparent border-none cursor-pointer p-2 flex items-center justify-center"
+            title={sortBy === 'recent' ? 'Sort by upcoming' : 'Sort by recent'}
+          >
+            <svg width="18" height="18" viewBox="0 0 256 256" fill={sortBy === 'recent' ? color.text : color.accent}>
+              <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h56A8,8,0,0,1,192,128Z"/>
+            </svg>
+          </button>
+        )}
         {/* Bell icon */}
         <button
           onClick={onOpenNotifications}
@@ -113,31 +121,7 @@ const Header = ({
         </div>
       </div>
     </div>
-    {showSort && sortBy && onSortChange && (
-      <div className="flex justify-center pb-1.5 relative">
-        <div className="inline-flex rounded-full p-0.5 relative" style={{ border: "1px solid #CDC999" }}>
-          {/* Sliding pill highlight */}
-          <div
-            className="absolute top-0.5 bottom-0.5 rounded-full bg-dt transition-all duration-200 ease-out"
-            style={{
-              left: sortBy === 'recent' ? 2 : '50%',
-              right: sortBy === 'recent' ? '50%' : 2,
-            }}
-          />
-          {(['recent', 'upcoming'] as const).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => onSortChange(mode)}
-              className={`relative z-[1] rounded-full w-[5.5rem] py-1 font-mono text-tiny font-bold tracking-[0.08em] uppercase cursor-pointer border-none bg-transparent transition-colors duration-200 text-center ${
-                sortBy === mode ? 'text-on-accent' : 'text-dim'
-              }`}
-            >
-              {mode === 'recent' ? 'Recent' : 'Upcoming'}
-            </button>
-          ))}
-        </div>
-      </div>
-    )}
+
   </div>
 );
 

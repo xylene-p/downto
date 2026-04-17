@@ -838,7 +838,7 @@ const SquadChat = ({
             className="flex items-center gap-1.5 px-5 py-1.5 cursor-pointer"
           >
             <div className="flex items-center gap-1.5 bg-card border border-dt rounded-2xl px-3 py-1.5 flex-1 min-w-0">
-              <span className="text-xs shrink-0">📊</span>
+              <svg width="14" height="14" viewBox="0 0 256 256" fill="currentColor" className="shrink-0"><path d="M224,200h-8V40a8,8,0,0,0-8-8H152a8,8,0,0,0-8,8V80H96a8,8,0,0,0-8,8v40H48a8,8,0,0,0-8,8v64H32a8,8,0,0,1,0-16H224a8,8,0,0,1,0,16ZM160,48h40V200H160ZM104,96h40V200H104ZM56,144H88v56H56Z"/></svg>
               <span className="font-mono text-xs text-primary overflow-hidden text-ellipsis whitespace-nowrap flex-1">
                 {activePoll.question}
               </span>

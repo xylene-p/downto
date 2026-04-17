@@ -72,7 +72,7 @@ export default function ChatMessage({
   if (msg.sender === "system") {
     if (msg.messageType === 'date_confirm' && isLastConfirm) {
       return (
-        <div className="text-center py-2">
+        <div className="text-center py-0.5">
           <span className="font-mono text-tiny text-muted">{msg.text}</span>
           {confirmLoading && (
             <div className="font-mono text-tiny text-dim mt-1.5">...</div>
@@ -112,7 +112,7 @@ export default function ChatMessage({
     }
 
     return (
-      <div className="text-center py-1">
+      <div className="text-center py-0.5">
         <span className="font-mono text-tiny text-muted">{msg.text}</span>
       </div>
     );
@@ -126,7 +126,7 @@ export default function ChatMessage({
         </span>
       )}
       <div
-        className={cn("select-text font-mono max-w-[80%]",
+        className={cn("select-text font-serif max-w-[80%]",
           msg.isYou
             ? cn("bg-dt text-on-accent rounded-tr-2xl rounded-bl-2xl", {
                 "rounded-tl-2xl": isFirstInGroup,

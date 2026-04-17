@@ -67,7 +67,7 @@ export default function Home() {
     newlyAddedId, setNewlyAddedId,
     archivedChecks, setArchivedChecks,
     hydrateEvents, hydrateSocialData,
-    toggleSave, toggleDown, handleEditEvent,
+    toggleDown, handleEditEvent,
   } = eventsHook;
 
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -698,7 +698,6 @@ export default function Home() {
       redownFromLeft: checksHook.redownFromLeft,
       events: eventsHook.events,
       newlyAddedEventId: eventsHook.newlyAddedId,
-      toggleSave: eventsHook.toggleSave,
       toggleDown: eventsHook.toggleDown,
     }}>
     <div className="flex flex-col h-dvh overflow-x-hidden">
@@ -738,7 +737,7 @@ export default function Home() {
         <div
           ref={scrollRef}
           className="h-full overflow-y-auto"
-          style={{ paddingTop: `calc(env(safe-area-inset-top, 16px) + ${(tab === 'feed' ? HEADER_HEIGHT_WITH_TABS_PX : HEADER_HEIGHT_PX) + HEADER_OFFSET_PX}px)`, paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))" }}
+          style={{ paddingTop: `calc(env(safe-area-inset-top, 16px) + ${(HEADER_HEIGHT_PX) + HEADER_OFFSET_PX}px)`, paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))" }}
           onScroll={() => {
             const scrolled = (scrollRef.current?.scrollTop ?? 0) > 0;
             if (scrolled !== scrolledDown) setScrolledDown(scrolled);

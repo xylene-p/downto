@@ -1,15 +1,14 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { font } from "@/lib/styles";
+import { useState, useRef, useEffect, useCallback } from "react";
 import type { Event } from "@/lib/ui-types";
 import { useModalTransition } from "@/shared/hooks/useModalTransition";
 import cn from "@/lib/tailwindMerge";
+import * as db from "@/lib/db";
 
 const EventCard = ({
   event,
   userId,
-  onToggleSave,
   onToggleDown,
   onOpenSocial,
   onEdit,
@@ -18,7 +17,6 @@ const EventCard = ({
 }: {
   event: Event;
   userId?: string | null;
-  onToggleSave: () => void;
   onToggleDown: () => void;
   onOpenSocial: () => void;
   onEdit?: () => void;
@@ -29,6 +27,30 @@ const EventCard = ({
   const [showDetail, setShowDetail] = useState(false);
   const touchMoved = useRef(false);
   const touchStartPos = useRef({ x: 0, y: 0 });
+  // Event comments — state owned by card, sheet posts via callback
+  const [evComments, setEvComments] = useState<{ id: string; userId: string; userName: string; userAvatar: string; text: string; isYours: boolean }[]>([]);
+  useEffect(() => {
+    if (!event.id) return;
+    db.getEventComments(event.id).then((fetched) => {
+      setEvComments(fetched.map((c) => ({
+        id: c.id, userId: c.user_id,
+        userName: c.user?.display_name ?? "Unknown",
+        userAvatar: c.user?.avatar_letter ?? "?",
+        text: c.text, isYours: c.user_id === userId,
+      })));
+    }).catch(() => {});
+  }, [event.id, userId]);
+  const postCmt = useCallback(async (text: string) => {
+    const t = text.trim();
+    if (!t || !event.id) return;
+    const opt = { id: `opt-${Date.now()}`, userId: userId ?? "", userName: "You", userAvatar: "?", text: t, isYours: true };
+    setEvComments((p) => [...p, opt]);
+    try {
+      const saved = await db.postEventComment(event.id, t);
+      setEvComments((p) => p.map((c) => c.id === opt.id ? { id: saved.id, userId: saved.user_id, userName: saved.user?.display_name ?? "You", userAvatar: saved.user?.avatar_letter ?? "?", text: saved.text, isYours: true } : c));
+    } catch { setEvComments((p) => p.filter((c) => c.id !== opt.id)); }
+  }, [event.id, userId]);
+
   const poolPeople = event.peopleDown.filter((p) => p.inPool);
   const poolFriends = poolPeople.filter((p) => p.mutual);
   const poolStrangerCount = poolPeople.length - poolFriends.length;
@@ -116,14 +138,32 @@ const EventCard = ({
           actionButtons={actionButtons}
           onOpenSocial={onOpenSocial}
           onViewProfile={onViewProfile}
+          comments={evComments}
+          onPostComment={postCmt}
           onClose={() => setShowDetail(false)}
         />
       )}
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
+        onTouchStart={(e) => {
+          touchMoved.current = false;
+          touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }}
+        onTouchMove={(e) => {
+          const dx = e.touches[0].clientX - touchStartPos.current.x;
+          const dy = e.touches[0].clientY - touchStartPos.current.y;
+          if (Math.abs(dx) > 8 || Math.abs(dy) > 8) touchMoved.current = true;
+        }}
+        onClick={(e) => {
+          if (touchMoved.current) return;
+          const target = e.target as HTMLElement;
+          if (target.closest("button") || target.closest("a") || target.closest("input") || target.closest("textarea")) return;
+          if (onEdit) { onEdit(); return; }
+          setShowDetail(true);
+        }}
         className={cn(
-          "rounded-2xl overflow-hidden mb-2 transition-all relative border",
+          "rounded-2xl overflow-hidden mb-2 transition-all relative border cursor-pointer",
           isNew ? "border-dt/40" : hovered ? "border-[#CDC999]" : "border-[#CDC999]"
         )}
         style={{
@@ -133,48 +173,26 @@ const EventCard = ({
       >
         {bgImage}
         <div className="p-4 relative">
-          {/* Tappable area: opens edit modal for creator, detail sheet for everyone else */}
-          <div
-            onTouchStart={(e) => {
-              touchMoved.current = false;
-              touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            }}
-            onTouchMove={(e) => {
-              const dx = e.touches[0].clientX - touchStartPos.current.x;
-              const dy = e.touches[0].clientY - touchStartPos.current.y;
-              if (Math.abs(dx) > 8 || Math.abs(dy) > 8) touchMoved.current = true;
-            }}
-            onClick={(e) => {
-              if (touchMoved.current) return;
-              const target = e.target as HTMLElement;
-              if (target.closest("button") || target.closest("a") || target.closest("input") || target.closest("textarea")) return;
-              // Creator → open edit modal directly. Everyone else → detail sheet.
-              if (onEdit) onEdit();
-              else setShowDetail(true);
-            }}
-            className="cursor-pointer"
-          >
-            {/* Title + date + social block */}
-            <div className="mb-3">
-              <div className="flex justify-between items-start">
-                <h3
-                  className="font-serif text-lg text-primary m-0 leading-snug font-normal tracking-[-0.01em] flex-1"
-                >
-                  {event.title}
-                </h3>
-                {isNew && (
-                  <span className="bg-dt text-on-accent font-mono text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none ml-2">new</span>
-                )}
-              </div>
-              <p className="font-mono text-xs text-muted m-0 mt-2">
-                <span className="text-dt">
-                  {event.date}
-                  {event.time && event.time !== "TBD" && ` ${event.time}`}
-                </span>
-                {event.venue && event.venue !== "TBD" && (
-                  <span>{" · "}{event.venue}</span>
-                )}
-              </p>
+          {/* Title + date */}
+          <div className="mb-3">
+            <div className="flex justify-between items-start">
+              <h3
+                className="font-serif text-lg text-primary m-0 leading-snug font-normal tracking-[-0.01em] flex-1"
+              >
+                {event.title}
+              </h3>
+              {isNew && (
+                <span className="bg-dt text-on-accent font-mono text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none ml-2">new</span>
+              )}
+            </div>
+            <div className="flex justify-between items-baseline mt-2">
+              <span className="font-mono text-xs text-muted">
+                {event.date}
+                {event.time && event.time !== "TBD" && ` · ${event.time}`}
+              </span>
+              {event.venue && event.venue !== "TBD" && (
+                <span className="font-mono text-xs text-muted text-right">{event.venue}</span>
+              )}
             </div>
           </div>
 
@@ -197,13 +215,30 @@ const EventCard = ({
               className={cn(
                 "rounded-full py-1.5 px-3 font-mono text-tiny font-bold whitespace-nowrap cursor-pointer shrink-0",
                 event.isDown
-                  ? "bg-dt text-bg border-none"
+                  ? "bg-dt text-on-accent border-none"
                   : "bg-[#F5F7EA] text-dt border border-[#CDC999]"
               )}
             >
               {event.isDown ? <><span>DOWN</span><svg width="12" height="12" viewBox="0 0 256 256" fill="currentColor" className="inline ml-1"><path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/></svg></> : "DOWN ?"}
             </button>
           </div>
+
+          {/* Comment preview: latest comment one-line + count badge */}
+          {evComments.length > 0 && (() => {
+            const latest = evComments[evComments.length - 1];
+            return (
+              <div className="mt-3 flex items-center gap-2 min-w-0">
+                <div className={`w-4 h-4 rounded-full shrink-0 flex items-center justify-center font-mono text-[8px] font-bold ${latest.isYours ? "bg-dt text-on-accent" : "bg-border-light text-dim"}`}>
+                  {latest.userAvatar}
+                </div>
+                <span className="font-mono text-tiny text-muted shrink-0">{latest.userName}</span>
+                <span className="font-mono text-tiny text-primary min-w-0 truncate flex-1">{latest.text}</span>
+                {evComments.length > 1 && (
+                  <span className="font-mono text-tiny text-faint shrink-0">💬 {evComments.length}</span>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </>
@@ -214,10 +249,12 @@ const EventCard = ({
 
 interface Person { name: string; avatar: string; mutual?: boolean; inPool?: boolean; }
 
+interface Comment { id: string; userId: string; userName: string; userAvatar: string; text: string; isYours: boolean; }
+
 function EventDetailSheet({
   event, userId, sourceLink, hasDetails,
   poolPeople, poolFriends, poolStrangerCount, nonPoolFriends, mutuals, others, hasPool,
-  actionButtons, onOpenSocial, onViewProfile, onClose,
+  actionButtons, onOpenSocial, onViewProfile, comments, onPostComment, onClose,
 }: {
   event: Event;
   userId?: string | null;
@@ -228,6 +265,8 @@ function EventDetailSheet({
   actionButtons: React.ReactNode;
   onOpenSocial: () => void;
   onViewProfile?: (userId: string) => void;
+  comments: Comment[];
+  onPostComment: (text: string) => void;
   onClose: () => void;
 }) {
   const { visible, entering, closing, close } = useModalTransition(true, onClose);
@@ -327,6 +366,7 @@ function EventDetailSheet({
             nonPoolFriends={nonPoolFriends} mutuals={mutuals} others={others} hasPool={hasPool}
             actionButtons={actionButtons} onOpenSocial={onOpenSocial} onViewProfile={onViewProfile}
           />
+          <CommentsSection comments={comments} onPost={onPostComment} />
         </div>
       </div>
     </div>
@@ -345,6 +385,38 @@ interface SheetProps {
   actionButtons: React.ReactNode;
   onOpenSocial: () => void;
   onViewProfile?: (userId: string) => void;
+}
+
+// Linkify URLs in text
+function LinkifyText({ children }: { children: string }) {
+  const urlRe = /(https?:\/\/[^\s),]+)/g;
+  const parts = children.split(urlRe);
+  if (parts.length === 1) return <>{children}</>;
+  return (
+    <>
+      {parts.map((part, i) =>
+        /^https?:\/\//.test(part) ? (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-dt underline underline-offset-2 break-all"
+          >
+            {(() => {
+              try {
+                const u = new URL(part);
+                let d = u.host.replace(/^www\./, "") + u.pathname.replace(/\/$/, "");
+                if (d.length > 40) d = d.slice(0, 37) + "\u2026";
+                return d;
+              } catch { return part; }
+            })()}
+          </a>
+        ) : part
+      )}
+    </>
+  );
 }
 
 // Poster inline element (with optional note flowing on same line)
@@ -373,7 +445,7 @@ function PosterInline({ event, userId, note, onViewProfile }: { event: Event; us
           {name}
         </span>
         {note && event.note && (
-          <span className="text-dim">{" "}{event.note}</span>
+          <span className="text-dim">{" "}<LinkifyText>{event.note}</LinkifyText></span>
         )}
       </div>
     </div>
@@ -469,8 +541,8 @@ function SocialBlock(props: SheetProps) {
                   <span className="font-bold uppercase tracking-[0.06em]"
                     style={{
                       fontSize: 9, padding: "1px 4px", borderRadius: 3,
-                      background: event.isPublic ? "rgba(255,255,255,0.06)" : "rgba(232,255,90,0.12)",
-                      color: event.isPublic ? "#444" : "#E8FF5A",
+                      background: event.isPublic ? "rgba(0,0,0,0.08)" : "#E8FF5A",
+                      color: event.isPublic ? "#666" : "#000",
                     }}>
                     {event.isPublic ? "public" : "friends"}
                   </span>
@@ -587,8 +659,8 @@ function SheetHero(props: SheetProps) {
         <span className="font-mono font-bold uppercase tracking-[0.06em]"
           style={{
             fontSize: 9, padding: "1px 5px", borderRadius: 3,
-            background: event.isPublic ? "rgba(255,255,255,0.06)" : "rgba(232,255,90,0.12)",
-            color: event.isPublic ? "#444" : "#E8FF5A",
+            background: event.isPublic ? "rgba(0,0,0,0.08)" : "#E8FF5A",
+            color: event.isPublic ? "#666" : "#000",
           }}>
           {event.isPublic ? "public" : "friends"}
         </span>
@@ -601,7 +673,7 @@ function SheetHero(props: SheetProps) {
             <PosterInline event={event} userId={userId} note onViewProfile={props.onViewProfile} />
             {!event.posterName && event.note && (
               <div className="font-mono text-xs text-dim" style={{ lineHeight: 1.5 }}>
-                {event.note}
+                <LinkifyText>{event.note}</LinkifyText>
               </div>
             )}
           </div>
@@ -627,6 +699,56 @@ function SheetHero(props: SheetProps) {
 
       <div className="mt-3">{actionButtons}</div>
     </>
+  );
+}
+
+function CommentsSection({ comments, onPost }: { comments: Comment[]; onPost: (text: string) => void }) {
+  const [text, setText] = useState("");
+  const handlePost = () => {
+    const t = text.trim();
+    if (!t) return;
+    onPost(t);
+    setText("");
+  };
+  return (
+    <div className="mt-5">
+      <div className="font-mono text-[10px] uppercase tracking-[0.15em] text-dim mb-2">Comments</div>
+      <div className="flex flex-col gap-2">
+        {comments.length === 0 && (
+          <div className="font-mono text-tiny text-faint">No comments yet. Be the first.</div>
+        )}
+        {comments.map((cm) => (
+          <div key={cm.id} className="flex items-start gap-2 min-w-0">
+            <div className={cn(
+              "w-5 h-5 rounded-full shrink-0 flex items-center justify-center font-mono text-[9px] font-bold mt-px",
+              cm.isYours ? "bg-dt text-on-accent" : "bg-border-light text-dim"
+            )}>
+              {cm.userAvatar}
+            </div>
+            <div className="min-w-0 flex-1 font-mono text-xs" style={{ lineHeight: 1.5 }}>
+              <span className="text-muted mr-1.5">{cm.userName}</span>
+              <span className="text-primary break-words">{cm.text}</span>
+            </div>
+          </div>
+        ))}
+        <div className="flex gap-2 mt-2">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value.slice(0, 280))}
+            onKeyDown={(e) => { if (e.key === "Enter") handlePost(); }}
+            placeholder="Add a comment…"
+            className="flex-1 min-w-0 bg-surface border border-border rounded-lg py-1.5 px-2.5 font-mono text-xs text-primary outline-none"
+          />
+          <button
+            onClick={handlePost}
+            disabled={!text.trim()}
+            className="shrink-0 bg-dt text-on-accent rounded-lg py-1.5 px-3 font-mono text-xs font-bold cursor-pointer disabled:opacity-50 disabled:cursor-default"
+          >
+            Post
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

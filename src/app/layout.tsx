@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Sora, Exo, Instrument_Serif, Space_Mono } from 'next/font/google';
+import { Sora, Exo, Instrument_Serif, Space_Mono, IBM_Plex_Mono, Inter } from 'next/font/google';
 import DevProdBanner from '@/app/components/DevProdBanner';
 import UpdateBanner from '@/app/components/UpdateBanner';
 import Grain from '@/app/components/Grain';
@@ -27,6 +27,16 @@ const instrumentSerif = Instrument_Serif({
 const spaceMono = Space_Mono({
   weight: ['400', '700'],
   variable: '--font-space-mono',
+  subsets: ['latin'],
+});
+const ibmPlexMono = IBM_Plex_Mono({
+  weight: ['200', '300', '400', '500', '600', '700'],
+  variable: '--font-ibm-plex-mono',
+  subsets: ['latin'],
+});
+const inter = Inter({
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-inter',
   subsets: ['latin'],
 });
 
@@ -62,7 +72,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${sora.variable} ${exo.variable} ${instrumentSerif.variable} ${spaceMono.variable}`}
+      className={`${sora.variable} ${exo.variable} ${instrumentSerif.variable} ${spaceMono.variable} ${ibmPlexMono.variable} ${inter.variable}`}
     >
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -81,7 +91,7 @@ export default function RootLayout({
           input, textarea, select { font-size: 16px !important; }
         `}</style>
       </head>
-      <body className="flex min-h-screen justify-center bg-bg font-mono font-medium text-[#6B6B5A] antialiased">
+      <body className="flex min-h-screen justify-center bg-bg font-mono text-[#6B6B5A] antialiased">
         <ThemeHydrator />
         <NativeStatusBar />
         <Grain />
