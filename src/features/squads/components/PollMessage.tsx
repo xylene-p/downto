@@ -59,7 +59,7 @@ export default function PollMessage({
     <div ref={pollMessageRef} className="flex justify-center py-2">
       <div className="bg-card border border-border-mid rounded-xl p-4 max-w-[300px] w-full">
         <div className="flex items-center gap-1.5 mb-1">
-          <span className="text-base">📊</span>
+          <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor"><path d="M224,200h-8V40a8,8,0,0,0-8-8H152a8,8,0,0,0-8,8V80H96a8,8,0,0,0-8,8v40H48a8,8,0,0,0-8,8v64H32a8,8,0,0,1,0-16H224a8,8,0,0,1,0,16ZM160,48h40V200H160ZM104,96h40V200H104ZM56,144H88v56H56Z"/></svg>
           <span className="font-serif text-base text-primary">{poll.question}</span>
         </div>
         <div className="font-mono text-tiny text-faint mb-2.5">

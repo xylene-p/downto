@@ -114,28 +114,16 @@ const Header = ({
       </div>
     </div>
     {showSort && sortBy && onSortChange && (
-      <div className="flex justify-center pb-1.5 relative">
-        <div className="inline-flex rounded-full p-0.5 relative" style={{ border: "1px solid #CDC999" }}>
-          {/* Sliding pill highlight */}
-          <div
-            className="absolute top-0.5 bottom-0.5 rounded-full bg-dt transition-all duration-200 ease-out"
-            style={{
-              left: sortBy === 'recent' ? 2 : '50%',
-              right: sortBy === 'recent' ? '50%' : 2,
-            }}
-          />
-          {(['recent', 'upcoming'] as const).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => onSortChange(mode)}
-              className={`relative z-[1] rounded-full w-[5.5rem] py-1 font-mono text-tiny font-bold tracking-[0.08em] uppercase cursor-pointer border-none bg-transparent transition-colors duration-200 text-center ${
-                sortBy === mode ? 'text-on-accent' : 'text-dim'
-              }`}
-            >
-              {mode === 'recent' ? 'Recent' : 'Upcoming'}
-            </button>
-          ))}
-        </div>
+      <div className="absolute right-5 top-1/2 -translate-y-1/2" style={{ paddingTop: "env(safe-area-inset-top, 16px)" }}>
+        <button
+          onClick={() => onSortChange(sortBy === 'recent' ? 'upcoming' : 'recent')}
+          className="bg-transparent border-none cursor-pointer p-2 flex items-center justify-center"
+          title={sortBy === 'recent' ? 'Sort by upcoming' : 'Sort by recent'}
+        >
+          <svg width="18" height="18" viewBox="0 0 256 256" fill={sortBy === 'recent' ? color.text : color.accent}>
+            <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h56A8,8,0,0,1,192,128Z"/>
+          </svg>
+        </button>
       </div>
     )}
   </div>
