@@ -104,7 +104,7 @@ export default function CheckCommentsSection({
             }
             if (e.key === "Enter") handleSubmit();
           }}
-          placeholder="Add a comment\u2026"
+          placeholder="Add a comment…"
           className="flex-1 min-w-0 bg-surface border border-border rounded-lg py-1.5 px-2.5 font-mono text-xs text-primary outline-none"
         />
         <button
