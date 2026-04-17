@@ -16,6 +16,7 @@ export default function CheckCommentsSection({
 }) {
   const [text, setText] = useState("");
   const [showAll, setShowAll] = useState(true);
+  const [showInput, setShowInput] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIdx, setMentionIdx] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -46,7 +47,7 @@ export default function CheckCommentsSection({
 
   return (
     <div>
-      <div className="bg-card border border-[#CDC999] rounded-2xl px-3 py-2.5 mb-2 flex flex-col gap-1.5">
+      <div className="bg-card border border-[#CDC999] rounded-2xl px-3 py-2.5 mb-2 flex flex-col gap-1.5 cursor-pointer" onClick={() => setShowInput(true)}>
       {comments.length === 0 ? (
         <span className="font-mono text-tiny text-dim py-0.5">no comments yet</span>
       ) : (
@@ -79,7 +80,7 @@ export default function CheckCommentsSection({
         </>
       )}
       </div>
-      <div className="flex gap-2 items-center mt-2 min-w-0">
+      {showInput && <div className="flex gap-2 items-center mt-2 min-w-0">
         <input
           ref={inputRef}
           value={text}
@@ -114,8 +115,8 @@ export default function CheckCommentsSection({
         >
           Post
         </button>
-      </div>
-      {mentionQuery !== null && mentionCandidates.length > 0 && (() => {
+      </div>}
+      {showInput && mentionQuery !== null && mentionCandidates.length > 0 && (() => {
         const filtered = mentionCandidates.filter(c => c.name.toLowerCase().includes(mentionQuery));
         if (filtered.length === 0) return null;
         return (
