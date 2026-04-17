@@ -234,10 +234,10 @@ export default function CheckCard({
               const when = [check.eventDateLabel, check.eventTime].filter(Boolean).join(" · ");
               if (!when && !check.location) return null;
               return (
-                <div className="flex justify-between items-baseline mt-2">
+                <div className="flex flex-wrap justify-between items-baseline gap-x-3 gap-y-1 mt-2">
                   {when && <span className="font-mono text-xs text-muted">{when}</span>}
                   {check.location && (
-                    <span className="font-mono text-xs text-muted text-right">{check.location}</span>
+                    <span className="font-mono text-xs text-muted">{check.location}</span>
                   )}
                 </div>
               );
