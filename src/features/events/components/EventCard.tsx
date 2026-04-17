@@ -158,7 +158,7 @@ const EventCard = ({
             <div className="mb-3">
               <div className="flex justify-between items-start">
                 <h3
-                  className="font-serif text-lg text-primary m-0 leading-snug font-normal tracking-[-0.01em] flex-1"
+                  className="font-serif text-lg text-primary m-0 leading-snug font-light tracking-[-0.01em] flex-1"
                 >
                   {event.title}
                 </h3>
