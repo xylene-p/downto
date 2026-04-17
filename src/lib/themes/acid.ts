@@ -28,7 +28,7 @@ export const acid: ThemeTokens = {
 
   onAccent: "#000",
 
-  fontMono: "var(--font-ibm-plex-mono), monospace",
+  fontMono: "var(--font-inter), sans-serif",
   fontSerif: "var(--font-inter), sans-serif",
 
   themeColor: "#FFD4D4",
