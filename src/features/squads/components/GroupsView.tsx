@@ -108,7 +108,7 @@ const SquadRow = ({
       <Countdown squad={squad} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="font-serif text-base text-primary font-normal truncate leading-tight">
+          <span className="font-serif text-xs text-primary font-normal truncate leading-tight tracking-[-0.02em]">
             {squad.name}
           </span>
           {squad.isWaitlisted && (
@@ -117,7 +117,7 @@ const SquadRow = ({
             </span>
           )}
         </div>
-        <div className="font-mono text-[11px] text-dim mt-0.5 truncate">
+        <div className="font-mono text-[10px] text-dim mt-0.5 truncate">
           {hasMessage ? (
             sender ? (
               <>
