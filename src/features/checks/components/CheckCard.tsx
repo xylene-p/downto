@@ -100,26 +100,12 @@ export default function CheckCard({
   const [isExpanded, setIsExpanded] = useState(false);
   const hasComments = initialCommentCount > 0;
 
-  const [isCommentsOpen, setIsCommentsOpen] = useState(hasComments);
-  const [commentsEverOpened, setCommentsEverOpened] = useState(hasComments);
-  const commentsRef = React.useRef<HTMLDivElement>(null);
   const expandedRef = React.useRef<HTMLDivElement>(null);
 
 
-  // Auto-fetch comments for teaser (but don't expand)
-  useEffect(() => {
-    if (hasComments) {
-      openComments();
-    }
-  }, [check.id, hasComments]);
-  // Also open when navigated via notification
-  useEffect(() => {
-    if (newlyAddedCheckId === check.id && !isCommentsOpen) {
-      openComments();
-      setCommentsEverOpened(true);
-      setIsCommentsOpen(true);
-    }
-  }, [newlyAddedCheckId, check.id]);
+
+
+  useEffect(() => { openComments(); }, [check.id]);
   const [editModalOpen, setEditModalOpen] = useState(false);
 
   const { comments, commentCount, openComments, postComment } = useCheckComments({
@@ -129,28 +115,7 @@ export default function CheckCard({
     initialCommentCount,
   });
 
-  const handleToggleComments = async () => {
-    if (!isCommentsOpen) {
-      await openComments();
-      setCommentsEverOpened(true);
-      setIsCommentsOpen(true);
-      setTimeout(() => {
-        const el = commentsRef.current;
-        if (!el) return;
-        const scrollParent = el.closest('[class*="overflow-y"]') || el.closest('[style*="overflow"]');
-        if (scrollParent) {
-          const elRect = el.getBoundingClientRect();
-          const parentRect = scrollParent.getBoundingClientRect();
-          const overflow = elRect.bottom - parentRect.bottom + 80;
-          if (overflow > 0) {
-            scrollParent.scrollBy({ top: overflow, behavior: "smooth" });
-          }
-        }
-      }, 250);
-    } else {
-      setIsCommentsOpen(false);
-    }
-  };
+
 
   const shareCheck = async () => {
     try { await db.markCheckShared(check.id); } catch { /* best-effort */ }
@@ -191,7 +156,7 @@ export default function CheckCard({
           </div>
         )}
         <div
-          className={`p-4 ${isCommentsOpen ? "pb-6" : ""} ${(check.isYours || check.isCoAuthor) ? "cursor-pointer" : ""}`}
+          className={`p-4 ${(check.isYours || check.isCoAuthor) ? "cursor-pointer" : ""}`}
           onClick={(check.isYours || check.isCoAuthor) ? (e) => {
             // Only open modal if click wasn't on an interactive element
             const target = e.target as HTMLElement;
@@ -389,32 +354,6 @@ export default function CheckCard({
               </div>
             )}
 
-          {/* Last comment teaser + inline input */}
-          {hasComments && !isCommentsOpen && (
-            <div className="mt-3.5">
-              <div
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openComments();
-                  setCommentsEverOpened(true);
-                  setIsCommentsOpen(true);
-                  setTimeout(() => {
-                    commentsRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-                  }, 250);
-                }}
-                className="cursor-pointer"
-              >
-                {comments.length > 0 ? (
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className={`w-4 h-4 rounded-full shrink-0 flex items-center justify-center font-mono text-[8px] font-bold ${comments[comments.length - 1].isYours ? "bg-dt text-on-accent" : "bg-border-light text-dim"}`}>
-                      {comments[comments.length - 1].userAvatar}
-                    </div>
-                    <span className="font-mono text-tiny text-muted truncate min-w-0">
-                      <span className="text-dim">{comments[comments.length - 1].userName}:</span>{" "}{comments[comments.length - 1].text}
-                    </span>
-                    {initialCommentCount > 1 && (
-                      <span className="font-mono text-tiny text-faint shrink-0">+{initialCommentCount - 1}</span>
-                    )}
                   </div>
                 ) : (
                   <span className="font-mono text-tiny text-faint">
@@ -426,41 +365,19 @@ export default function CheckCard({
             </div>
           )}
 
-          {/* Add comment link when no comments exist */}
-          {!hasComments && !isCommentsOpen && (
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                openComments();
-                setCommentsEverOpened(true);
-                setIsCommentsOpen(true);
-              }}
-              className="mt-3 cursor-pointer"
-            >
-              <span className="font-mono text-tiny text-faint">add a comment…</span>
-            </div>
-          )}
 
           </div>
         </div>
       </div>
 
-      {/* Comments — overlaps the bottom of the check card when open */}
-      <div
-        className={`grid transition-[grid-template-rows] duration-200 ease-out relative z-[2] px-1.5 ${isCommentsOpen ? "-mt-3" : ""}`}
-        style={{ gridTemplateRows: isCommentsOpen ? "1fr" : "0fr" }}
-      >
-        <div className="overflow-hidden" ref={commentsRef}>
-          {commentsEverOpened && (
-            <CheckCommentsSection
-              comments={comments}
-              userId={userId}
-              friends={friendsList}
-              onPost={postComment}
-              onCollapse={() => setIsCommentsOpen(false)}
-            />
-          )}
-        </div>
+      {/* Inline comments */}
+      <div className="px-4 pb-3">
+        <CheckCommentsSection
+          comments={comments}
+          userId={userId}
+          friends={friendsList}
+          onPost={postComment}
+        />
       </div>
       </div>
 

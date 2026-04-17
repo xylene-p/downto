@@ -8,17 +8,14 @@ export default function CheckCommentsSection({
   userId,
   friends,
   onPost,
-  onCollapse,
 }: {
   comments: CommentUI[];
   userId: string | null;
   friends?: { id: string; name: string; avatar: string }[];
   onPost: (text: string, mentions?: string[]) => void;
-  onCollapse?: () => void;
 }) {
   const [text, setText] = useState("");
   const [showAll, setShowAll] = useState(false);
-  const [showInput, setShowInput] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIdx, setMentionIdx] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -49,7 +46,7 @@ export default function CheckCommentsSection({
 
   return (
     <div>
-      <div className="bg-card border border-[#CDC999] rounded-2xl px-3 py-2.5 mb-2 flex flex-col gap-1.5 cursor-pointer" onClick={(e) => { const t = e.target as HTMLElement; if (t.closest("button") || t.closest("a") || t.closest("input")) return; if (onCollapse) onCollapse(); else setShowInput(true); }}>
+      <div className="flex flex-col gap-1.5">
       {comments.length === 0 ? (
         <span className="font-mono text-tiny text-dim py-0.5">no comments yet</span>
       ) : (
@@ -81,7 +78,7 @@ export default function CheckCommentsSection({
           )}
         </>
       )}
-      {showInput && <div className="flex gap-2 items-center mt-1.5 min-w-0" onClick={(e) => e.stopPropagation()}>
+      <div className="flex gap-2 items-center mt-1.5 min-w-0" onClick={(e) => e.stopPropagation()}>
         <input
           ref={inputRef}
           value={text}
@@ -116,8 +113,8 @@ export default function CheckCommentsSection({
         >
           Post
         </button>
-      </div>}
-      {showInput && mentionQuery !== null && mentionCandidates.length > 0 && (() => {
+      </div>
+      {mentionQuery !== null && mentionCandidates.length > 0 && (() => {
         const filtered = mentionCandidates.filter(c => c.name.toLowerCase().includes(mentionQuery));
         if (filtered.length === 0) return null;
         return (
@@ -146,7 +143,6 @@ export default function CheckCommentsSection({
           </div>
         );
       })()}
-      </div>
     </div>
   );
 }
