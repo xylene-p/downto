@@ -105,6 +105,12 @@ export default function CheckCard({
   const expandedRef = React.useRef<HTMLDivElement>(null);
 
 
+  // Auto-fetch comments for teaser (but don't expand)
+  useEffect(() => {
+    if (hasComments) {
+      openComments();
+    }
+  }, [check.id, hasComments]);
   // Also open when navigated via notification
   useEffect(() => {
     if (newlyAddedCheckId === check.id && !isCommentsOpen) {
