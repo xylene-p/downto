@@ -4,8 +4,8 @@
   "description": "Save events. See who's going.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
+  "background_color": "#FCFFE2",
+  "theme_color": "#FCFFE2",
   "icons": [
     {
       "src": "/icons/icon-192.png",

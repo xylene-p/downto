@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <path id="s" d="M 0 -150 L 20 -20 L 150 0 L 20 20 L 0 150 L -20 20 L -150 0 L -20 -20 Z"/>
+    <g id="e">
+      <use href="#s" transform="translate(0 0)"/>
+      <use href="#s" transform="translate(1.6 1.6)"/>
+      <use href="#s" transform="translate(3.2 3.2)"/>
+      <use href="#s" transform="translate(4.8 4.8)"/>
+      <use href="#s" transform="translate(6.4 6.4)"/>
+      <use href="#s" transform="translate(8 8)"/>
+      <use href="#s" transform="translate(9.6 9.6)"/>
+      <use href="#s" transform="translate(11.2 11.2)"/>
+      <use href="#s" transform="translate(12.8 12.8)"/>
+      <use href="#s" transform="translate(14.4 14.4)"/>
+      <use href="#s" transform="translate(16 16)"/>
+      <use href="#s" transform="translate(17.6 17.6)"/>
+      <use href="#s" transform="translate(19.2 19.2)"/>
+      <use href="#s" transform="translate(20.8 20.8)"/>
+    </g>
+  </defs>
+  <g transform="translate(128 128) rotate(8) scale(0.72)">
+    <use href="#e" fill="#FE44FF"/>
+    <use href="#s" fill="#E8FF5A" stroke="#0A0A0A" stroke-width="14" stroke-linejoin="round" transform="translate(-20 -20)"/>
+  </g>
+</svg>
