@@ -2,17 +2,17 @@ import type { ThemeTokens } from "./types";
 
 export const dark: ThemeTokens = {
   accent: "#E8FF5A",
-  bg: "#0a0a0a",
-  card: "#111",
-  surface: "#1a1a1a",
-  deep: "#0d0d0d",
-  text: "#fff",
-  muted: "#888",
-  dim: "#666",
-  faint: "#444",
-  border: "#1a1a1a",
-  borderLight: "#2a2a2a",
-  borderMid: "#333",
+  bg: "#141412",
+  card: "#1c1c19",
+  surface: "#252521",
+  deep: "#181815",
+  text: "#E5E5DC",
+  muted: "#8A8A80",
+  dim: "#70706A",
+  faint: "#55554F",
+  border: "#252521",
+  borderLight: "#333330",
+  borderMid: "#3D3D38",
   pool: "#00D4FF",
 
   danger: "#ff6b6b",
@@ -31,5 +31,5 @@ export const dark: ThemeTokens = {
   fontMono: "var(--font-space-mono), monospace",
   fontSerif: "var(--font-instrument-serif), serif",
 
-  themeColor: "#0a0a0a",
+  themeColor: "#141412",
 };
