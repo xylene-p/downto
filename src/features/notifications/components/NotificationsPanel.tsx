@@ -226,7 +226,7 @@ const NotificationsPanel = ({
                     }
                     onClose();
                     onNavigate({ type: "groups", squadId: squadId ?? undefined });
-                  } else if (n.type === "event_down" || n.type === "friend_event") {
+                  } else if (n.type === "event_down" || n.type === "friend_event" || n.type === "event_date_updated") {
                     if (!n.is_read) {
                       if (userId) db.markNotificationRead(n.id);
                       setNotifications((prev) =>
@@ -246,7 +246,7 @@ const NotificationsPanel = ({
                     }
                     onClose();
                     onNavigate({ type: "feed", checkId: n.related_check_id ?? undefined });
-                  } else if (n.type === "check_response" || n.type === "friend_check" || n.type === "check_tag") {
+                  } else if (n.type === "check_response" || n.type === "friend_check" || n.type === "check_tag" || n.type === "check_date_updated") {
                     // Mark single notification as read (except check_tag — cleared on accept/decline)
                     if (!n.is_read && n.type !== "check_tag") {
                       if (userId) db.markNotificationRead(n.id);
@@ -277,6 +277,8 @@ const NotificationsPanel = ({
                       : n.type === "squad_join_request" ? "#AF52DE22"
                       : n.type === "event_down" ? "#E8FF5A22"
                       : n.type === "friend_event" ? "#E8FF5A22"
+                      : n.type === "check_date_updated" ? "#E8FF5A22"
+                      : n.type === "event_date_updated" ? "#E8FF5A22"
                       : "#5856D622",
                   }}
                 >
@@ -310,6 +312,10 @@ const NotificationsPanel = ({
                       case "friend_event":
                         // Confetti
                         return <svg {...iconProps}><path d="M111.49,52.63a15.8,15.8,0,0,0-26,5.77L33,202.78A15.83,15.83,0,0,0,47.76,224a16,16,0,0,0,5.46-1l144.37-52.5a15.8,15.8,0,0,0,5.78-26Zm-2.92,13.11L160,117.18l-49.43,18L62.32,86.94Zm-45,109.83L41.56,214.44l38.67-106.3,48.26,48.26ZM152,32V16a8,8,0,0,1,16,0V32a8,8,0,0,1-16,0Zm74.26,37.75a8,8,0,0,1,0,11.31l-11.31,11.32a8,8,0,1,1-11.32-11.32L214.94,69.74A8,8,0,0,1,226.26,69.74ZM224,104a8,8,0,0,1,8,8v16a8,8,0,0,1-16,0V112A8,8,0,0,1,224,104Z"/></svg>;
+                      case "check_date_updated":
+                      case "event_date_updated":
+                        // Clock / calendar
+                        return <svg {...iconProps}><path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32Zm0,176H48V96H208V208ZM48,80V48H72v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80Zm84,56v32l27.58,15.76a8,8,0,0,1-7.94,13.87l-32-18.29a8,8,0,0,1-4-6.95V136a8,8,0,0,1,16,0Z"/></svg>;
                       default:
                         // ChatTeardrop
                         return <svg {...iconProps}><path d="M132,24A100.11,100.11,0,0,0,32,124v84a16,16,0,0,0,16,16h84a100,100,0,0,0,0-200Zm0,184H48V124a84,84,0,1,1,84,84Z"/></svg>;
