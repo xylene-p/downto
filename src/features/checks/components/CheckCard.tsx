@@ -98,10 +98,9 @@ export default function CheckCard({
     declineCoAuthorTag,
     hideCheck,
   } = useFeedContext();
-  const [isExpanded, setIsExpanded] = useState(false);
   const hasComments = initialCommentCount > 0;
 
-  const expandedRef = React.useRef<HTMLDivElement>(null);
+
 
 
 
@@ -256,30 +255,7 @@ export default function CheckCard({
           <div className="mt-2">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
               {check.responses.length > 0 ? (
-                <span
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsExpanded(prev => {
-                      if (!prev) {
-                        setTimeout(() => {
-                          const el = expandedRef.current;
-                          if (!el) return;
-                          const scrollParent = el.closest('[class*="overflow-y"]') || el.closest('[style*="overflow"]');
-                          if (scrollParent) {
-                            const elRect = el.getBoundingClientRect();
-                            const parentRect = scrollParent.getBoundingClientRect();
-                            const overflow = elRect.bottom - parentRect.bottom;
-                            if (overflow > 0) {
-                              scrollParent.scrollBy({ top: overflow + 16, behavior: "smooth" });
-                            }
-                          }
-                        }, 100);
-                      }
-                      return !prev;
-                    });
-                  }}
-                  className="font-mono text-tiny text-muted cursor-pointer whitespace-nowrap"
-                >
+                <span className="font-mono text-tiny text-muted whitespace-nowrap">
                   {(() => {
                     const downCount = check.responses.filter(r => r.status === "down").length;
                     return (
@@ -289,7 +265,6 @@ export default function CheckCard({
                       </>
                     );
                   })()}
-                  {" "}<span className="text-dim">{isExpanded ? "▴" : "▾"}</span>
                 </span>
               ) : (
                 <span className="font-mono text-tiny text-dim">no responses yet</span>
@@ -329,32 +304,6 @@ export default function CheckCard({
               )}
               </div>
             </div>
-
-            {/* Expanded responders */}
-            {isExpanded && check.responses.length > 0 && (
-              <div ref={expandedRef} className="mt-2 flex flex-col gap-1.5">
-                {check.responses.filter(r => r.status === "down").length > 0 && (
-                  <div>
-                    <span className="font-mono text-tiny text-dt uppercase tracking-widest">Down</span>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {check.responses.filter(r => r.status === "down").map(r => (
-                        <span key={r.name} className="font-mono text-tiny text-on-accent bg-dt py-0.75 px-2 rounded-3xl font-semibold">{r.name}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {check.responses.filter(r => r.status === "waitlist").length > 0 && (
-                  <div>
-                    <span className="font-mono text-tiny text-muted uppercase tracking-widest">Waitlist</span>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {check.responses.filter(r => r.status === "waitlist").map(r => (
-                        <span key={r.name} className="font-mono text-tiny text-muted bg-border-light py-0.75 px-2 rounded-3xl border border-dashed">{r.name}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
 
           </div>
         </div>
