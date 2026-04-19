@@ -190,7 +190,7 @@ const EventCard = ({
               </div>
               <span className="font-mono text-tiny text-muted min-w-0 truncate">
                 <span className="text-dt font-semibold">
-                  {event.createdBy === userId ? "You" : event.posterName}
+                  {event.posterName}
                 </span>
               </span>
             </div>
@@ -363,7 +363,7 @@ function LinkifyText({ children }: { children: string }) {
 // Poster inline element (with optional note flowing on same line)
 function PosterInline({ event, userId, note, onViewProfile }: { event: Event; userId?: string | null; note?: boolean; onViewProfile?: (userId: string) => void }) {
   if (!event.posterName) return null;
-  const name = event.createdBy === userId ? "You" : event.posterName;
+  const name = event.posterName;
   const canTap = event.createdBy && event.createdBy !== userId && onViewProfile;
   return (
     <div className="flex items-center gap-1.5">
