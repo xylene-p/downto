@@ -232,7 +232,7 @@ export function useChecks({ userId, profile, friendCount, showToast, onCheckCrea
         const newCheck: InterestCheck = {
           id: dbCheck.id,
           text: idea,
-          author: profile?.display_name || "You",
+          author: profile?.display_name ?? profile?.username ?? "",
           timeAgo: "now",
           expiresIn: expiresLabel,
           expiryPercent: 0,
