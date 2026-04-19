@@ -1,6 +1,6 @@
 import type { ThemeTokens } from "./types";
 
-export const dark: ThemeTokens = {
+export const dragonfruit: ThemeTokens = {
   accent: "#E8FF5A",
   bg: "#141412",
   card: "#1c1c19",
@@ -10,9 +10,9 @@ export const dark: ThemeTokens = {
   muted: "#8A8A80",
   dim: "#70706A",
   faint: "#55554F",
-  border: "#1F1F1C",
-  borderLight: "#333330",
-  borderMid: "#3D3D38",
+  border: "#3D1F3D",
+  borderLight: "#4A2548",
+  borderMid: "#5C2E5A",
   pool: "#00D4FF",
 
   danger: "#ff6b6b",

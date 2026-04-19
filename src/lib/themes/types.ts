@@ -1,4 +1,4 @@
-export type ThemeName = "guava" | "dark";
+export type ThemeName = "guava" | "dragonfruit";
 
 export interface ThemeTokens {
   // Core palette

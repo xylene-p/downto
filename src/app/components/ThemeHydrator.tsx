@@ -6,7 +6,7 @@ import type { ThemeName } from "@/lib/themes";
 
 const THEME_STORAGE_KEY = "downto-theme";
 const THEME_VERSION_KEY = "downto-theme-version";
-const CURRENT_THEME_VERSION = "3";
+const CURRENT_THEME_VERSION = "4";
 
 /** Apply a theme by injecting CSS vars, updating meta theme-color, and bg image */
 export function applyTheme(name: ThemeName) {
