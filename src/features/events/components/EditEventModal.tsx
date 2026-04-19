@@ -89,11 +89,14 @@ const EditEventModal = ({
     return parts.join(" ");
   })();
 
-  // Resolve date/time for save: try parsing, fall back to raw input
-  const resolvedDate = (parsedDate?.label
-    ?? (parseDateToISO(whenInput) ? whenInput : null)
-    ?? whenInput.trim())
-    || event.date;
+  // Resolve date/time for save. Only overwrite the existing date when we can
+  // actually parse the input as a date — otherwise the user is editing something
+  // else (e.g. typed only a time) and we should leave event.date alone.
+  const resolvedDate = (() => {
+    if (parsedDate?.label) return parsedDate.label;
+    if (parseDateToISO(whenInput)) return whenInput;
+    return event.date;
+  })();
   const resolvedTime = parsedTime ?? event.time;
 
   return (

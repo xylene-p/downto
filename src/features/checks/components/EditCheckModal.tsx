@@ -131,7 +131,7 @@ const EditCheckModal = ({
       ?? check.eventDate
       ?? null;
     const resolvedDateLabel = parsedDate?.label
-      ?? (resolvedDateISO ? whenInput.trim() : null)
+      ?? (parseDateToISO(whenInput) ? whenInput.trim() : null)
       ?? check.eventDateLabel
       ?? null;
     const resolvedTime = parsedTime ?? check.eventTime ?? null;
