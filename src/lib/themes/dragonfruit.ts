@@ -36,6 +36,9 @@ export const dragonfruit: ThemeTokens = {
   checkNewBg: "#2A2A15",
   checkNewBorder: "#55572A",
 
+  eventImageWash: "rgba(20,20,18,0.55)",
+  eventImageWashDown: "rgba(232,255,90,0.15)",
+
   fontMono: "var(--font-space-mono), monospace",
   fontSerif: "var(--font-instrument-serif), serif",
 

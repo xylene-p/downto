@@ -42,6 +42,10 @@ export interface ThemeTokens {
   checkNewBg: string;       // newly added (freshly created)
   checkNewBorder: string;
 
+  // Event card image wash (tint over blurred hero image)
+  eventImageWash: string;       // default state
+  eventImageWashDown: string;   // user is "down" on this event
+
   // Fonts
   fontMono: string;
   fontSerif: string;

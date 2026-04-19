@@ -36,6 +36,9 @@ export const guava: ThemeTokens = {
   checkNewBg: "#FFF5CC",
   checkNewBorder: "#E8E0B0",
 
+  eventImageWash: "rgba(252,255,226,0.3)",
+  eventImageWashDown: "rgba(200,230,60,0.3)",
+
   fontMono: "var(--font-ibm-plex-mono), monospace",
   fontSerif: "var(--font-inter), sans-serif",
 

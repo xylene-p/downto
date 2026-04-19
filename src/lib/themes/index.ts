@@ -48,6 +48,8 @@ export function themeToCSSSVars(theme: ThemeTokens): string {
     `--color-check-down-bg: ${theme.checkDownBg};`,
     `--color-check-new-bg: ${theme.checkNewBg};`,
     `--color-check-new-border: ${theme.checkNewBorder};`,
+    `--color-event-image-wash: ${theme.eventImageWash};`,
+    `--color-event-image-wash-down: ${theme.eventImageWashDown};`,
     `--font-mono: ${theme.fontMono};`,
     `--font-serif: ${theme.fontSerif};`,
   ].join(" ");

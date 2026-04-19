@@ -86,8 +86,8 @@ const EventCard = ({
         className="absolute inset-0 rounded-[inherit]"
         style={{
           background: event.isDown
-            ? "linear-gradient(to bottom, rgba(200,230,60,0.3) 0%, rgba(200,230,60,0.2) 50%, rgba(200,230,60,0.3) 100%)"
-            : "linear-gradient(to bottom, rgba(252,255,226,0.3) 0%, rgba(252,255,226,0.2) 50%, rgba(252,255,226,0.3) 100%)",
+            ? "linear-gradient(to bottom, var(--color-event-image-wash-down) 0%, var(--color-event-image-wash-down) 50%, var(--color-event-image-wash-down) 100%)"
+            : "linear-gradient(to bottom, var(--color-event-image-wash) 0%, var(--color-event-image-wash) 50%, var(--color-event-image-wash) 100%)",
         }}
       />
     </>
