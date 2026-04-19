@@ -1,12 +1,9 @@
 
 import { guava } from "./guava";
-import { acid } from "./acid";
-import { firefly } from "./firefly";
-import { midnight } from "./midnight";
-import { monochrome } from "./monochrome";
+import { dark } from "./dark";
 import type { ThemeName, ThemeTokens } from "./types";
 
-export const themes: Record<ThemeName, ThemeTokens> = { guava, acid, firefly, midnight, monochrome };
+export const themes: Record<ThemeName, ThemeTokens> = { guava, dark };
 
 export const DEFAULT_THEME: ThemeName = "guava";
 
