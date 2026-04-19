@@ -169,6 +169,14 @@ const EventCard = ({
         )}
         style={{
           background: "var(--color-card)",
+          ...(bgImage ? {
+            // Image wash is cream in both themes, so force a dark text ramp here
+            // regardless of active theme to keep the title/metadata legible.
+            "--color-primary": "#2A2A1A",
+            "--color-muted": "#6B6B5A",
+            "--color-dim": "#8A8A70",
+            "--color-faint": "#B0B098",
+          } as React.CSSProperties : {}),
           ...(isNew ? { animation: "accentGlow 2s ease-out forwards" } : {}),
         }}
       >
