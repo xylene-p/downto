@@ -31,10 +31,10 @@ export const dark: ThemeTokens = {
   downIdleBg: "#2A2A24",
   downIdleBorder: "#3D3D38",
 
-  checkMineBg: "rgba(232,255,90,0.06)",
-  checkDownBg: "rgba(232,255,90,0.14)",
-  checkNewBg: "rgba(232,255,90,0.10)",
-  checkNewBorder: "rgba(232,255,90,0.28)",
+  checkMineBg: "#252419",
+  checkDownBg: "#3A3D1D",
+  checkNewBg: "#2A2A15",
+  checkNewBorder: "#55572A",
 
   fontMono: "var(--font-space-mono), monospace",
   fontSerif: "var(--font-instrument-serif), serif",
