@@ -149,10 +149,10 @@ export default function CheckCard({
         style={check.id === sharedCheckId ? { animation: "rainbowGlow 3s linear infinite" } : check.id === newlyAddedCheckId ? { animation: "checkGlow 2s ease-in-out infinite" } : undefined}
       >
         {check.expiresIn !== "open" && (
-          <div className="h-0.75 bg-border relative">
+          <div className="h-0.75 bg-border relative overflow-hidden">
             <div
-              className={`absolute inset-y-0 left-0 transition-all duration-1000 ease-in-out ${check.expiryPercent > 75 ? "bg-danger" : check.expiryPercent > 50 ? "bg-[#ffaa5a]" : "bg-green-400"}`}
-              style={{ width: `${100 - check.expiryPercent}%` }}
+              className="absolute inset-y-0 left-0 bg-dt transition-all duration-1000 ease-in-out"
+              style={{ width: `${Math.max(0, 100 - check.expiryPercent)}%` }}
             />
           </div>
         )}
