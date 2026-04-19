@@ -294,7 +294,7 @@ export default function CheckCard({
                         : myCheckResponses[check.id] === "down"
                         ? "bg-dt text-bg border-none cursor-pointer"
                         : myCheckResponses[check.id] === "waitlist"
-                        ? "bg-transparent text-muted border border-dashed border-neutral-800 cursor-pointer"
+                        ? "bg-transparent text-primary border border-dashed border-border-mid cursor-pointer"
                         : "bg-[var(--color-down-idle-bg)] text-dt border border-[var(--color-down-idle-border)] cursor-pointer"
                     }`}
                   >
