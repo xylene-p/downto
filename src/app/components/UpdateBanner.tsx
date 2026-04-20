@@ -4,8 +4,22 @@ import { useEffect, useRef, useState } from "react";
 import { logVersionPing, API_BASE } from "@/lib/db";
 import { supabase } from "@/lib/supabase";
 import { color } from "@/lib/styles";
+import { DEFAULT_THEME } from "@/lib/themes";
 
 const CLIENT_BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID ?? "";
+const THEME_STORAGE_KEY = "downto-theme";
+
+/** Current theme: localStorage override, URL ?theme= param, or default. */
+function getActiveTheme(): string {
+  if (typeof window === "undefined") return DEFAULT_THEME;
+  try {
+    const q = new URLSearchParams(window.location.search).get("theme");
+    if (q) return q;
+    return window.localStorage.getItem(THEME_STORAGE_KEY) || DEFAULT_THEME;
+  } catch {
+    return DEFAULT_THEME;
+  }
+}
 const MIN_BACKGROUND_MS = 5 * 60 * 1000; // 5 minutes
 const POLL_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -29,7 +43,7 @@ export default function UpdateBanner() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if ((event === "INITIAL_SESSION" || event === "SIGNED_IN") && !hasPinged.current) {
         hasPinged.current = true;
-        logVersionPing(CLIENT_BUILD_ID);
+        logVersionPing(CLIENT_BUILD_ID, getActiveTheme());
       }
     });
     return () => subscription.unsubscribe();

@@ -16,7 +16,7 @@ interface PushFailure {
   error: string | null;
 }
 
-type AdminTab = "users" | "engagement" | "push" | "versions";
+type AdminTab = "users" | "engagement" | "push" | "versions" | "themes";
 
 interface Metrics {
   totalUsers: number;
@@ -42,6 +42,10 @@ interface Metrics {
     distribution: { build_id: string; users: number; pings24h: number; latestPing: string; userNames: string[] }[];
     commitMessages: Record<string, string>;
   };
+  themes: {
+    distribution: { theme: string; users: number; pings24h: number; userNames: string[] }[];
+    usersReporting: number;
+  };
   engagement: {
     active7d: number;
     engaged7d: number;
@@ -66,6 +70,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [versionSort, setVersionSort] = useState<"latest" | "users">("latest");
   const [expandedBuild, setExpandedBuild] = useState<string | null>(null);
+  const [expandedTheme, setExpandedTheme] = useState<string | null>(null);
   const [tab, setTab] = useState<AdminTab>("users");
 
   useEffect(() => {
@@ -157,6 +162,7 @@ export default function AdminPage() {
     { key: "engagement", label: "Engagement" },
     { key: "push", label: "Push" },
     { key: "versions", label: "Versions" },
+    { key: "themes", label: "Themes" },
   ];
 
   return (
@@ -470,6 +476,67 @@ export default function AdminPage() {
           ) : (
             <p className="text-faint font-mono text-xs text-center py-8">
               No version data
+            </p>
+          )}
+        </>
+      )}
+
+      {/* Themes tab */}
+      {tab === "themes" && (
+        <>
+          {metrics.themes.distribution.length > 0 ? (
+            <>
+              <p className="font-mono text-tiny text-dim mb-3">
+                Latest theme per user · {metrics.themes.usersReporting} users reporting (7d)
+              </p>
+              {(() => {
+                const total = metrics.themes.distribution.reduce((s, t) => s + t.users, 0) || 1;
+                return (
+                  <div className="flex flex-col gap-2">
+                    {metrics.themes.distribution.map((t) => {
+                      const pct = Math.round((t.users / total) * 100);
+                      const isExpanded = expandedTheme === t.theme;
+                      return (
+                        <div
+                          key={t.theme}
+                          onClick={() => setExpandedTheme(isExpanded ? null : t.theme)}
+                          className="p-3 rounded-lg border border-border bg-card cursor-pointer relative overflow-hidden"
+                        >
+                          <div
+                            className="absolute inset-y-0 left-0 bg-dt/10 pointer-events-none"
+                            style={{ width: `${pct}%` }}
+                          />
+                          <div className="relative flex justify-between items-center gap-2">
+                            <span className="font-mono text-xs text-primary shrink-0">
+                              <span className="text-faint mr-1.5">{isExpanded ? "▾" : "▸"}</span>
+                              {t.theme}
+                            </span>
+                            <span className="font-mono text-xs shrink-0">
+                              <span className="text-dt font-bold">{t.users}</span>
+                              <span className="text-dim"> users</span>
+                              <span className="text-faint ml-2">{pct}%</span>
+                              <span className="text-faint ml-2">{t.pings24h} 24h</span>
+                            </span>
+                          </div>
+                          {isExpanded && (
+                            <div className="flex flex-wrap gap-1 mt-2 relative" style={{ paddingLeft: 18 }}>
+                              {t.userNames.map((name) => (
+                                <span key={name} className="font-mono text-tiny text-muted bg-border-light px-2 py-0.5 rounded-md">
+                                  {name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </>
+          ) : (
+            <p className="text-faint font-mono text-xs text-center py-8">
+              No theme data yet. Ship the ping and wait for users to load the app.
             </p>
           )}
         </>
