@@ -561,7 +561,7 @@ function SheetHero(props: SheetProps) {
             />
             <div
               className="absolute inset-0"
-              style={{ background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)" }}
+              style={{ background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.65) 45%, transparent 100%)" }}
             />
             {/* Title over image */}
             <div className="absolute bottom-3 left-3.5 right-3.5 flex items-end justify-between">
