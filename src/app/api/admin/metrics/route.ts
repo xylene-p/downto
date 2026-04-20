@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(20),
     admin.from('version_pings')
-      .select('user_id, build_id, created_at')
+      .select('user_id, build_id, theme, created_at')
       .gte('created_at', since7d)
       .order('created_at', { ascending: false })
       .limit(10000),
@@ -149,6 +149,40 @@ export async function GET(request: NextRequest) {
       userNames: (usersByBuild.get(build_id) || []).map(uid => profileNames.get(uid) || uid.slice(0, 8)),
     }))
     .sort((a, b) => b.latestPing.localeCompare(a.latestPing));
+
+  // Theme distribution — latest theme per user (by most-recent ping), count unique
+  // users per theme, plus 24h ping count per theme.
+  const latestThemeByUser = new Map<string, string>(); // user_id → theme
+  const pingsPerTheme24h = new Map<string, number>();
+  if (versionPingsRes.data) {
+    for (const row of versionPingsRes.data as { user_id: string; theme: string | null; created_at: string }[]) {
+      const t = row.theme;
+      if (!t) continue;
+      if (!latestThemeByUser.has(row.user_id)) {
+        latestThemeByUser.set(row.user_id, t);
+      }
+      if (row.created_at >= since24h) {
+        pingsPerTheme24h.set(t, (pingsPerTheme24h.get(t) || 0) + 1);
+      }
+    }
+  }
+  const themeUsers = new Map<string, number>();
+  const themeUserIds = new Map<string, string[]>();
+  for (const [uid, t] of latestThemeByUser.entries()) {
+    themeUsers.set(t, (themeUsers.get(t) || 0) + 1);
+    const list = themeUserIds.get(t) || [];
+    list.push(uid);
+    themeUserIds.set(t, list);
+  }
+  const themeDistribution = Array.from(themeUsers.entries())
+    .map(([theme, users]) => ({
+      theme,
+      users,
+      pings24h: pingsPerTheme24h.get(theme) || 0,
+      userNames: (themeUserIds.get(theme) || []).map(uid => profileNames.get(uid) || uid.slice(0, 8)),
+    }))
+    .sort((a, b) => b.users - a.users);
+  const themeUsersReporting = latestThemeByUser.size;
 
   // Engagement metrics (7d)
   const [checksRes, responsesRes, commentsRes, messagesRes] = await Promise.all([
@@ -251,6 +285,10 @@ export async function GET(request: NextRequest) {
     versions: {
       distribution: versionDistribution,
       commitMessages,
+    },
+    themes: {
+      distribution: themeDistribution,
+      usersReporting: themeUsersReporting,
     },
     engagement: {
       active7d: activeUserIds.size,
