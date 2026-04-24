@@ -211,12 +211,17 @@ export default function CheckCard({
             <div className="w-5 h-5 rounded-full bg-border-light text-dim flex items-center justify-center font-mono text-[9px] font-bold shrink-0">
               {check.author[0]?.toUpperCase()}
             </div>
-            <span className="font-mono text-tiny text-muted min-w-0 truncate">
+            <span className="font-mono text-tiny text-muted min-w-0 truncate flex-1">
               <span className="text-dt font-semibold">{check.author}</span>
               {check.viaFriendName && (
                 <span className="font-normal text-dim">{" "}via {check.viaFriendName}</span>
               )}
             </span>
+            {check.expiresIn !== "open" && (
+              <span className={`font-mono text-tiny shrink-0 ${check.expiryPercent > 75 ? "text-danger" : "text-dim"}`}>
+                {check.expiresIn === "expired" ? "expired" : `${check.expiresIn} left`}
+              </span>
+            )}
           </div>
 
           {/* Co-author tag prompt */}
@@ -245,11 +250,6 @@ export default function CheckCard({
               <div className="flex items-center gap-1 shrink-0 mt-1">
                 {isNew && (
                   <span className="bg-dt text-on-accent font-mono text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none">new</span>
-                )}
-                {check.expiresIn !== "open" && (
-                  <span className={`font-mono text-tiny ${check.expiryPercent > 75 ? "text-danger" : "text-dim"}`}>
-                    {check.expiresIn === "expired" ? "expired" : `${check.expiresIn} left`}
-                  </span>
                 )}
                 {!check.isYours && !check.isCoAuthor && (
                   <button
