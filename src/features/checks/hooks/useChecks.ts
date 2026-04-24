@@ -127,7 +127,7 @@ export function useChecks({ userId, profile, friendCount, showToast, onCheckCrea
           if (via) c.viaFriendName = via;
         }
       }
-      dispatch({ type: CheckActionType.SYNC_CHECKS, checks: transformedChecks });
+      dispatch({ type: CheckActionType.SYNC_CHECKS, checks: transformedChecks, userId });
     } catch (err) {
       logWarn("loadChecks", "Failed to load checks", { error: err });
     }
@@ -164,19 +164,20 @@ export function useChecks({ userId, profile, friendCount, showToast, onCheckCrea
       hiddenIds,
       responses: restoredResponses,
       avatarLetter: profile?.avatar_letter,
+      userId,
     });
   }, [userId]);
 
   const respondToCheck = (checkId: string) => {
     const check = checks.find((c) => c.id === checkId);
-    dispatch({ type: CheckActionType.SET_RESPONSE, checkId, status: "down", avatarLetter: profile?.avatar_letter ?? "?" });
+    dispatch({ type: CheckActionType.SET_RESPONSE, checkId, status: "down", avatarLetter: profile?.avatar_letter ?? "?", userId });
     showToast("You're down! ✦");
     if (check?.id) {
       dispatch({ type: CheckActionType.SET_PENDING, checkId, pending: true });
       db.respondToCheck(check.id, 'down')
         .then(async (result) => {
           if (result.response === 'waitlist') {
-            dispatch({ type: CheckActionType.SET_RESPONSE, checkId, status: "waitlist", avatarLetter: profile?.avatar_letter ?? "?" });
+            dispatch({ type: CheckActionType.SET_RESPONSE, checkId, status: "waitlist", avatarLetter: profile?.avatar_letter ?? "?", userId });
             showToast("Check is full — you're on the waitlist");
           }
           if (onDownResponse) await onDownResponse();
@@ -319,7 +320,7 @@ export function useChecks({ userId, profile, friendCount, showToast, onCheckCrea
   }, [respondToCheck]);
 
   const clearResponse = (checkId: string) => {
-    dispatch({ type: CheckActionType.CLEAR_RESPONSE, checkId });
+    dispatch({ type: CheckActionType.CLEAR_RESPONSE, checkId, userId });
   };
 
   const hideCheck = async (checkId: string) => {

@@ -445,7 +445,20 @@ export async function sendFriendRequest(userId: string): Promise<Friendship> {
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    // Race with a concurrent sendFriendRequest (double-tap) or a pre-existing
+    // row we didn't match above (e.g. blocked). Treat as idempotent.
+    if ((error as { code?: string }).code === '23505') {
+      const { data: existing } = await supabase
+        .from('friendships')
+        .select('*')
+        .eq('requester_id', user.id)
+        .eq('addressee_id', userId)
+        .maybeSingle();
+      if (existing) return existing;
+    }
+    throw error;
+  }
   return data;
 }
 
@@ -717,6 +730,14 @@ export async function getFofAnnotations(): Promise<{ check_id: string; via_frien
 }
 
 export async function getActiveChecks(): Promise<(InterestCheck & { author: Profile; responses: (CheckResponse & { user: Profile })[]; squads: { id: string; archived_at: string | null; members: { id: string }[] }[]; co_authors: (CheckCoAuthor & { user: Profile })[] })[]> {
+  // NOTE: this client-side temporal filter is intended to be removed once
+  // migration 20260424000001 lands in prod (it moves this logic into
+  // check_is_active() + the RLS SELECT policy). Until then the client must
+  // filter — otherwise expired/archived checks leak into the feed. Keeping
+  // it after the migration is redundant but harmless.
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const { data, error } = await supabase
     .from('interest_checks')
     .select(`
@@ -726,8 +747,8 @@ export async function getActiveChecks(): Promise<(InterestCheck & { author: Prof
       squads(id, archived_at, members:squad_members(id, user_id, role)),
       co_authors:check_co_authors(*, user:profiles!user_id(*))
     `)
-    .or(`expires_at.gt.${new Date().toISOString()},expires_at.is.null,event_date.gte.${new Date().toISOString().slice(0, 10)}`)
-    .or(`event_date.gte.${new Date().toISOString().slice(0, 10)},event_date.is.null`)
+    .or(`expires_at.gt.${nowIso},expires_at.is.null,event_date.gte.${todayLocal}`)
+    .or(`event_date.gte.${todayLocal},event_date.is.null`)
     .is('archived_at', null)
     .order('created_at', { ascending: false });
 
@@ -756,12 +777,17 @@ export async function createInterestCheck(
     expiresAt = d.toISOString();
   }
 
+  // Capture the author's local timezone so check_is_active() in SQL can
+  // resolve "today" the same way the author did when picking event_date.
+  const eventTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
   const insertData: Record<string, unknown> = {
     author_id: user.id,
     text,
     expires_at: expiresAt,
     event_date: eventDate,
     event_time: eventTime,
+    event_tz: eventTz,
     date_flexible: dateFlexible,
     time_flexible: timeFlexible,
     max_squad_size: maxSquadSize,
@@ -1301,17 +1327,21 @@ export async function sendMessage(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
+  const row: Record<string, unknown> = {
+    squad_id: squadId,
+    sender_id: user.id,
+    text,
+    mentions,
+  };
+  if (image) {
+    row.image_path = image.path;
+    row.image_width = image.width;
+    row.image_height = image.height;
+  }
+
   const { data, error } = await supabase
     .from('messages')
-    .insert({
-      squad_id: squadId,
-      sender_id: user.id,
-      text,
-      mentions,
-      image_path: image?.path ?? null,
-      image_width: image?.width ?? null,
-      image_height: image?.height ?? null,
-    })
+    .insert(row)
     .select('*, sender:profiles(*)')
     .single();
 
@@ -2068,4 +2098,89 @@ export async function getMyPendingJoinRequests(eventId: string): Promise<{ squad
   return ((data ?? []) as unknown as { squad_id: string; squads: { event_id: string | null } }[])
     .filter((r) => r.squads?.event_id === eventId)
     .map((r) => ({ squad_id: r.squad_id }));
+}
+
+
+// =============================================================================
+// Block + report (App Store 1.2)
+// Schema: migration 20260424000003_block_and_report.sql
+// =============================================================================
+
+export type ReportTargetType = 'profile' | 'check' | 'squad_message' | 'event_comment' | 'check_comment';
+export type ReportReason = 'harassment' | 'spam' | 'impersonation' | 'inappropriate' | 'threats' | 'other';
+
+export async function blockUser(targetUserId: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  if (user.id === targetUserId) throw new Error("Can't block yourself");
+
+  const { error } = await supabase
+    .from('blocked_users')
+    .insert({ blocker_id: user.id, blocked_id: targetUserId });
+  // Unique constraint conflict = already blocked; treat as success
+  if (error && error.code !== '23505') throw error;
+}
+
+export async function unblockUser(targetUserId: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { error } = await supabase
+    .from('blocked_users')
+    .delete()
+    .eq('blocker_id', user.id)
+    .eq('blocked_id', targetUserId);
+  if (error) throw error;
+}
+
+export async function isBlocked(targetUserId: string): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  // Only checks the direction the viewer controls (their outgoing blocks).
+  // RLS prevents reading blocks where they're the blocked party, which is
+  // intentional — see migration comment.
+  const { data, error } = await supabase
+    .from('blocked_users')
+    .select('blocker_id')
+    .eq('blocker_id', user.id)
+    .eq('blocked_id', targetUserId)
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
+export async function listBlockedUsers(): Promise<(Profile & { blocked_at: string })[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('blocked_users')
+    .select('created_at, blocked:profiles!blocked_id(*)')
+    .eq('blocker_id', user.id)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as unknown as { created_at: string; blocked: Profile }[])
+    .map((r) => ({ ...r.blocked, blocked_at: r.created_at }));
+}
+
+export async function reportContent(
+  targetType: ReportTargetType,
+  targetId: string,
+  reason: ReportReason,
+  details: string | null = null,
+): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { error } = await supabase
+    .from('reported_content')
+    .insert({
+      reporter_id: user.id,
+      target_type: targetType,
+      target_id: targetId,
+      reason,
+      details,
+    });
+  if (error) throw error;
 }

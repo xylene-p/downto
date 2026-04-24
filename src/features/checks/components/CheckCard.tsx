@@ -9,6 +9,8 @@ import { useCheckComments } from "@/features/checks/hooks/useCheckComments";
 import InlineCommentsBox from "@/shared/components/InlineCommentsBox";
 import CheckDetailSheet from "./CheckDetailSheet";
 import EditCheckModal from "./EditCheckModal";
+import ReportSheet from "@/shared/components/ReportSheet";
+import CheckActionsSheet from "@/shared/components/CheckActionsSheet";
 import { useFeedContext } from "@/features/checks/context/FeedContext";
 
 function Linkify({ children, dimmed, coAuthors, onViewProfile }: { children: string; dimmed?: boolean; coAuthors?: { name: string; userId?: string }[]; onViewProfile?: (userId: string) => void }) {
@@ -108,6 +110,8 @@ export default function CheckCard({
   useEffect(() => { openComments(); }, [check.id]);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [showActions, setShowActions] = useState(false);
 
   const { comments, commentCount, openComments, postComment } = useCheckComments({
     checkId: check.id,
@@ -207,12 +211,32 @@ export default function CheckCard({
             <div className="w-5 h-5 rounded-full bg-border-light text-dim flex items-center justify-center font-mono text-[9px] font-bold shrink-0">
               {check.author[0]?.toUpperCase()}
             </div>
-            <span className="font-mono text-tiny text-muted min-w-0 truncate">
+            <span className="font-mono text-tiny text-muted min-w-0 truncate flex-1">
               <span className="text-dt font-semibold">{check.author}</span>
               {check.viaFriendName && (
                 <span className="font-normal text-dim">{" "}via {check.viaFriendName}</span>
               )}
             </span>
+            {check.expiresIn !== "open" && (
+              <span className={`font-mono text-tiny shrink-0 ${check.expiryPercent > 75 ? "text-danger" : "text-dim"}`}>
+                {check.expiresIn === "expired" ? "expired" : `${check.expiresIn} left`}
+              </span>
+            )}
+            {isNew && (
+              <span
+                className="font-mono text-[9px] font-bold uppercase shrink-0 py-1 pl-4 pr-5 leading-none"
+                style={{
+                  background: "#C2FF8A", // guava chartreuse
+                  color: "#ff00d4",        // electric fuchsia
+                  letterSpacing: "0.12em",
+                  marginRight: -16,       // cancel the card's p-4 right padding so the bg reaches the card's right edge
+                  borderTopLeftRadius: 3,
+                  borderBottomLeftRadius: 3,
+                }}
+              >
+                NEW
+              </span>
+            )}
           </div>
 
           {/* Co-author tag prompt */}
@@ -239,20 +263,13 @@ export default function CheckCard({
                 <Linkify coAuthors={check.coAuthors} onViewProfile={onViewProfile}>{check.text}</Linkify>
               </p>
               <div className="flex items-center gap-1 shrink-0 mt-1">
-                {isNew && (
-                  <span className="bg-dt text-on-accent font-mono text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none">new</span>
-                )}
-                {check.expiresIn !== "open" && (
-                  <span className={`font-mono text-tiny ${check.expiryPercent > 75 ? "text-danger" : "text-dim"}`}>
-                    {check.expiresIn === "expired" ? "expired" : `${check.expiresIn} left`}
-                  </span>
-                )}
                 {!check.isYours && !check.isCoAuthor && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); hideCheck(check.id); }}
-                    className="bg-transparent border-none text-dim py-0.5 px-1 font-mono text-xs cursor-pointer leading-none"
-                    title="Hide this check"
-                  >✕</button>
+                    onClick={(e) => { e.stopPropagation(); setShowActions(true); }}
+                    className="bg-transparent border-none text-dim py-0.5 px-1 font-mono text-base cursor-pointer leading-none"
+                    title="More"
+                    aria-label="More actions"
+                  >⋯</button>
                 )}
               </div>
             </div>
@@ -426,6 +443,24 @@ export default function CheckCard({
           await loadRealData();
         }}
       />
+
+      {showActions && (
+        <CheckActionsSheet
+          onHide={() => hideCheck(check.id)}
+          onReport={() => setShowReport(true)}
+          onClose={() => setShowActions(false)}
+        />
+      )}
+
+      {showReport && (
+        <ReportSheet
+          targetType="check"
+          targetId={check.id}
+          targetLabel="check"
+          onClose={() => setShowReport(false)}
+          onSubmitted={() => showToast("Report submitted — thanks")}
+        />
+      )}
     </>
   );
 }
