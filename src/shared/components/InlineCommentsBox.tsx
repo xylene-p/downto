@@ -70,11 +70,32 @@ export default function InlineCommentsBox({
                 {c.userName}
               </span>
               <span className="font-mono text-tiny text-primary min-w-0 break-words leading-snug">
-                {c.text.split(/(@\S+)/g).map((part, pi) =>
-                  part.startsWith("@") ? (
-                    <span key={pi} className="text-dt font-bold">{part}</span>
-                  ) : part
-                )}
+                {c.text.split(/(https?:\/\/[^\s),]+|@\S+)/g).map((part, pi) => {
+                  if (/^https?:\/\//.test(part)) {
+                    const display = (() => {
+                      try {
+                        const u = new URL(part);
+                        let d = u.host.replace(/^www\./, "") + u.pathname.replace(/\/$/, "");
+                        if (d.length > 40) d = d.slice(0, 37) + "…";
+                        return d;
+                      } catch { return part; }
+                    })();
+                    return (
+                      <a
+                        key={pi}
+                        href={part}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-dt underline underline-offset-2 break-all"
+                      >{display}</a>
+                    );
+                  }
+                  if (part.startsWith("@")) {
+                    return <span key={pi} className="text-dt font-bold">{part}</span>;
+                  }
+                  return part;
+                })}
               </span>
             </div>
           ))}
