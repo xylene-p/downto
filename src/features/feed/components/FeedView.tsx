@@ -8,6 +8,9 @@ import EventCard from '@/features/events/components/EventCard';
 import CheckCard from '@/features/checks/components/CheckCard';
 import FeedEmptyState from './FeedEmptyState';
 import InstallBanner from './InstallBanner';
+import DevMockFeedToggle from './DevMockFeedToggle';
+import { useDevMockFeed } from '../useDevMockFeed';
+import { DEV_MOCK_CHECKS, DEV_MOCK_NEW_IDS } from '../devMockChecks';
 import { useFeedContext } from '@/features/checks/context/FeedContext';
 
 function Linkify({
@@ -171,10 +174,16 @@ export default function FeedView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checks.map((c) => c.id).join(',')]);
 
-  const visibleChecks = checks.filter(
+  const [mockEnabled] = useDevMockFeed();
+  const effectiveChecks = mockEnabled ? DEV_MOCK_CHECKS : checks;
+  const mockNewSet = React.useMemo(() => new Set(DEV_MOCK_NEW_IDS), []);
+  const checkIsNew = (id: string) =>
+    mockEnabled ? mockNewSet.has(id) : newItemIds.has(id);
+
+  const visibleChecks = effectiveChecks.filter(
     (c) => !hiddenCheckIds.has(c.id) && c.expiresIn !== 'expired'
   );
-  const hiddenChecks = checks.filter((c) => hiddenCheckIds.has(c.id));
+  const hiddenChecks = effectiveChecks.filter((c) => hiddenCheckIds.has(c.id));
 
   // Pinned tier: expiring checks sorted by urgency (highest expiryPercent first)
   const pinnedChecks = visibleChecks
@@ -218,6 +227,7 @@ export default function FeedView({
 
   return (
     <>
+      <DevMockFeedToggle />
       {showInstallBanner && onDismissInstallBanner && (
         <InstallBanner
           variant={installBannerVariant}
@@ -244,7 +254,7 @@ export default function FeedView({
                 showToast={showToast}
                 showToastWithAction={showToastWithAction}
                 loadRealData={loadRealData}
-                isNew={newItemIds.has(check.id)}
+                isNew={checkIsNew(check.id)}
               />
             ))}
 
@@ -264,7 +274,7 @@ export default function FeedView({
                   onViewProfile={onViewProfile}
                   showToast={showToast}
                   loadRealData={loadRealData}
-                  isNew={newItemIds.has(item.data.id)}
+                  isNew={checkIsNew(item.data.id)}
                 />
               ) : (
                 <EventCard
