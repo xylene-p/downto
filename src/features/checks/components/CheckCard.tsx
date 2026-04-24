@@ -152,20 +152,6 @@ export default function CheckCard({
         }`}
         style={check.id === sharedCheckId ? { animation: "rainbowGlow 3s linear infinite" } : check.id === newlyAddedCheckId ? { animation: "checkGlow 2s ease-in-out infinite" } : undefined}
       >
-        {isNew && (
-          <div
-            className="absolute top-2 right-0 font-mono text-[10px] font-bold uppercase py-0.5 px-2.5 z-10 leading-none"
-            style={{
-              background: "#d4f090", // pale chartreuse
-              color: "#ff00d4",       // electric fuchsia
-              borderTopLeftRadius: 3,
-              borderBottomLeftRadius: 3,
-              letterSpacing: "0.12em",
-            }}
-          >
-            NEW
-          </div>
-        )}
         {check.expiresIn !== "open" && (
           <div className="h-1 bg-border relative overflow-hidden">
             <div
@@ -234,6 +220,21 @@ export default function CheckCard({
             {check.expiresIn !== "open" && (
               <span className={`font-mono text-tiny shrink-0 ${check.expiryPercent > 75 ? "text-danger" : "text-dim"}`}>
                 {check.expiresIn === "expired" ? "expired" : `${check.expiresIn} left`}
+              </span>
+            )}
+            {isNew && (
+              <span
+                className="font-mono text-[9px] font-bold uppercase shrink-0 py-1 pl-4 pr-5 leading-none"
+                style={{
+                  background: "#C2FF8A", // guava chartreuse
+                  color: "#ff00d4",        // electric fuchsia
+                  letterSpacing: "0.12em",
+                  marginRight: -16,       // cancel the card's p-4 right padding so the bg reaches the card's right edge
+                  borderTopLeftRadius: 3,
+                  borderBottomLeftRadius: 3,
+                }}
+              >
+                NEW
               </span>
             )}
           </div>
