@@ -64,7 +64,7 @@ const FirstCheckScreen = ({
           onChange={(e) => setWhenInput(e.target.value)}
           className={cn(
             "flex-1 min-w-0 py-2.5 px-3 bg-deep rounded-lg font-mono text-xs text-primary outline-none box-border border",
-            idea.trim() && !parsedDate ? "border-danger/25" : "border-border-mid"
+            whenInput.trim() && !parsedDate ? "border-danger/25" : "border-border-mid"
           )}
         />
         <input
@@ -81,12 +81,12 @@ const FirstCheckScreen = ({
           {whenPreview}
         </div>
       )}
-      {!whenPreview && idea.trim() && !parsedDate && (
+      {!whenPreview && whenInput.trim() && !parsedDate && (
         <div className="font-mono text-tiny text-danger mb-2" style={{ paddingLeft: 2 }}>
-          add a date (e.g. &quot;fri&quot;, &quot;3/14&quot;, &quot;next sat&quot;)
+          couldn&apos;t read that — try &quot;fri&quot;, &quot;3/14&quot;, &quot;next sat&quot;
         </div>
       )}
-      {!whenPreview && (!idea.trim() || parsedDate) && <div className="mb-2" />}
+      {!whenPreview && !whenInput.trim() && <div className="mb-2" />}
 
       {/* Timer picker */}
       <div className="mb-4">
@@ -161,10 +161,10 @@ const FirstCheckScreen = ({
             onComplete(title, checkTimer, eventDate, squadSize === 0 ? null : squadSize, eventTime, true, true, location);
           }
         }}
-        disabled={!idea.trim() || !parsedDate}
+        disabled={!idea.trim()}
         className={cn(
           "w-full p-4 border-none rounded-xl font-mono text-sm font-bold mb-4",
-          idea.trim() && parsedDate
+          idea.trim()
             ? "bg-dt text-bg cursor-pointer"
             : "bg-border-mid text-dim cursor-default"
         )}
