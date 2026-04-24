@@ -717,9 +717,14 @@ export async function getFofAnnotations(): Promise<{ check_id: string; via_frien
 }
 
 export async function getActiveChecks(): Promise<(InterestCheck & { author: Profile; responses: (CheckResponse & { user: Profile })[]; squads: { id: string; archived_at: string | null; members: { id: string }[] }[]; co_authors: (CheckCoAuthor & { user: Profile })[] })[]> {
-  // Activeness (archived_at, expires_at, event_date) and visibility (friend/FoF/
-  // co-author) are both enforced by RLS via public.check_is_active + the SELECT
-  // policy. See migration 20260424000001.
+  // NOTE: this client-side temporal filter is intended to be removed once
+  // migration 20260424000001 lands in prod (it moves this logic into
+  // check_is_active() + the RLS SELECT policy). Until then the client must
+  // filter — otherwise expired/archived checks leak into the feed. Keeping
+  // it after the migration is redundant but harmless.
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const { data, error } = await supabase
     .from('interest_checks')
     .select(`
@@ -729,6 +734,9 @@ export async function getActiveChecks(): Promise<(InterestCheck & { author: Prof
       squads(id, archived_at, members:squad_members(id, user_id, role)),
       co_authors:check_co_authors(*, user:profiles!user_id(*))
     `)
+    .or(`expires_at.gt.${nowIso},expires_at.is.null,event_date.gte.${todayLocal}`)
+    .or(`event_date.gte.${todayLocal},event_date.is.null`)
+    .is('archived_at', null)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
