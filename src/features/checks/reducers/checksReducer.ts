@@ -40,15 +40,15 @@ export const CheckActionType = {
 
 export type ChecksAction =
   // Serves both loadChecks (checks-only) and hydrateChecks (checks + hiddenIds + responses)
-  | { type: typeof CheckActionType.SYNC_CHECKS; checks: InterestCheck[]; hiddenIds?: string[]; responses?: Record<string, "down" | "waitlist">; avatarLetter?: string }
+  | { type: typeof CheckActionType.SYNC_CHECKS; checks: InterestCheck[]; hiddenIds?: string[]; responses?: Record<string, "down" | "waitlist">; avatarLetter?: string; userId?: string | null }
   // Prepends if new id, shallow-merges if existing
   | { type: typeof CheckActionType.UPSERT_CHECK; check: InterestCheck }
   // Bulk patch — for syncing squad membership across multiple checks at once
   | { type: typeof CheckActionType.PATCH_CHECKS; patches: Array<{ id: string; patch: Partial<InterestCheck> }> }
   // Optimistic response — patches "You" into check.responses + myCheckResponses
-  | { type: typeof CheckActionType.SET_RESPONSE; checkId: string; status: "down" | "waitlist"; avatarLetter?: string }
+  | { type: typeof CheckActionType.SET_RESPONSE; checkId: string; status: "down" | "waitlist"; avatarLetter?: string; userId?: string | null }
   // Optimistic un-down — removes "You" from check.responses + myCheckResponses
-  | { type: typeof CheckActionType.CLEAR_RESPONSE; checkId: string }
+  | { type: typeof CheckActionType.CLEAR_RESPONSE; checkId: string; userId?: string | null }
   // Bulk response merge — for shared check injection
   | { type: typeof CheckActionType.MERGE_RESPONSES; responses: Record<string, "down" | "waitlist"> }
   // Pending spinner (pending: true = add, false = remove)
@@ -82,16 +82,21 @@ function mergeChecks(prev: InterestCheck[], next: InterestCheck[]): InterestChec
   });
 }
 
-// Re-apply "You" response if a realtime sync fires before the DB confirms your response
+// Re-apply "You" response if a realtime sync fires before the DB confirms your response.
+// Skip when the server already returned the viewer's row (matched via odbc === userId,
+// since transformCheck renders your own response under your display_name, not "You").
 function patchYouResponses(
   checks: InterestCheck[],
   myCheckResponses: Record<string, "down" | "waitlist">,
-  avatarLetter?: string
+  avatarLetter?: string,
+  userId?: string | null
 ): InterestCheck[] {
   return checks.map((c) => {
     const myStatus = myCheckResponses[c.id];
-    if (!myStatus || c.responses.some((r) => r.name === "You")) return c;
-    return { ...c, responses: [{ name: "You", avatar: avatarLetter ?? "?", status: myStatus }, ...c.responses] };
+    if (!myStatus) return c;
+    if (c.responses.some((r) => r.name === "You")) return c;
+    if (userId && c.responses.some((r) => r.odbc === userId)) return c;
+    return { ...c, responses: [{ name: "You", avatar: avatarLetter ?? "?", status: myStatus, odbc: userId ?? undefined }, ...c.responses] };
   });
 }
 
@@ -105,7 +110,7 @@ export function checksReducer(state: ChecksState, action: ChecksAction): ChecksS
       const responses = action.responses
         ? action.responses
         : state.myCheckResponses;
-      const checks = patchYouResponses(mergeChecks(state.checks, action.checks), responses, action.avatarLetter);
+      const checks = patchYouResponses(mergeChecks(state.checks, action.checks), responses, action.avatarLetter, action.userId);
       return {
         ...state,
         checks,
@@ -129,22 +134,22 @@ export function checksReducer(state: ChecksState, action: ChecksAction): ChecksS
       return { ...state, checks };
     }
     case CheckActionType.SET_RESPONSE: {
-      const { checkId, status, avatarLetter } = action;
+      const { checkId, status, avatarLetter, userId } = action;
       const checks = state.checks.map((c) => {
         if (c.id !== checkId) return c;
         const responses = [
-          { name: "You", avatar: avatarLetter ?? "?", status },
-          ...c.responses.filter((r) => r.name !== "You"),
+          { name: "You", avatar: avatarLetter ?? "?", status, odbc: userId ?? undefined },
+          ...c.responses.filter((r) => r.name !== "You" && (!userId || r.odbc !== userId)),
         ];
         return { ...c, responses };
       });
       return { ...state, checks, myCheckResponses: { ...state.myCheckResponses, [checkId]: status } };
     }
     case CheckActionType.CLEAR_RESPONSE: {
-      const { checkId } = action;
+      const { checkId, userId } = action;
       const checks = state.checks.map((c) => {
         if (c.id !== checkId) return c;
-        return { ...c, responses: c.responses.filter((r) => r.name !== "You") };
+        return { ...c, responses: c.responses.filter((r) => r.name !== "You" && (!userId || r.odbc !== userId)) };
       });
       const { [checkId]: _, ...rest } = state.myCheckResponses;
       return { ...state, checks, myCheckResponses: rest };
@@ -170,8 +175,8 @@ export function checksReducer(state: ChecksState, action: ChecksAction): ChecksS
         );
         if (!accepted) return { ...c, pendingTagForYou: false, coAuthors };
         const responses = [
-          { name: "You", avatar: avatarLetter ?? "?", status: "down" as const },
-          ...c.responses.filter((r) => r.name !== "You"),
+          { name: "You", avatar: avatarLetter ?? "?", status: "down" as const, odbc: userId },
+          ...c.responses.filter((r) => r.name !== "You" && r.odbc !== userId),
         ];
         return { ...c, isCoAuthor: true, pendingTagForYou: false, coAuthors, responses };
       });
