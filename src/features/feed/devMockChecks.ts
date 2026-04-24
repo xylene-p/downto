@@ -14,6 +14,17 @@ const hoursFromNow = (h: number) => new Date(now + h * 3600_000).toISOString();
 
 const uuid = (n: number) => `dev-mock-${String(n).padStart(12, "0")}`;
 
+/**
+ * Mock check IDs that should always render with the "NEW" banner when
+ * mock mode is on, regardless of the viewer's lastSeenFeedAt. Lets us
+ * preview the banner + non-banner states on the same screen.
+ */
+export const DEV_MOCK_NEW_IDS: string[] = [
+  uuid(1), // Sara / Mubi — fresh dated
+  uuid(2), // Leo / coffee — near-expiry
+  uuid(8), // Nickon / co-author pending tag
+];
+
 export const DEV_MOCK_CHECKS: InterestCheck[] = [
   {
     id: uuid(1),
