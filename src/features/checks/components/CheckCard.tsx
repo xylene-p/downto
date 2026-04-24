@@ -154,10 +154,14 @@ export default function CheckCard({
       >
         {isNew && (
           <div
-            className="absolute top-0 right-0 bg-dt text-on-accent font-mono text-[9px] font-bold uppercase py-1 px-2.5 rounded-bl-lg z-10 leading-none"
-            style={{ letterSpacing: "0.15em" }}
+            className="absolute top-2 right-2 bg-dt font-mono text-[10px] font-bold uppercase py-0.5 px-2 rounded-sm z-10 leading-none"
+            style={{
+              color: "#c94dff",
+              border: "1px solid #c94dff",
+              letterSpacing: "0.12em",
+            }}
           >
-            new
+            NEW
           </div>
         )}
         {check.expiresIn !== "open" && (
