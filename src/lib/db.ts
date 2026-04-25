@@ -815,16 +815,6 @@ export async function createInterestCheck(
   return data;
 }
 
-export async function deleteInterestCheck(checkId: string): Promise<void> {
-  const { error } = await supabase
-    .from('interest_checks')
-    .delete()
-    .eq('id', checkId);
-  // RLS policy allows author and accepted co-authors
-
-  if (error) throw error;
-}
-
 /** Returns true if the check still exists and is not archived. */
 export async function isInterestCheckActive(checkId: string): Promise<boolean> {
   const { data } = await supabase
@@ -835,12 +825,13 @@ export async function isInterestCheckActive(checkId: string): Promise<boolean> {
   return !!data && !data.archived_at;
 }
 
+/** Archive a check via SECURITY DEFINER RPC. The RPC also fires
+ *  `check_archived` notifications to "down" responders in the same tx.
+ *  Re-archiving an already-archived row is a silent no-op server-side. */
 export async function archiveInterestCheck(checkId: string): Promise<void> {
-  const { error } = await supabase
-    .from('interest_checks')
-    .update({ archived_at: new Date().toISOString() })
-    .eq('id', checkId);
-
+  const { error } = await supabase.rpc('archive_interest_check', {
+    p_check_id: checkId,
+  });
   if (error) throw error;
 }
 

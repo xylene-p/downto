@@ -268,7 +268,7 @@ const NotificationsPanel = ({
                     }
                     onClose();
                     navigateToCheckIfActive(n.related_check_id, onNavigate, onDeletedCheck);
-                  } else if (n.type === "check_response" || n.type === "friend_check" || n.type === "check_tag" || n.type === "check_date_updated" || n.type === "check_text_updated") {
+                  } else if (n.type === "check_response" || n.type === "friend_check" || n.type === "check_tag" || n.type === "check_date_updated" || n.type === "check_text_updated" || n.type === "check_archived") {
                     // Mark single notification as read (except check_tag — cleared on accept/decline)
                     if (!n.is_read && n.type !== "check_tag") {
                       if (userId) db.markNotificationRead(n.id);
@@ -303,6 +303,7 @@ const NotificationsPanel = ({
                       : n.type === "check_text_updated" ? "#E8FF5A22"
                       : n.type === "event_date_updated" ? "#E8FF5A22"
                       : n.type === "event_comment" ? "#5AC8FA22"
+                      : n.type === "check_archived" ? "#FF444422"
                       : "#5856D622",
                   }}
                 >
@@ -343,6 +344,9 @@ const NotificationsPanel = ({
                       case "check_text_updated":
                         // Pencil
                         return <svg {...iconProps}><path d="M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.68,147.31,64l24-24L216,84.68Z"/></svg>;
+                      case "check_archived":
+                        // Trash
+                        return <svg {...iconProps}><path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/></svg>;
                       default:
                         // ChatTeardrop
                         return <svg {...iconProps}><path d="M132,24A100.11,100.11,0,0,0,32,124v84a16,16,0,0,0,16,16h84a100,100,0,0,0,0-200Zm0,184H48V124a84,84,0,1,1,84,84Z"/></svg>;
