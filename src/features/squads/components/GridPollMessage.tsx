@@ -46,11 +46,20 @@ function formatSlotLabel(hourStart: number, slotIndex: number, slotMinutes: numb
   return m === 0 ? `${h12}${ampm}` : `${h12}:${m.toString().padStart(2, '0')}${ampm}`;
 }
 
-function formatDayHeader(dateIso: string): { top: string; bottom: string } {
+function formatDayHeader(dateIso: string, compact: boolean): { top: string; bottom: string; title: string } {
   const d = new Date(dateIso + 'T00:00:00');
+  const title = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  if (compact) {
+    return {
+      top: d.toLocaleDateString('en-US', { weekday: 'narrow' }),
+      bottom: String(d.getDate()),
+      title,
+    };
+  }
   return {
     top: d.toLocaleDateString('en-US', { weekday: 'short' }),
     bottom: d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }),
+    title,
   };
 }
 
@@ -216,15 +225,17 @@ export default function GridPollMessage({
           onPointerMove={handlePointerMove}
           className="select-none"
         >
-          {/* Header row: day labels */}
+          {/* Header row: day labels. Past 7 days the columns get too narrow
+              for "Sat 4/25" — collapse to single-letter weekday + day number
+              and stash the full date in title= so hover recovers it. */}
           <div className="flex">
             <div className="shrink-0 w-10" />
             {Array.from({ length: days }, (_, d) => {
-              const h = formatDayHeader(poll.gridDates[d]);
+              const h = formatDayHeader(poll.gridDates[d], days > 7);
               return (
-                <div key={d} className="flex-1 min-w-0 text-center px-0.5">
-                  <div className="font-mono text-tiny text-dim leading-none">{h.top}</div>
-                  <div className="font-mono text-tiny text-faint leading-tight">{h.bottom}</div>
+                <div key={d} title={h.title} className="flex-1 min-w-0 text-center px-0.5 overflow-hidden">
+                  <div className="font-mono text-tiny text-dim leading-none truncate">{h.top}</div>
+                  <div className="font-mono text-tiny text-faint leading-tight truncate">{h.bottom}</div>
                 </div>
               );
             })}
