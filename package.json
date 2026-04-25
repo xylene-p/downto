@@ -11,7 +11,8 @@
     "build:capacitor": "bash scripts/build-capacitor.sh",
     "cap:sync": "npx cap sync ios",
     "start": "next start",
-    "test": "echo 'Unit tests disabled'"
+    "test": "echo 'Unit tests disabled'",
+    "ios:fresh": "bash scripts/ios-fresh.sh"
   },
   "keywords": [],
   "author": "",
