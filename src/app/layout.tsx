@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Sora, Exo, Instrument_Serif, Space_Mono, IBM_Plex_Mono, Inter } from 'next/font/google';
 import DevProdBanner from '@/app/components/DevProdBanner';
+import DevUserSwitcher from '@/app/components/DevUserSwitcher';
 import UpdateBanner from '@/app/components/UpdateBanner';
 import Grain from '@/app/components/Grain';
 import ThemeHydrator from '@/app/components/ThemeHydrator';
@@ -100,6 +101,7 @@ export default function RootLayout({
         <div className="mx-auto flex w-full max-w-105 flex-col">
           {children}
         </div>
+        {process.env.NODE_ENV === 'development' && <DevUserSwitcher />}
       </body>
     </html>
   );
