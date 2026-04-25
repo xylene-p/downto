@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { PushNotifications } from "@capacitor/push-notifications";
 import {
   isPushSupported,
+  isNativePlatform,
   registerServiceWorker,
   subscribeToPush,
   unsubscribeFromPush,
+  registerNativePush,
 } from "@/lib/pushNotifications";
 
 export function usePushNotifications(
@@ -22,16 +25,30 @@ export function usePushNotifications(
     setPushSupported(true);
 
     (async () => {
+      if (isNativePlatform()) {
+        // On native, the OS owns permission state. Mirror it into the toggle.
+        const perm = await PushNotifications.checkPermissions();
+        if (perm.receive === "granted") {
+          setPushEnabled(true);
+        } else if (
+          perm.receive === "prompt" &&
+          !localStorage.getItem("pushAutoPrompted")
+        ) {
+          localStorage.setItem("pushAutoPrompted", "1");
+          const ok = await registerNativePush();
+          if (ok) setPushEnabled(true);
+        }
+        return;
+      }
+
       const reg = await registerServiceWorker();
       if (!reg) return;
       swRegistrationRef.current = reg;
 
-      // Check if already subscribed
       const existing = await reg.pushManager.getSubscription();
       if (existing) {
         setPushEnabled(true);
       } else if (!localStorage.getItem("pushAutoPrompted") && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
-        // Auto-prompt once after first login
         localStorage.setItem("pushAutoPrompted", "1");
         const sub = await subscribeToPush(reg);
         if (sub) {
@@ -42,6 +59,23 @@ export function usePushNotifications(
   }, [isLoggedIn]);
 
   const handleTogglePush = async () => {
+    if (isNativePlatform()) {
+      if (pushEnabled) {
+        // iOS doesn't let an app revoke its own push permission. Tell the user
+        // where to flip it, since the toggle in our UI can't do it directly.
+        showToast("Disable in iOS Settings → downto → Notifications");
+        return;
+      }
+      const ok = await registerNativePush();
+      if (ok) {
+        setPushEnabled(true);
+        showToast("Push notifications enabled!");
+      } else {
+        showToast("Push permission denied — enable in iOS Settings → downto");
+      }
+      return;
+    }
+
     const reg = swRegistrationRef.current;
     if (!reg) return;
 
