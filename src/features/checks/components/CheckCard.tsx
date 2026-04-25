@@ -386,34 +386,16 @@ export default function CheckCard({
         friends={friendsList}
         hasSquad={!!check.squadId}
         onShare={(check.isYours || check.isCoAuthor) ? () => { setEditModalOpen(false); shareCheck(); } : undefined}
-        onArchive={(check.isYours || check.isCoAuthor) ? async () => {
-          setEditModalOpen(false);
-          try { await db.archiveInterestCheck(check.id); } catch (err) { logError("archiveCheck", err, { checkId: check.id }); }
-          await loadRealData();
-          if (showToastWithAction) {
-            showToastWithAction("Check archived — undo?", async () => {
-              try { await db.unarchiveInterestCheck(check.id); } catch (err) { logError("unarchiveCheck", err, { checkId: check.id }); }
-              await loadRealData();
-            });
-          } else {
-            showToast("Check archived");
-          }
-        } : undefined}
         onDelete={(check.isYours || check.isCoAuthor) ? async () => {
           setEditModalOpen(false);
           try { await db.archiveInterestCheck(check.id); } catch (err) { logError("archiveCheck", err, { checkId: check.id }); }
           await loadRealData();
           if (showToastWithAction) {
-            const timer = setTimeout(async () => {
-              try { await db.deleteInterestCheck(check.id); } catch (err) { logError("deleteCheck", err, { checkId: check.id }); }
-            }, 4500);
             showToastWithAction("Check removed — undo?", async () => {
-              clearTimeout(timer);
               try { await db.unarchiveInterestCheck(check.id); } catch (err) { logError("unarchiveCheck", err, { checkId: check.id }); }
               await loadRealData();
             });
           } else {
-            try { await db.deleteInterestCheck(check.id); } catch (err) { logError("deleteCheck", err, { checkId: check.id }); }
             showToast("Check removed");
           }
         } : undefined}
