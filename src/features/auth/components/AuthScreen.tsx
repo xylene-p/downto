@@ -130,6 +130,12 @@ const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
           >
             {loading ? "Sending..." : "Send Code"}
           </button>
+          <p className="font-mono text-tiny text-dim text-center mt-4 leading-relaxed">
+            By continuing you agree to our{" "}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-dt underline underline-offset-2">Terms</a>
+            {" "}and{" "}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-dt underline underline-offset-2">Privacy Policy</a>.
+          </p>
         </>
       ) : (
         <>
