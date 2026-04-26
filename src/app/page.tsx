@@ -100,13 +100,6 @@ export default function Home() {
     showToast,
     onCheckCreated: () => { setTab("feed"); clearAddGlowRef.current(); },
     onDownResponse: () => { loadRealDataRef.current(); },
-    onAutoSquad: (checkId: string) => {
-      // Use latest checks state via ref to avoid stale closure
-      const check = checksHook.checks.find((c) => c.id === checkId);
-      if (check && !check.squadId) {
-        squadsHook.startSquadFromCheck(check);
-      }
-    },
     onCoAuthorRespond: (checkId: string) => {
       // Mark check_tag notification as read when user accepts/declines
       const tagNotif = notificationsHook.notifications.find(
@@ -853,7 +846,6 @@ export default function Home() {
             friends={friendsHook.friends}
             userId={userId}
             profile={profile}
-            startSquadFromCheck={squadsHook.startSquadFromCheck}
             loadRealData={loadRealData}
             showToast={showToast}
             showToastWithAction={showToastWithAction}

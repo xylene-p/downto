@@ -92,7 +92,6 @@ export interface FeedViewProps {
   friends: Friend[];
   userId: string | null;
   profile: Profile | null;
-  startSquadFromCheck: (check: InterestCheck) => Promise<void>;
   loadRealData: () => Promise<void>;
   showToast: (msg: string) => void;
   showToastWithAction?: (msg: string, action: () => void) => void;
@@ -115,7 +114,6 @@ export default function FeedView({
   friends,
   userId,
   profile,
-  startSquadFromCheck,
   loadRealData,
   showToast,
   showToastWithAction,
@@ -248,7 +246,6 @@ export default function FeedView({
                 friends={friends}
                 sharedCheckId={sharedCheckId}
                 initialCommentCount={commentCounts[check.id] ?? 0}
-                startSquadFromCheck={startSquadFromCheck}
                 onNavigateToGroups={onNavigateToGroups}
                 onViewProfile={onViewProfile}
                 showToast={showToast}
@@ -269,7 +266,6 @@ export default function FeedView({
                   friends={friends}
                   sharedCheckId={sharedCheckId}
                   initialCommentCount={commentCounts[item.data.id] ?? 0}
-                  startSquadFromCheck={startSquadFromCheck}
                   onNavigateToGroups={onNavigateToGroups}
                   onViewProfile={onViewProfile}
                   showToast={showToast}

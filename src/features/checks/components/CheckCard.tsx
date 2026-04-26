@@ -66,7 +66,6 @@ export interface CheckCardProps {
   friends: Friend[];
   sharedCheckId?: string | null;
   initialCommentCount: number;
-  startSquadFromCheck: (check: InterestCheck) => Promise<void>;
   onNavigateToGroups: (squadId?: string) => void;
   onViewProfile?: (userId: string) => void;
   showToast: (msg: string) => void;
@@ -82,7 +81,6 @@ export default function CheckCard({
   friends,
   sharedCheckId,
   initialCommentCount,
-  startSquadFromCheck,
   onNavigateToGroups,
   onViewProfile,
   showToast,
@@ -285,12 +283,6 @@ export default function CheckCard({
                 </div>
               );
             })()}
-            {(check.isYours || check.isCoAuthor) && !check.squadId && myCheckResponses[check.id] !== "down" && check.responses.some(r => r.status === "down") && (
-              <button
-                onClick={(e) => { e.stopPropagation(); startSquadFromCheck(check); }}
-                className="bg-transparent text-dt border border-dt rounded-md py-1 px-2 font-mono text-tiny font-bold cursor-pointer mt-1.5"
-              >Squad →</button>
-            )}
           </div>
 
           {/* Responses + comment toggle + down button */}
