@@ -102,11 +102,10 @@ interface UseChecksParams {
   showToast: (msg: string) => void;
   onCheckCreated?: () => void;
   onDownResponse?: () => Promise<void> | void;
-  onAutoSquad?: (checkId: string) => void;
   onCoAuthorRespond?: (checkId: string) => void;
 }
 
-export function useChecks({ userId, profile, friendCount, showToast, onCheckCreated, onDownResponse, onAutoSquad, onCoAuthorRespond }: UseChecksParams) {
+export function useChecks({ userId, profile, friendCount, showToast, onCheckCreated, onDownResponse, onCoAuthorRespond }: UseChecksParams) {
   // Single reducer replaces 6x useState
   const [state, dispatch] = useReducer(checksReducer, initialChecksState);
   const { checks, myCheckResponses, hiddenCheckIds, pendingDownCheckIds, newlyAddedCheckId, leftChecks } = state;
@@ -204,16 +203,6 @@ export function useChecks({ userId, profile, friendCount, showToast, onCheckCrea
           if (onDownResponse) await onDownResponse();
           else await loadChecks();
           dispatch({ type: CheckActionType.SET_PENDING, checkId, pending: false });
-          if (result.response === 'down' && onAutoSquad) {
-            // Read latest checks after reload to check squad/down count
-            const updated = checks.find((c) => c.id === checkId);
-            if (updated && !updated.squadId) {
-              const downCount = updated.responses.filter((r) => r.status === "down").length;
-              if (downCount >= 2) {
-                setTimeout(() => onAutoSquad(checkId), 300);
-              }
-            }
-          }
         })
         .catch((err) => {
           dispatch({ type: CheckActionType.SET_PENDING, checkId, pending: false });
