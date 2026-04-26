@@ -1,6 +1,6 @@
 "use client";
 
-import { font, color } from "@/lib/styles";
+import { color } from "@/lib/styles";
 
 const Toast = ({
   message,

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Sora, Exo, Instrument_Serif, Space_Mono, IBM_Plex_Mono, Inter } from 'next/font/google';
+import { Instrument_Serif, Space_Mono, IBM_Plex_Mono, Inter } from 'next/font/google';
 import DevProdBanner from '@/app/components/DevProdBanner';
 import DevUserSwitcher from '@/app/components/DevUserSwitcher';
 import UpdateBanner from '@/app/components/UpdateBanner';
@@ -10,16 +10,10 @@ import NativeStatusBar from '@/app/components/NativeStatusBar';
 import './global.css';
 import './animations.css';
 
-const sora = Sora({
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-sora',
-  subsets: ['latin'],
-});
-const exo = Exo({
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-exo',
-  subsets: ['latin'],
-});
+// Fonts loaded here are referenced by the theme system in src/lib/themes/.
+// Inter + IBM Plex Mono → guava (default). Instrument Serif + Space Mono →
+// dragonfruit. next/font/google self-hosts at build time, so no Google Fonts
+// <link> is needed at runtime.
 const instrumentSerif = Instrument_Serif({
   weight: '400',
   variable: '--font-instrument-serif',
@@ -73,19 +67,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${sora.variable} ${exo.variable} ${instrumentSerif.variable} ${spaceMono.variable} ${ibmPlexMono.variable} ${inter.variable}`}
+      className={`${instrumentSerif.variable} ${spaceMono.variable} ${ibmPlexMono.variable} ${inter.variable}`}
     >
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Exo:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap"
-          rel="stylesheet"
-        />
         <meta name="theme-color" content="#FCFFE2" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <style>{`

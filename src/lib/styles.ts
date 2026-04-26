@@ -1,8 +1,11 @@
-export const font = {
-  mono: "'Exo', sans-serif",
-  serif: "'Sora', sans-serif",
-};
-
+// Color palette mirror of the @theme block in src/app/global.css. Use these
+// for inline-style values when reaching for one-offs; for everything else
+// prefer the Tailwind classes (bg-bg, text-primary, …). The active theme
+// (guava | dragonfruit) overrides these via CSS vars at runtime, so values
+// here are guava defaults.
+//
+// Fonts: use the `font-serif` / `font-mono` Tailwind classes (which resolve
+// to per-theme CSS vars). There is no font map exported here.
 export const color = {
   accent: "#FE44FF",
   bg: "#FCFFE2",
