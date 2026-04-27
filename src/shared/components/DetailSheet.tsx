@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { useModalTransition } from "@/shared/hooks/useModalTransition";
+import React from "react";
+import { useBottomSheet } from "@/shared/hooks/useBottomSheet";
 
 /**
  * Shared bottom-sheet shell: backdrop + blur + slide-up panel + drag-to-dismiss
@@ -22,45 +22,9 @@ export default function DetailSheet({
   onEdit?: () => void;
   children: React.ReactNode;
 }) {
-  const { visible, entering, closing, close } = useModalTransition(true, onClose);
-  const touchStartY = useRef(0);
-  const [dragOffset, setDragOffset] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
+  const sheet = useBottomSheet({ open: true, onClose });
 
-  useEffect(() => {
-    if (!visible) return;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, [visible]);
-
-  const handleSwipeStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-    isDragging.current = false;
-  };
-  const handleSwipeMove = (e: React.TouchEvent) => {
-    const dy = e.touches[0].clientY - touchStartY.current;
-    if (dy > 0) { isDragging.current = true; setDragOffset(dy); }
-  };
-  const handleSwipeEnd = () => {
-    if (dragOffset > 60) { setDragOffset(0); close(); }
-    else { setDragOffset(0); }
-    isDragging.current = false;
-  };
-  const handleScrollTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-    isDragging.current = false;
-  };
-  const handleScrollTouchMove = (e: React.TouchEvent) => {
-    const dy = e.touches[0].clientY - touchStartY.current;
-    const atTop = scrollRef.current ? scrollRef.current.scrollTop <= 0 : true;
-    if (atTop && dy > 0) { isDragging.current = true; e.preventDefault(); setDragOffset(dy); }
-  };
-  const handleScrollTouchEnd = () => {
-    if (isDragging.current) handleSwipeEnd();
-  };
-
-  if (!visible) return null;
+  if (!sheet.visible) return null;
 
   return (
     <div
@@ -71,13 +35,13 @@ export default function DetailSheet({
     >
       {/* Backdrop */}
       <div
-        onClick={close}
+        onClick={sheet.close}
         className="absolute inset-0 transition-[opacity,backdrop-filter] duration-300 ease-in-out"
         style={{
           background: "rgba(0,0,0,0.7)",
-          backdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
-          WebkitBackdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
-          opacity: (entering || closing) ? 0 : 1,
+          backdropFilter: sheet.backdropBlur,
+          WebkitBackdropFilter: sheet.backdropBlur,
+          opacity: sheet.backdropOpacity,
         }}
       />
       {/* Panel */}
@@ -86,18 +50,13 @@ export default function DetailSheet({
         style={{
           maxWidth: 420,
           maxHeight: "80vh",
-          animation: closing ? undefined : "slideUp 0.3s ease-out",
-          transform: closing ? "translateY(100%)" : `translateY(${dragOffset}px)`,
-          transition: closing ? "transform 0.2s ease-in" : (dragOffset === 0 ? "transform 0.2s ease-out" : "none"),
+          animation: sheet.closing ? undefined : "slideUp 0.3s ease-out",
+          transform: sheet.panelTransform,
+          transition: sheet.panelTransition,
         }}
       >
         {/* Drag handle */}
-        <div
-          onTouchStart={handleSwipeStart}
-          onTouchMove={handleSwipeMove}
-          onTouchEnd={handleSwipeEnd}
-          className="touch-none"
-        >
+        <div {...sheet.swipeProps} className="touch-none">
           <div className="flex justify-center px-5 pb-2">
             <div className="w-10 h-1 bg-faint rounded-sm" />
           </div>
@@ -105,17 +64,14 @@ export default function DetailSheet({
 
         {/* Scrollable content */}
         <div
-          ref={scrollRef}
-          onTouchStart={handleScrollTouchStart}
-          onTouchMove={handleScrollTouchMove}
-          onTouchEnd={handleScrollTouchEnd}
+          {...sheet.scrollProps}
           className="flex-1 overflow-y-auto overscroll-contain px-5 pb-5"
         >
           {children}
           {editLabel && onEdit && (
             <div className="mt-5 pt-4 border-t border-border">
               <button
-                onClick={() => { onEdit(); close(); }}
+                onClick={() => { onEdit(); sheet.close(); }}
                 className="w-full flex items-center justify-between py-2 font-mono text-xs text-dt font-bold uppercase tracking-[0.06em] cursor-pointer"
               >
                 <span>{editLabel}</span>

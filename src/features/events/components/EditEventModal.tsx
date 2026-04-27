@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { color } from "@/lib/styles";
 import { parseNaturalDate, parseNaturalTime, parseDateToISO } from "@/lib/utils";
-import { useModalTransition } from "@/shared/hooks/useModalTransition";
+import { useBottomSheet } from "@/shared/hooks/useBottomSheet";
 import cn from "@/lib/tailwindMerge";
 import type { Event, Squad } from "@/lib/ui-types";
 
@@ -31,11 +31,7 @@ const EditEventModal = ({
   const [whenInput, setWhenInput] = useState("");
   const [vibeText, setVibeText] = useState("");
   const [note, setNote] = useState("");
-  const { visible, entering, closing, close } = useModalTransition(open, onClose);
-  const touchStartY = useRef(0);
-  const [dragOffset, setDragOffset] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
+  const sheet = useBottomSheet({ open, onClose });
 
   useEffect(() => {
     if (event && open) {
@@ -51,33 +47,7 @@ const EditEventModal = ({
     }
   }, [event, open]);
 
-  useEffect(() => {
-    if (!visible) return;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, [visible]);
-
-  const finishSwipe = () => {
-    if (dragOffset > 60) {
-      setDragOffset(0);
-      close();
-    } else {
-      setDragOffset(0);
-    }
-    isDragging.current = false;
-  };
-  const handleScrollTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-    isDragging.current = false;
-  };
-  const handleScrollTouchMove = (e: React.TouchEvent) => {
-    const dy = e.touches[0].clientY - touchStartY.current;
-    const atTop = scrollRef.current ? scrollRef.current.scrollTop <= 0 : true;
-    if (atTop && dy > 0) { isDragging.current = true; e.preventDefault(); setDragOffset(dy); }
-  };
-  const handleScrollTouchEnd = () => { if (isDragging.current) finishSwipe(); };
-
-  if (!visible || !event) return null;
+  if (!sheet.visible || !event) return null;
 
   const parsedDate = whenInput ? parseNaturalDate(whenInput) : null;
   const parsedTime = whenInput ? parseNaturalTime(whenInput) : null;
@@ -102,39 +72,34 @@ const EditEventModal = ({
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center">
       <div
-        onClick={close}
+        onClick={sheet.close}
         className="absolute inset-0"
         style={{
           background: "rgba(0,0,0,0.7)",
-          backdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
-          WebkitBackdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
-          opacity: (entering || closing) ? 0 : 1,
+          backdropFilter: sheet.backdropBlur,
+          WebkitBackdropFilter: sheet.backdropBlur,
+          opacity: sheet.backdropOpacity,
           transition: "opacity 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease",
         }}
       />
       <div
         className="relative bg-surface rounded-t-3xl w-full max-w-[420px] px-6 pt-5 pb-0 max-h-[80vh] flex flex-col"
         style={{
-          animation: closing ? undefined : "slideUp 0.3s ease-out",
-          transform: closing ? "translateY(100%)" : `translateY(${dragOffset}px)`,
-          transition: closing ? "transform 0.2s ease-in" : (dragOffset === 0 ? "transform 0.2s ease-out" : "none"),
+          animation: sheet.closing ? undefined : "slideUp 0.3s ease-out",
+          transform: sheet.panelTransform,
+          transition: sheet.panelTransition,
         }}
       >
         {/* Drag handle */}
         <div
-          onTouchStart={(e) => { touchStartY.current = e.touches[0].clientY; isDragging.current = false; }}
-          onTouchMove={(e) => { const dy = e.touches[0].clientY - touchStartY.current; if (dy > 0) { isDragging.current = true; setDragOffset(dy); } }}
-          onTouchEnd={finishSwipe}
+          {...sheet.swipeProps}
           style={{ touchAction: "none" }}
         >
           <div className="w-10 h-1 bg-faint rounded-sm mx-auto mb-5" />
         </div>
 
         <div
-          ref={scrollRef}
-          onTouchStart={handleScrollTouchStart}
-          onTouchMove={handleScrollTouchMove}
-          onTouchEnd={handleScrollTouchEnd}
+          {...sheet.scrollProps}
           className="overflow-y-auto overflow-x-hidden flex-1 pb-6"
         >
           <h3 className="font-serif text-2xl text-primary mb-5 font-normal">
@@ -219,7 +184,7 @@ const EditEventModal = ({
                   return (
                     <button
                       key={s.id}
-                      onClick={() => { close(); onOpenSquad(s.id); }}
+                      onClick={() => { sheet.close(); onOpenSquad(s.id); }}
                       className="flex items-center justify-between gap-2 w-full bg-deep border border-border-mid rounded-lg py-2.5 px-3 cursor-pointer text-left"
                     >
                       <span className="font-mono text-xs text-primary truncate flex-1 min-w-0">{s.name}</span>

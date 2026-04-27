@@ -5,7 +5,7 @@ import cn from "@/lib/tailwindMerge";
 import type { Friend } from "@/lib/ui-types";
 import * as db from "@/lib/db";
 import { logError } from "@/lib/logger";
-import { useModalTransition } from "@/shared/hooks/useModalTransition";
+import { useBottomSheet } from "@/shared/hooks/useBottomSheet";
 
 const FriendsModal = ({
   open,
@@ -44,46 +44,11 @@ const FriendsModal = ({
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [requestedState, setRequestedState] = useState<"preview" | "expanded" | "collapsed">("preview");
-  const touchStartY = useRef(0);
-  const [dragOffset, setDragOffset] = useState(0);
-  const { visible, entering, closing, close } = useModalTransition(open, onClose);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-
-  // Lock body scroll when open
-  useEffect(() => {
-    if (!visible) return;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, [visible]);
-
-  const handleSwipeStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-    isDragging.current = false;
-  };
-  const handleSwipeMove = (e: React.TouchEvent) => {
-    const dy = e.touches[0].clientY - touchStartY.current;
-    if (dy > 0) { isDragging.current = true; setDragOffset(dy); }
-  };
-  const finishSwipe = () => {
-    if (dragOffset > 60 && !preventClose) {
-      setDragOffset(0);
-      close();
-    } else {
-      setDragOffset(0);
-    }
-    isDragging.current = false;
-  };
-  const handleScrollTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-    isDragging.current = false;
-  };
-  const handleScrollTouchMove = (e: React.TouchEvent) => {
-    const dy = e.touches[0].clientY - touchStartY.current;
-    const atTop = scrollRef.current ? scrollRef.current.scrollTop <= 0 : true;
-    if (atTop && dy > 0) { isDragging.current = true; e.preventDefault(); setDragOffset(dy); }
-  };
-  const handleScrollTouchEnd = () => { if (isDragging.current) finishSwipe(); };
+  const sheet = useBottomSheet({
+    open,
+    onClose,
+    canClose: () => !preventClose,
+  });
 
   const hasAddedFriend = friends.length > 0 || suggestions.some((s) => s.status === "pending" || s.status === "incoming") || searchResults.some((s) => s.status === "pending");
 
@@ -143,41 +108,34 @@ const FriendsModal = ({
     }
   }, [open]);
 
-  if (!visible) return null;
+  if (!sheet.visible) return null;
 
   return (
     <div className="fixed inset-0 z-100 flex items-end justify-center">
       <div
-        onClick={preventClose ? undefined : close}
-        className={cn(
-          "absolute inset-0 transition-all duration-300 ease-in-out",
-          (entering || closing) ? "opacity-0" : "opacity-100"
-        )}
+        onClick={preventClose ? undefined : sheet.close}
+        className="absolute inset-0 transition-all duration-300 ease-in-out"
         style={{
           background: "rgba(0,0,0,0.7)",
-          backdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
-          WebkitBackdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
+          backdropFilter: sheet.backdropBlur,
+          WebkitBackdropFilter: sheet.backdropBlur,
+          opacity: sheet.backdropOpacity,
         }}
       />
       <div
         className={cn(
           "relative bg-surface w-full max-w-[420px] flex flex-col",
-          !closing && "animate-slide-up"
+          !sheet.closing && "animate-slide-up"
         )}
         style={{
           borderRadius: "24px 24px 0 0",
           padding: "32px 24px 0",
           maxHeight: "85vh",
-          transform: closing ? "translateY(100%)" : `translateY(${dragOffset}px)`,
-          transition: closing ? "transform 0.2s ease-in" : (dragOffset === 0 ? "transform 0.2s ease-out" : "none"),
+          transform: sheet.panelTransform,
+          transition: sheet.panelTransition,
         }}
       >
-        <div
-          onTouchStart={handleSwipeStart}
-          onTouchMove={handleSwipeMove}
-          onTouchEnd={finishSwipe}
-          className="touch-none"
-        >
+        <div {...sheet.swipeProps} className="touch-none">
           <div className="w-10 h-1 bg-faint rounded-sm mx-auto mb-6" />
         </div>
 
@@ -228,10 +186,7 @@ const FriendsModal = ({
         />
 
         <div
-          ref={scrollRef}
-          onTouchStart={handleScrollTouchStart}
-          onTouchMove={handleScrollTouchMove}
-          onTouchEnd={handleScrollTouchEnd}
+          {...sheet.scrollProps}
           className="overflow-y-auto overflow-x-hidden flex-1 pb-10"
         >
         {tab === "friends" ? (

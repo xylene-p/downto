@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import * as db from "@/lib/db";
 import { color } from "@/lib/styles";
 import { formatTimeAgo } from "@/lib/utils";
-import { useModalTransition } from "@/shared/hooks/useModalTransition";
+import { useBottomSheet } from "@/shared/hooks/useBottomSheet";
 import cn from "@/lib/tailwindMerge";
 import type { Tab } from "@/lib/ui-types";
 
@@ -62,99 +62,38 @@ const NotificationsPanel = ({
   onNavigate: (action: { type: "friends"; tab: "friends" | "add" } | { type: "groups"; squadId?: string } | { type: "feed"; checkId?: string }) => void;
   onDeletedCheck: (info: { checkId: string; isMine: boolean }) => void;
 }) => {
-  const { visible, entering, closing, close } = useModalTransition(open, onClose);
-  const touchStartY = useRef(0);
-  const [dragOffset, setDragOffset] = useState(0);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
+  const sheet = useBottomSheet({ open, onClose });
 
-  // Lock body scroll when panel is open
-  useEffect(() => {
-    if (!visible) return;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, [visible]);
-
-  const handleSwipeStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-    isDragging.current = false;
-  };
-  const handleSwipeMove = (e: React.TouchEvent) => {
-    const dy = e.touches[0].clientY - touchStartY.current;
-    if (dy > 0) {
-      isDragging.current = true;
-      setDragOffset(dy);
-    }
-  };
-  const handleSwipeEnd = () => {
-    if (dragOffset > 60) {
-      setDragOffset(0);
-      close();
-    } else {
-      setDragOffset(0);
-    }
-    isDragging.current = false;
-  };
-
-  // Scroll-area: start dragging when at top and pulling down
-  const handleScrollTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-    isDragging.current = false;
-  };
-  const handleScrollTouchMove = (e: React.TouchEvent) => {
-    const dy = e.touches[0].clientY - touchStartY.current;
-    const atTop = scrollRef.current ? scrollRef.current.scrollTop <= 0 : true;
-    if (atTop && dy > 0) {
-      isDragging.current = true;
-      e.preventDefault();
-      setDragOffset(dy);
-    }
-  };
-  const handleScrollTouchEnd = () => {
-    if (isDragging.current) {
-      handleSwipeEnd();
-    }
-  };
-
-  if (!visible) return null;
+  if (!sheet.visible) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center">
       <div
-        onClick={close}
+        onClick={sheet.close}
         className="absolute inset-0"
         style={{
           background: "rgba(0,0,0,0.7)",
-          backdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
-          WebkitBackdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
-          opacity: (entering || closing) ? 0 : 1,
+          backdropFilter: sheet.backdropBlur,
+          WebkitBackdropFilter: sheet.backdropBlur,
+          opacity: sheet.backdropOpacity,
           transition: "opacity 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease",
         }}
       />
       <div
-        ref={panelRef}
         className="relative bg-surface w-full max-w-[420px] flex flex-col pt-6"
         style={{
           borderRadius: "24px 24px 0 0",
           maxHeight: "80vh",
-          animation: closing ? undefined : "slideUp 0.3s ease-out",
-          transform: closing ? "translateY(100%)" : `translateY(${dragOffset}px)`,
-          transition: closing ? "transform 0.2s ease-in" : (dragOffset === 0 ? "transform 0.2s ease-out" : "none"),
+          animation: sheet.closing ? undefined : "slideUp 0.3s ease-out",
+          transform: sheet.panelTransform,
+          transition: sheet.panelTransition,
         }}
       >
-        <div
-          onTouchStart={handleSwipeStart}
-          onTouchMove={handleSwipeMove}
-          onTouchEnd={handleSwipeEnd}
-          className="touch-none"
-        >
+        <div {...sheet.swipeProps} className="touch-none">
           <div className="w-10 h-1 bg-faint rounded-sm mx-auto mb-4" />
         </div>
         <div
-          onTouchStart={handleSwipeStart}
-          onTouchMove={handleSwipeMove}
-          onTouchEnd={handleSwipeEnd}
+          {...sheet.swipeProps}
           className="flex justify-between items-center px-5 pb-4 border-b border-border touch-none"
         >
           <h2 className="font-serif text-2xl text-primary font-normal">
@@ -183,11 +122,8 @@ const NotificationsPanel = ({
           )}
         </div>
         <div
-          ref={scrollRef}
-          onTouchStart={handleScrollTouchStart}
-          onTouchMove={handleScrollTouchMove}
-          onTouchEnd={handleScrollTouchEnd}
-          className={cn("overflow-x-hidden flex-1 pb-8", isDragging.current ? "overflow-y-hidden" : "overflow-y-auto")}
+          {...sheet.scrollProps}
+          className={cn("overflow-x-hidden flex-1 pb-8", sheet.dragOffset > 0 ? "overflow-y-hidden" : "overflow-y-auto")}
         >
           {notifications.length === 0 ? (
             <div className="py-10 px-5 text-center">
