@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { color } from "@/lib/styles";
-import { parseNaturalDate, parseNaturalTime, parseDateToISO } from "@/lib/utils";
+import { parseDateToISO } from "@/lib/utils";
 import { useBottomSheet } from "@/shared/hooks/useBottomSheet";
+import { useDateTimeInput } from "@/shared/hooks/useDateTimeInput";
 import cn from "@/lib/tailwindMerge";
 import type { Event, Squad } from "@/lib/ui-types";
 
@@ -28,7 +29,7 @@ const EditEventModal = ({
 }) => {
   const [title, setTitle] = useState("");
   const [venue, setVenue] = useState("");
-  const [whenInput, setWhenInput] = useState("");
+  const { whenInput, setWhenInput, parsedDate, parsedTime, whenPreview } = useDateTimeInput();
   const [vibeText, setVibeText] = useState("");
   const [note, setNote] = useState("");
   const sheet = useBottomSheet({ open, onClose });
@@ -48,16 +49,6 @@ const EditEventModal = ({
   }, [event, open]);
 
   if (!sheet.visible || !event) return null;
-
-  const parsedDate = whenInput ? parseNaturalDate(whenInput) : null;
-  const parsedTime = whenInput ? parseNaturalTime(whenInput) : null;
-  const whenPreview = (() => {
-    if (!parsedDate && !parsedTime) return null;
-    const parts: string[] = [];
-    if (parsedDate) parts.push(parsedDate.label);
-    if (parsedTime) parts.push(parsedTime);
-    return parts.join(" ");
-  })();
 
   // Resolve date/time for save. Only overwrite the existing date when we can
   // actually parse the input as a date — otherwise the user is editing something
