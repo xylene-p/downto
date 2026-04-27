@@ -100,12 +100,6 @@ export default function CheckCard({
   } = useFeedContext();
   const hasComments = initialCommentCount > 0;
 
-
-
-
-
-
-  useEffect(() => { openComments(); }, [check.id]);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -117,6 +111,16 @@ export default function CheckCard({
     profile,
     initialCommentCount,
   });
+
+  // Eagerly fetch the comment list only when there's actually something to
+  // fetch — initialCommentCount is hydrated in batch by FeedView, so this
+  // skips one query per check that has zero comments. Realtime arrivals
+  // still get appended to `comments` via the always-on subscription in
+  // useCheckComments, so a previously-empty check that gets a new comment
+  // post-render still renders InlineCommentsBox correctly.
+  useEffect(() => {
+    if (hasComments) openComments();
+  }, [check.id, hasComments, openComments]);
 
 
 
