@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import cn from "@/lib/tailwindMerge";
 import { color } from "@/lib/styles";
-import { useModalTransition } from "@/shared/hooks/useModalTransition";
+import { useBottomSheet } from "@/shared/hooks/useBottomSheet";
 import type { Event, Person } from "@/lib/ui-types";
 
 const EventLobby = ({
@@ -37,11 +37,7 @@ const EventLobby = ({
 }) => {
   const [selectingMembers, setSelectingMembers] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const touchStartY = useRef(0);
-  const [dragOffset, setDragOffset] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-  const { visible, entering, closing, close } = useModalTransition(open, onClose);
+  const sheet = useBottomSheet({ open, onClose });
 
   // Reset selection state when drawer opens/closes
   useEffect(() => {
@@ -51,34 +47,7 @@ const EventLobby = ({
     }
   }, [open]);
 
-  // Lock body scroll when open
-  useEffect(() => {
-    if (!visible) return;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, [visible]);
-
-  const finishSwipe = () => {
-    if (dragOffset > 60) {
-      setDragOffset(0);
-      close();
-    } else {
-      setDragOffset(0);
-    }
-    isDragging.current = false;
-  };
-  const handleScrollTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-    isDragging.current = false;
-  };
-  const handleScrollTouchMove = (e: React.TouchEvent) => {
-    const dy = e.touches[0].clientY - touchStartY.current;
-    const atTop = scrollRef.current ? scrollRef.current.scrollTop <= 0 : true;
-    if (atTop && dy > 0) { isDragging.current = true; e.preventDefault(); setDragOffset(dy); }
-  };
-  const handleScrollTouchEnd = () => { if (isDragging.current) finishSwipe(); };
-
-  if (!visible || !event) return null;
+  if (!sheet.visible || !event) return null;
   const friends = event.peopleDown.filter((p) => p.mutual);
   const others = event.peopleDown.filter((p) => !p.mutual);
   const friendSquadmates = existingSquadId ? friends.filter((p) => p.inSquadId === existingSquadId) : [];
@@ -225,27 +194,27 @@ const EventLobby = ({
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center">
       <div
-        onClick={close}
+        onClick={sheet.close}
         className="absolute inset-0 transition-[opacity,backdrop-filter,-webkit-backdrop-filter] duration-300 ease-in-out"
         style={{
           background: "rgba(0,0,0,0.7)",
-          backdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
-          WebkitBackdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
-          opacity: (entering || closing) ? 0 : 1,
+          backdropFilter: sheet.backdropBlur,
+          WebkitBackdropFilter: sheet.backdropBlur,
+          opacity: sheet.backdropOpacity,
         }}
       />
       <div
-        ref={scrollRef}
-        onTouchStart={handleScrollTouchStart}
-        onTouchMove={handleScrollTouchMove}
-        onTouchEnd={handleScrollTouchEnd}
+        {...sheet.scrollProps}
         className="relative bg-surface rounded-t-3xl w-full max-w-[420px] max-h-[70vh] overscroll-contain"
         style={{
           padding: "32px 24px 40px",
-          overflowY: isDragging.current ? "hidden" : "auto",
-          animation: closing ? undefined : "slideUp 0.3s ease-out",
-          transform: closing ? "translateY(100%)" : `translateY(${dragOffset}px)`,
-          transition: isDragging.current ? "none" : "transform 0.25s ease-out",
+          // Use dragOffset as the proxy for "currently dragging" — when the
+          // user is mid-pull we lock scroll and disable the transform
+          // transition so the panel tracks the finger.
+          overflowY: sheet.dragOffset > 0 ? "hidden" : "auto",
+          animation: sheet.closing ? undefined : "slideUp 0.3s ease-out",
+          transform: sheet.panelTransform,
+          transition: sheet.dragOffset > 0 ? "none" : "transform 0.25s ease-out",
         }}
       >
         <div className="w-10 h-1 bg-faint rounded-sm mx-auto mb-6" />
@@ -337,7 +306,7 @@ const EventLobby = ({
           {(friends.length > 0 || others.length > 0) && peopleReady && !isSelecting && (
             existingSquadId ? (
               <button
-                onClick={() => { onGoToSquad?.(existingSquadId); close(); }}
+                onClick={() => { onGoToSquad?.(existingSquadId); sheet.close(); }}
                 className="w-full bg-dt text-on-accent border-none rounded-xl p-3.5 font-mono text-xs font-bold cursor-pointer uppercase"
                 style={{ letterSpacing: "0.1em" }}
               >

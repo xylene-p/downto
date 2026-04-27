@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import cn from "@/lib/tailwindMerge";
 import * as db from "@/lib/db";
 import { generateICSCalendar, downloadICS, buildGoogleCalendarUrl, type ICSEventParams } from "@/lib/ics";
+import { useBottomSheet } from "@/shared/hooks/useBottomSheet";
 
 const SyncCalendarModal = ({
   open,
@@ -19,11 +20,7 @@ const SyncCalendarModal = ({
   const [calendarToken, setCalendarToken] = useState<string | null>(null);
   const [tokenLoading, setTokenLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [closing, setClosing] = useState(false);
-  const [dragOffset, setDragOffset] = useState(0);
-  const touchStartY = useRef(0);
-  const isDragging = useRef(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const sheet = useBottomSheet({ open, onClose });
 
   useEffect(() => {
     if (open) {
@@ -39,38 +36,7 @@ const SyncCalendarModal = ({
     }
   }, [open]);
 
-  if (!open) return null;
-
-  const handleClose = () => {
-    setClosing(true);
-    setTimeout(() => { onClose(); setClosing(false); setDragOffset(0); }, 200);
-  };
-
-  const handleSwipeStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-    isDragging.current = false;
-  };
-  const handleSwipeMove = (e: React.TouchEvent) => {
-    const dy = e.touches[0].clientY - touchStartY.current;
-    if (dy > 0) { isDragging.current = true; setDragOffset(dy); }
-  };
-  const handleSwipeEnd = () => {
-    if (dragOffset > 60) handleClose();
-    else setDragOffset(0);
-    isDragging.current = false;
-  };
-  const handleScrollTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-    isDragging.current = false;
-  };
-  const handleScrollTouchMove = (e: React.TouchEvent) => {
-    const dy = e.touches[0].clientY - touchStartY.current;
-    const atTop = scrollRef.current ? scrollRef.current.scrollTop <= 0 : true;
-    if (atTop && dy > 0) { isDragging.current = true; e.preventDefault(); setDragOffset(dy); }
-  };
-  const handleScrollTouchEnd = () => {
-    if (isDragging.current) handleSwipeEnd();
-  };
+  if (!sheet.visible) return null;
 
   const toggleItem = (id: string) => {
     setSyncSelected((prev) => {
@@ -113,29 +79,27 @@ const SyncCalendarModal = ({
       className="fixed inset-0 z-[9999] flex items-end justify-center"
     >
       <div
-        onClick={handleClose}
+        onClick={sheet.close}
         className="absolute inset-0"
         style={{
           background: "rgba(0,0,0,0.7)",
-          backdropFilter: closing ? "blur(0px)" : "blur(8px)",
-          WebkitBackdropFilter: closing ? "blur(0px)" : "blur(8px)",
-          opacity: closing ? 0 : 1,
+          backdropFilter: sheet.backdropBlur,
+          WebkitBackdropFilter: sheet.backdropBlur,
+          opacity: sheet.backdropOpacity,
           transition: "opacity 0.2s ease, backdrop-filter 0.2s ease, -webkit-backdrop-filter 0.2s ease",
         }}
       />
       <div
         className="relative bg-surface rounded-t-3xl max-w-[420px] w-full max-h-[75vh] flex flex-col"
         style={{
-          animation: closing ? undefined : "slideUp 0.3s ease-out",
-          transform: closing ? "translateY(100%)" : `translateY(${dragOffset}px)`,
-          transition: closing ? "transform 0.2s ease-in" : (dragOffset === 0 ? "transform 0.2s ease-out" : "none"),
+          animation: sheet.closing ? undefined : "slideUp 0.3s ease-out",
+          transform: sheet.panelTransform,
+          transition: sheet.panelTransition,
         }}
       >
         {/* Drag handle + header */}
         <div
-          onTouchStart={handleSwipeStart}
-          onTouchMove={handleSwipeMove}
-          onTouchEnd={handleSwipeEnd}
+          {...sheet.swipeProps}
           className="touch-none"
           style={{ padding: "16px 20px 0" }}
         >
@@ -201,10 +165,7 @@ const SyncCalendarModal = ({
             </div>
 
             <div
-              ref={scrollRef}
-              onTouchStart={handleScrollTouchStart}
-              onTouchMove={handleScrollTouchMove}
-              onTouchEnd={handleScrollTouchEnd}
+              {...sheet.scrollProps}
               className="flex-1 overflow-y-auto overscroll-contain"
               style={{ padding: "0 20px" }}
             >

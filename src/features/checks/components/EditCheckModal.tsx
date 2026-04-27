@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { color } from "@/lib/styles";
 import { parseNaturalDate, parseNaturalTime, parseDateToISO } from "@/lib/utils";
 import type { InterestCheck } from "@/lib/ui-types";
-import { useModalTransition } from "@/shared/hooks/useModalTransition";
+import { useBottomSheet } from "@/shared/hooks/useBottomSheet";
 import cn from "@/lib/tailwindMerge";
 
 const EditCheckModal = ({
@@ -42,12 +42,8 @@ const EditCheckModal = ({
   const [whereInput, setWhereInput] = useState("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIdx, setMentionIdx] = useState(-1);
-  const { visible, entering, closing, close } = useModalTransition(open, onClose);
-  const touchStartY = useRef(0);
-  const [dragOffset, setDragOffset] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const sheet = useBottomSheet({ open, onClose });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const isDragging = useRef(false);
 
   useEffect(() => {
     if (check && open) {
@@ -63,33 +59,7 @@ const EditCheckModal = ({
     }
   }, [check, open]);
 
-  useEffect(() => {
-    if (!visible) return;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, [visible]);
-
-  const finishSwipe = () => {
-    if (dragOffset > 60) {
-      setDragOffset(0);
-      close();
-    } else {
-      setDragOffset(0);
-    }
-    isDragging.current = false;
-  };
-  const handleScrollTouchStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-    isDragging.current = false;
-  };
-  const handleScrollTouchMove = (e: React.TouchEvent) => {
-    const dy = e.touches[0].clientY - touchStartY.current;
-    const atTop = scrollRef.current ? scrollRef.current.scrollTop <= 0 : true;
-    if (atTop && dy > 0) { isDragging.current = true; e.preventDefault(); setDragOffset(dy); }
-  };
-  const handleScrollTouchEnd = () => { if (isDragging.current) finishSwipe(); };
-
-  if (!visible || !check) return null;
+  if (!sheet.visible || !check) return null;
 
   const parsedDate = whenInput ? parseNaturalDate(whenInput) : null;
   const parsedTime = whenInput ? parseNaturalTime(whenInput) : null;
@@ -147,39 +117,31 @@ const EditCheckModal = ({
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center">
       <div
-        onClick={close}
+        onClick={sheet.close}
         className="absolute inset-0"
         style={{
           background: "rgba(0,0,0,0.7)",
-          backdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
-          WebkitBackdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
-          opacity: (entering || closing) ? 0 : 1,
+          backdropFilter: sheet.backdropBlur,
+          WebkitBackdropFilter: sheet.backdropBlur,
+          opacity: sheet.backdropOpacity,
           transition: "opacity 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease",
         }}
       />
       <div
         className="relative bg-surface rounded-t-3xl w-full max-w-[420px] pt-5 px-6 max-h-[80vh] flex flex-col"
         style={{
-          animation: closing ? undefined : "slideUp 0.3s ease-out",
-          transform: closing ? "translateY(100%)" : `translateY(${dragOffset}px)`,
-          transition: closing ? "transform 0.2s ease-in" : (dragOffset === 0 ? "transform 0.2s ease-out" : "none"),
+          animation: sheet.closing ? undefined : "slideUp 0.3s ease-out",
+          transform: sheet.panelTransform,
+          transition: sheet.panelTransition,
         }}
       >
         {/* Drag handle */}
-        <div
-          onTouchStart={(e) => { touchStartY.current = e.touches[0].clientY; isDragging.current = false; }}
-          onTouchMove={(e) => { const dy = e.touches[0].clientY - touchStartY.current; if (dy > 0) { isDragging.current = true; setDragOffset(dy); } }}
-          onTouchEnd={finishSwipe}
-          style={{ touchAction: "none" }}
-        >
+        <div {...sheet.swipeProps} style={{ touchAction: "none" }}>
           <div className="w-10 h-1 bg-faint rounded-sm mx-auto mb-5" />
         </div>
 
         <div
-          ref={scrollRef}
-          onTouchStart={handleScrollTouchStart}
-          onTouchMove={handleScrollTouchMove}
-          onTouchEnd={handleScrollTouchEnd}
+          {...sheet.scrollProps}
           className="overflow-y-auto overflow-x-hidden flex-1 pb-6"
         >
           {/* Title */}

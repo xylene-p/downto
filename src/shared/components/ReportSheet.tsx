@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import * as db from "@/lib/db";
 import type { ReportReason, ReportTargetType } from "@/lib/db";
 import { logError } from "@/lib/logger";
 import cn from "@/lib/tailwindMerge";
-import { useModalTransition } from "@/shared/hooks/useModalTransition";
+import { useBottomSheet } from "@/shared/hooks/useBottomSheet";
 
 const REASONS: { value: ReportReason; label: string }[] = [
   { value: "harassment",    label: "Harassment or bullying" },
@@ -25,35 +25,10 @@ interface ReportSheetProps {
 }
 
 const ReportSheet = ({ targetType, targetId, targetLabel, onClose, onSubmitted }: ReportSheetProps) => {
-  const { visible, entering, closing, close } = useModalTransition(true, onClose);
+  const sheet = useBottomSheet({ open: true, onClose });
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [details, setDetails] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
-  // Swipe-to-dismiss — mirrors DetailSheet. 60px downward closes.
-  const touchStartY = useRef(0);
-  const [dragOffset, setDragOffset] = useState(0);
-  const isDragging = useRef(false);
-
-  const handleSwipeStart = (e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY;
-    isDragging.current = false;
-  };
-  const handleSwipeMove = (e: React.TouchEvent) => {
-    const dy = e.touches[0].clientY - touchStartY.current;
-    if (dy > 0) { isDragging.current = true; setDragOffset(dy); }
-  };
-  const handleSwipeEnd = () => {
-    if (dragOffset > 60) { setDragOffset(0); close(); }
-    else { setDragOffset(0); }
-    isDragging.current = false;
-  };
-
-  useEffect(() => {
-    if (!visible) return;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, [visible]);
 
   const submit = async () => {
     if (!reason || submitting) return;
@@ -61,27 +36,27 @@ const ReportSheet = ({ targetType, targetId, targetLabel, onClose, onSubmitted }
     try {
       await db.reportContent(targetType, targetId, reason, details.trim() || null);
       onSubmitted?.();
-      close();
+      sheet.close();
     } catch (err) {
       logError("reportContent", err, { targetType, targetId });
       setSubmitting(false);
     }
   };
 
-  if (!visible) return null;
+  if (!sheet.visible) return null;
 
   const title = targetLabel ? `Report ${targetLabel}` : "Report";
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-end justify-center">
       <div
-        onClick={close}
+        onClick={sheet.close}
         className="absolute inset-0 transition-[opacity,backdrop-filter] duration-300 ease-in-out"
         style={{
           background: "rgba(0,0,0,0.7)",
-          backdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
-          WebkitBackdropFilter: (entering || closing) ? "blur(0px)" : "blur(8px)",
-          opacity: (entering || closing) ? 0 : 1,
+          backdropFilter: sheet.backdropBlur,
+          WebkitBackdropFilter: sheet.backdropBlur,
+          opacity: sheet.backdropOpacity,
         }}
       />
       <div
@@ -89,18 +64,13 @@ const ReportSheet = ({ targetType, targetId, targetLabel, onClose, onSubmitted }
         style={{
           borderRadius: "24px 24px 0 0",
           maxHeight: "80vh",
-          animation: closing ? undefined : "slideUp 0.3s ease-out",
-          transform: closing ? "translateY(100%)" : `translateY(${dragOffset}px)`,
-          transition: closing ? "transform 0.2s ease-in" : (dragOffset === 0 ? "transform 0.2s ease-out" : "none"),
+          animation: sheet.closing ? undefined : "slideUp 0.3s ease-out",
+          transform: sheet.panelTransform,
+          transition: sheet.panelTransition,
         }}
       >
         {/* Drag handle — touch target for swipe-to-dismiss */}
-        <div
-          onTouchStart={handleSwipeStart}
-          onTouchMove={handleSwipeMove}
-          onTouchEnd={handleSwipeEnd}
-          className="touch-none pt-3 pb-1 flex justify-center"
-        >
+        <div {...sheet.swipeProps} className="touch-none pt-3 pb-1 flex justify-center">
           <div className="w-10 h-1 rounded-sm" style={{ background: "#444" }} />
         </div>
 
@@ -141,7 +111,7 @@ const ReportSheet = ({ targetType, targetId, targetLabel, onClose, onSubmitted }
 
           <div className="flex gap-2.5">
             <button
-              onClick={close}
+              onClick={sheet.close}
               disabled={submitting}
               className="flex-1 bg-transparent border border-border-mid rounded-xl py-3 font-mono text-xs font-bold uppercase text-primary cursor-pointer"
               style={{ letterSpacing: "0.08em" }}
