@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { usePullToRefresh } from "@/app/hooks/usePullToRefresh";
 import { useAppNavigation } from "@/app/hooks/useAppNavigation";
 import { useEvents } from "@/features/events/hooks/useEvents";
@@ -721,6 +721,59 @@ export default function Home() {
     }
   };
 
+  // Accepted-friends list, projected to {id,name,avatar} — used by AddModal,
+  // CheckCard's mention pickers, and other consumers. Memoized to keep
+  // identity stable across renders; otherwise a fresh array fires on every
+  // Home re-render and downstream memoization is defeated.
+  //
+  // Declared above the onboarding early-return so the hook order stays the
+  // same on every render (Rules of Hooks). Same goes for the FeedContext
+  // memo below — moving these *after* the return crashed prod hydration.
+  const acceptedFriendsList = useMemo(
+    () => friendsHook.friends
+      .filter((f) => f.status === "friend")
+      .map((f) => ({ id: f.id, name: f.name, avatar: f.avatar })),
+    [friendsHook.friends],
+  );
+
+  // Memoize the FeedContext value so consumers don't all re-render on every
+  // unrelated state change in Home() (tabs, modals, viewing-user, etc.).
+  const feedContextValue = useMemo(() => ({
+    checks: checksHook.checks,
+    myCheckResponses: checksHook.myCheckResponses,
+    hiddenCheckIds: checksHook.hiddenCheckIds,
+    pendingDownCheckIds: checksHook.pendingDownCheckIds,
+    newlyAddedCheckId: checksHook.newlyAddedCheckId,
+    leftChecks: checksHook.leftChecks,
+    respondToCheck: checksHook.respondToCheck,
+    clearResponse: checksHook.clearResponse,
+    acceptCoAuthorTag: checksHook.acceptCoAuthorTag,
+    declineCoAuthorTag: checksHook.declineCoAuthorTag,
+    hideCheck: checksHook.hideCheck,
+    unhideCheck: checksHook.unhideCheck,
+    redownFromLeft: checksHook.redownFromLeft,
+    events: eventsHook.events,
+    newlyAddedEventId: eventsHook.newlyAddedId,
+    toggleDown: eventsHook.toggleDown,
+  }), [
+    checksHook.checks,
+    checksHook.myCheckResponses,
+    checksHook.hiddenCheckIds,
+    checksHook.pendingDownCheckIds,
+    checksHook.newlyAddedCheckId,
+    checksHook.leftChecks,
+    checksHook.respondToCheck,
+    checksHook.clearResponse,
+    checksHook.acceptCoAuthorTag,
+    checksHook.declineCoAuthorTag,
+    checksHook.hideCheck,
+    checksHook.unhideCheck,
+    checksHook.redownFromLeft,
+    eventsHook.events,
+    eventsHook.newlyAddedId,
+    eventsHook.toggleDown,
+  ]);
+
   // ─── Render ─────────────────────────────────────────────────────────────
 
   if (onboarding.onboardingScreen) return onboarding.onboardingScreen;
@@ -732,24 +785,7 @@ export default function Home() {
   ).length;
 
   return (
-    <FeedContext.Provider value={{
-      checks: checksHook.checks,
-      myCheckResponses: checksHook.myCheckResponses,
-      hiddenCheckIds: checksHook.hiddenCheckIds,
-      pendingDownCheckIds: checksHook.pendingDownCheckIds,
-      newlyAddedCheckId: checksHook.newlyAddedCheckId,
-      leftChecks: checksHook.leftChecks,
-      respondToCheck: checksHook.respondToCheck,
-      clearResponse: checksHook.clearResponse,
-      acceptCoAuthorTag: checksHook.acceptCoAuthorTag,
-      declineCoAuthorTag: checksHook.declineCoAuthorTag,
-      hideCheck: checksHook.hideCheck,
-      unhideCheck: checksHook.unhideCheck,
-      redownFromLeft: checksHook.redownFromLeft,
-      events: eventsHook.events,
-      newlyAddedEventId: eventsHook.newlyAddedId,
-      toggleDown: eventsHook.toggleDown,
-    }}>
+    <FeedContext.Provider value={feedContextValue}>
     <div className="flex flex-col h-dvh overflow-x-hidden">
       <Header
         unreadCount={notificationsHook.unreadCount}
@@ -1027,7 +1063,7 @@ export default function Home() {
         defaultMode={addModalDefaultMode}
         onSubmit={handleAddModalSubmit}
         onInterestCheck={checksHook.handleCreateCheck}
-        friends={friendsHook.friends.filter(f => f.status === 'friend').map(f => ({ id: f.id, name: f.name, avatar: f.avatar }))}
+        friends={acceptedFriendsList}
       />
       <EventLobby
         event={squadsHook.socialEvent}
