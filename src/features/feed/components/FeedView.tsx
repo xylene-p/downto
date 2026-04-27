@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import * as db from '@/lib/db';
 import type { Profile } from '@/lib/types';
 import type { Event, InterestCheck, Friend } from '@/lib/ui-types';
@@ -178,48 +178,65 @@ export default function FeedView({
   const checkIsNew = (id: string) =>
     mockEnabled ? mockNewSet.has(id) : newItemIds.has(id);
 
-  const visibleChecks = effectiveChecks.filter(
-    (c) => !hiddenCheckIds.has(c.id) && c.expiresIn !== 'expired'
+  // Derived feed slices. Memoized so the O(n) filter/map and the O(n log n)
+  // sort on chronoItems don't run every render — and so the array identities
+  // stay stable across unrelated re-renders (which is what lets memoized
+  // children skip work).
+  const visibleChecks = useMemo(
+    () => effectiveChecks.filter(
+      (c) => !hiddenCheckIds.has(c.id) && c.expiresIn !== 'expired'
+    ),
+    [effectiveChecks, hiddenCheckIds],
   );
-  const hiddenChecks = effectiveChecks.filter((c) => hiddenCheckIds.has(c.id));
+  const hiddenChecks = useMemo(
+    () => effectiveChecks.filter((c) => hiddenCheckIds.has(c.id)),
+    [effectiveChecks, hiddenCheckIds],
+  );
 
   // Pinned tier: expiring checks sorted by urgency (highest expiryPercent first)
-  const pinnedChecks = visibleChecks
-    .filter((c) => c.expiresIn !== 'open')
-    .sort((a, b) => b.expiryPercent - a.expiryPercent);
+  const pinnedChecks = useMemo(
+    () => visibleChecks
+      .filter((c) => c.expiresIn !== 'open')
+      .sort((a, b) => b.expiryPercent - a.expiryPercent),
+    [visibleChecks],
+  );
 
-  // Chrono tier: open checks + all events, sorted by date descending
+  // Chrono tier: open checks + all events, sorted by date or recency.
   type FeedItem =
     | { kind: 'check'; data: InterestCheck }
     | { kind: 'event'; data: Event };
 
-  const chronoItems: FeedItem[] = [
-    ...visibleChecks
-      .filter((c) => c.expiresIn === 'open')
-      .map((c) => ({ kind: 'check' as const, data: c })),
-    ...events.map((e) => ({ kind: 'event' as const, data: e })),
-  ];
+  const chronoItems = useMemo<FeedItem[]>(() => {
+    const items: FeedItem[] = [
+      ...visibleChecks
+        .filter((c) => c.expiresIn === 'open')
+        .map((c) => ({ kind: 'check' as const, data: c })),
+      ...events.map((e) => ({ kind: 'event' as const, data: e })),
+    ];
 
-  if (sortBy === 'recent') {
-    chronoItems.sort((a, b) =>
-      (b.data.createdAt ?? '').localeCompare(a.data.createdAt ?? '')
-    );
-  } else {
-    const getEventDate = (item: FeedItem): string => {
-      if (item.kind === 'check') return item.data.eventDate ?? '';
-      return item.data.rawDate ?? '';
-    };
-    chronoItems.sort((a, b) => {
-      const da = getEventDate(a),
-        db = getEventDate(b);
-      // Items with dates first, then dateless items
-      if (da && !db) return -1;
-      if (!da && db) return 1;
-      if (!da && !db)
-        return (b.data.createdAt ?? '').localeCompare(a.data.createdAt ?? '');
-      return da.localeCompare(db);
-    });
-  }
+    if (sortBy === 'recent') {
+      items.sort((a, b) =>
+        (b.data.createdAt ?? '').localeCompare(a.data.createdAt ?? '')
+      );
+    } else {
+      const getEventDate = (item: FeedItem): string => {
+        if (item.kind === 'check') return item.data.eventDate ?? '';
+        return item.data.rawDate ?? '';
+      };
+      items.sort((a, b) => {
+        const da = getEventDate(a),
+          db = getEventDate(b);
+        // Items with dates first, then dateless items
+        if (da && !db) return -1;
+        if (!da && db) return 1;
+        if (!da && !db)
+          return (b.data.createdAt ?? '').localeCompare(a.data.createdAt ?? '');
+        return da.localeCompare(db);
+      });
+    }
+
+    return items;
+  }, [visibleChecks, events, sortBy]);
 
   const hasContent = checks.length > 0 || events.length > 0;
 
