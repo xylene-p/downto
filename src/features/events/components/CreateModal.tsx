@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useModalTransition } from '@/shared/hooks/useModalTransition';
+import { useDateTimeInput } from '@/shared/hooks/useDateTimeInput';
 import type { ScrapedEvent } from '@/lib/ui-types';
-import { parseNaturalDate, parseNaturalTime, sanitize } from '@/lib/utils';
+import { parseNaturalDate, sanitize } from '@/lib/utils';
 import { logError, logWarn } from '@/lib/logger';
 import * as db from '@/lib/db';
 import { API_BASE } from '@/lib/db';
@@ -105,19 +106,8 @@ const AddModal = ({
   }, [minSquadSize, squadSize]);
 
   // When/where inputs for date+time and location
-  const [whenInput, setWhenInput] = useState('');
+  const { whenInput, setWhenInput, parsedDate, parsedTime, whenPreview } = useDateTimeInput();
   const [whereInput, setWhereInput] = useState('');
-
-  // Live-parse the "when" input for date and time
-  const parsedDate = whenInput ? parseNaturalDate(whenInput) : null;
-  const parsedTime = whenInput ? parseNaturalTime(whenInput) : null;
-  const whenPreview = (() => {
-    if (!parsedDate && !parsedTime) return null;
-    const parts: string[] = [];
-    if (parsedDate) parts.push(parsedDate.label);
-    if (parsedTime) parts.push(parsedTime);
-    return parts.join(' ');
-  })();
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIdx, setMentionIdx] = useState(-1); // cursor position of @
   const [loading, setLoading] = useState(false);

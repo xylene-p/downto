@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { color } from "@/lib/styles";
-import { parseNaturalDate, parseNaturalTime, parseDateToISO } from "@/lib/utils";
+import { parseDateToISO } from "@/lib/utils";
 import type { InterestCheck } from "@/lib/ui-types";
 import { useBottomSheet } from "@/shared/hooks/useBottomSheet";
+import { useDateTimeInput } from "@/shared/hooks/useDateTimeInput";
 import cn from "@/lib/tailwindMerge";
 
 const EditCheckModal = ({
@@ -38,7 +39,7 @@ const EditCheckModal = ({
   onDelete?: () => void;
 }) => {
   const [text, setText] = useState("");
-  const [whenInput, setWhenInput] = useState("");
+  const { whenInput, setWhenInput, parsedDate, parsedTime, whenPreview } = useDateTimeInput();
   const [whereInput, setWhereInput] = useState("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIdx, setMentionIdx] = useState(-1);
@@ -60,16 +61,6 @@ const EditCheckModal = ({
   }, [check, open]);
 
   if (!sheet.visible || !check) return null;
-
-  const parsedDate = whenInput ? parseNaturalDate(whenInput) : null;
-  const parsedTime = whenInput ? parseNaturalTime(whenInput) : null;
-  const whenPreview = (() => {
-    if (!parsedDate && !parsedTime) return null;
-    const parts: string[] = [];
-    if (parsedDate) parts.push(parsedDate.label);
-    if (parsedTime) parts.push(parsedTime);
-    return parts.join(" ");
-  })();
 
   const handleSave = () => {
     const trimmed = text.trim();
