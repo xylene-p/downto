@@ -89,16 +89,16 @@ export default function InlineCommentsBox({
             const displayText = anonymizeCommenters ? stripAtMentions(c.text) : c.text;
             return (
             <div key={c.id} className="flex items-center gap-2 min-w-0">
-              <div
-                className={`shrink-0 flex items-center justify-center font-mono leading-none ${
-                  redact
-                    ? "text-[10px]"
-                    : `w-5 h-5 rounded-full text-[9px] font-bold ${c.isYours ? "bg-dt text-on-accent" : "bg-border-light text-dim"}`
-                }`}
-                style={redact ? { color: "#ff00d4" } : undefined}
-              >
-                {displayAvatar}
-              </div>
+              {/* Avatar slot — skipped entirely when redacted, since the kaomoji
+                  in the name slot already carries identity. Two kaomoji per
+                  comment reads as noise. */}
+              {!redact && (
+                <div
+                  className={`shrink-0 flex items-center justify-center font-mono leading-none w-5 h-5 rounded-full text-[9px] font-bold ${c.isYours ? "bg-dt text-on-accent" : "bg-border-light text-dim"}`}
+                >
+                  {displayAvatar}
+                </div>
+              )}
               <span className="font-mono text-tiny text-muted shrink-0 leading-snug">
                 {displayName}
                 {isHost && !c.isYours && (

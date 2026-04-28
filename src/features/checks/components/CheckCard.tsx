@@ -117,10 +117,11 @@ function CheckCard({
         style={check.id === sharedCheckId ? { animation: "rainbowGlow 3s linear infinite" } : check.id === newlyAddedCheckId ? { animation: "checkGlow 2s ease-in-out infinite" } : undefined}
       >
         {/* Mystery border — only the author sees it. Reminds them this check was
-            posted as a mystery, since their card otherwise looks normal-ish to them
-            (only redaction visible to them is the responder hide). Full rectangle:
+            posted as a mystery. Visible to everyone — hosts and guests alike —
+            because it's the most visible "this card is different" cue and
+            communicates the vibe without leaking identity. Full rectangle:
             top + bottom horizontal strips, plus left + right vertical strips. */}
-        {check.mystery && check.isYours && (
+        {check.mystery && (
           <>
             <div
               aria-hidden
