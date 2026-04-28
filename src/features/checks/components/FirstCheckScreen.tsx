@@ -10,7 +10,7 @@ const FirstCheckScreen = ({
   onComplete,
   onSkip,
 }: {
-  onComplete: (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number | null, eventTime?: string | null, dateFlexible?: boolean, timeFlexible?: boolean, location?: string | null) => void;
+  onComplete: (idea: string, expiresInHours: number | null, eventDate: string | null, maxSquadSize: number | null, eventTime?: string | null, dateFlexible?: boolean, timeFlexible?: boolean, location?: string | null, eventDateLabel?: string | null) => void;
   onSkip: () => void;
 }) => {
   const [idea, setIdea] = useState("");
@@ -163,7 +163,10 @@ const FirstCheckScreen = ({
             const eventTime = parsedTime;
             const location = whereInput.trim() || null;
             const title = sanitize(idea, 280);
-            onComplete(title, checkTimer, eventDate, squadSize === 0 ? null : squadSize, eventTime, true, true, location);
+            // Preserve typed phrase only when it implied multiple dates;
+            // otherwise let the display fall back to the auto-formatted date.
+            const typedDateLabel = (parsed?.dates.length ?? 0) > 1 ? whenInput.trim() : null;
+            onComplete(title, checkTimer, eventDate, squadSize === 0 ? null : squadSize, eventTime, true, true, location, typedDateLabel);
           }
         }}
         disabled={!idea.trim()}

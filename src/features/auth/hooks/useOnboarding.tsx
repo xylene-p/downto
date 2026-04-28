@@ -84,6 +84,8 @@ interface UseOnboardingParams {
     timeFlexible?: boolean,
     taggedFriendIds?: string[],
     location?: string | null,
+    mystery?: boolean,
+    eventDateLabel?: string | null,
   ) => void;
   // Friends
   suggestions: Friend[];
@@ -416,8 +418,8 @@ export function useOnboarding({
     if (showFirstCheck) {
       return (
         <FirstCheckScreen
-          onComplete={(idea, expiresInHours, eventDate, maxSquadSize, eventTime, dateFlexible, timeFlexible, location) => {
-            handleCreateCheck(idea, expiresInHours, eventDate, maxSquadSize, undefined, eventTime, dateFlexible, timeFlexible, undefined, location);
+          onComplete={(idea, expiresInHours, eventDate, maxSquadSize, eventTime, dateFlexible, timeFlexible, location, eventDateLabel) => {
+            handleCreateCheck(idea, expiresInHours, eventDate, maxSquadSize, undefined, eventTime, dateFlexible, timeFlexible, undefined, location, undefined, eventDateLabel);
             setShowFirstCheck(false);
           }}
           onSkip={() => {

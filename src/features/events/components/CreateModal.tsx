@@ -61,7 +61,8 @@ const AddModal = ({
     timeFlexible?: boolean,
     taggedFriendIds?: string[],
     location?: string | null,
-    mystery?: boolean
+    mystery?: boolean,
+    eventDateLabel?: string | null,
   ) => void;
   defaultMode?: 'paste' | 'idea' | 'manual' | null;
   friends?: { id: string; name: string; avatar: string }[];
@@ -109,7 +110,7 @@ const AddModal = ({
   }, [minSquadSize, squadSize]);
 
   // When/where inputs for date+time and location
-  const { whenInput, setWhenInput, parsedDateISO, parsedTime, whenPreview } = useDateTimeInput();
+  const { whenInput, setWhenInput, parsedDateISO, parsedDates, parsedTime, whenPreview } = useDateTimeInput();
   const [whereInput, setWhereInput] = useState('');
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIdx, setMentionIdx] = useState(-1); // cursor position of @
@@ -970,6 +971,11 @@ const AddModal = ({
                     )
                     .map((f) => f.id);
                   const title = sanitize(idea, 280);
+                  // Preserve the user's typed phrase only when it implied
+                  // multiple dates ("next thurs or next fri"). Single-date
+                  // inputs leave it undefined so display falls back to the
+                  // auto-formatted "Mon, Mmm DD".
+                  const typedDateLabel = parsedDates.length > 1 ? whenInput.trim() : null;
                   onInterestCheck(
                     title,
                     checkTimer,
@@ -981,7 +987,8 @@ const AddModal = ({
                     true,
                     taggedIds.length > 0 ? taggedIds : undefined,
                     location,
-                    mystery
+                    mystery,
+                    typedDateLabel,
                   );
                   close();
                 }

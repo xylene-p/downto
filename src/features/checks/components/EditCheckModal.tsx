@@ -38,7 +38,7 @@ const EditCheckModal = ({
   onDelete?: () => void;
 }) => {
   const [text, setText] = useState("");
-  const { whenInput, setWhenInput, parsedDateISO, parsedTime, whenPreview } = useDateTimeInput();
+  const { whenInput, setWhenInput, parsedDateISO, parsedDates, parsedTime, whenPreview } = useDateTimeInput();
   const [whereInput, setWhereInput] = useState("");
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIdx, setMentionIdx] = useState(-1);
@@ -84,9 +84,14 @@ const EditCheckModal = ({
     // Resolve date: parsed > existing. parseWhen inside useDateTimeInput
     // already covers the "Sat, Feb 15"/M-D fallback, so no separate
     // parseDateToISO chain here.
+    //
+    // Label is only stored when the parse implied multiple dates ("thurs
+    // or fri") — single-date inputs leave it null so the display layer
+    // formats event_date itself. Editing a compound input down to a single
+    // date clears the previously-stored label so the auto-format takes over.
     const resolvedDateISO = parsedDateISO ?? check.eventDate ?? null;
     const resolvedDateLabel = parsedDateISO
-      ? whenInput.trim()
+      ? (parsedDates.length > 1 ? whenInput.trim() : null)
       : (check.eventDateLabel ?? null);
     const resolvedTime = parsedTime ?? check.eventTime ?? null;
 

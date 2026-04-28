@@ -107,7 +107,11 @@ function transformCheck(c: ActiveCheck, userId: string | null, displayName?: str
     inSquad: !!userId && !!(c.squads?.find((s) => !s.archived_at)?.members?.some((m) => (m as { user_id?: string }).user_id === userId && (m as { role?: string }).role !== 'waitlist')),
     isWaitlisted: !!userId && !!(c.squads?.find((s) => !s.archived_at)?.members?.some((m) => (m as { user_id?: string }).user_id === userId && (m as { role?: string }).role === 'waitlist')),
     eventDate: c.event_date ?? undefined,
-    eventDateLabel: c.event_date ? new Date(c.event_date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined,
+    // Prefer the user's typed phrase (only stored when the parse implied
+    // multiple dates, e.g. "next thurs or next fri"). Fall back to the
+    // auto-formatted single-date display.
+    eventDateLabel: c.event_date_label
+      ?? (c.event_date ? new Date(c.event_date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined),
     eventTime: c.event_time?.replace(/\s*[Aa][Mm]/g, 'am').replace(/\s*[Pp][Mm]/g, 'pm') ?? undefined,
     dateFlexible: c.date_flexible,
     timeFlexible: c.time_flexible,
@@ -259,9 +263,15 @@ export function useChecks({ userId, profile, friendCount, showToast, onCheckCrea
     taggedFriendIds?: string[],
     location?: string | null,
     mystery?: boolean,
+    /** When the user typed something like "next thurs or next fri", the
+     *  caller passes the original phrase here. Stored verbatim and shown
+     *  in place of the auto-formatted "Mon, Mmm DD" label. NULL/undefined
+     *  for ordinary single-date inputs. */
+    eventDateLabel?: string | null,
   ) => {
     const expiresLabel = expiresInHours == null ? "open" : expiresInHours >= 24 ? "24h" : `${expiresInHours}h`;
-    const dateLabel = eventDate ? new Date(eventDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined;
+    const dateLabel = eventDateLabel
+      ?? (eventDate ? new Date(eventDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined);
     const movieFields = movieData ? {
       movieTitle: movieData.title,
       year: movieData.year,
@@ -273,7 +283,7 @@ export function useChecks({ userId, profile, friendCount, showToast, onCheckCrea
 
     if (userId) {
       try {
-        const dbCheck = await db.createInterestCheck(idea, expiresInHours, eventDate, maxSquadSize, movieData, eventTime ?? null, dateFlexible ?? true, timeFlexible ?? true, location ?? null, !!mystery);
+        const dbCheck = await db.createInterestCheck(idea, expiresInHours, eventDate, maxSquadSize, movieData, eventTime ?? null, dateFlexible ?? true, timeFlexible ?? true, location ?? null, !!mystery, eventDateLabel ?? null);
         if (taggedFriendIds && taggedFriendIds.length > 0) {
           await db.tagCoAuthors(dbCheck.id, taggedFriendIds);
         }
