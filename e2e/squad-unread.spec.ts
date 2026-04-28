@@ -37,6 +37,13 @@ test.describe("Squad unread dot behavior", () => {
     await updateReadCursor(katId, sharedSquad.id);
     await loginAsTestUser(page);
     await waitForAppLoaded(page);
+    // Realtime warmup. The notifications channel (useRealtimeNotifications)
+    // subscribes on mount but the WebSocket SUBSCRIBED handshake takes a
+    // beat — a message inserted before the channel is fully subscribed
+    // gets dropped, which is the dominant flake mode for these tests.
+    // 2.5s covers the cold-start case (first test after `supabase db
+    // reset` when Postgres + realtime publications are also warming).
+    await page.waitForTimeout(2500);
   });
 
   // ──────────────────────────────────────────────────────────────────────
