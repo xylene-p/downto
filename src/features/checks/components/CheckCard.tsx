@@ -347,6 +347,9 @@ function CheckCard({
             userId={userId}
             friends={friendsList}
             onPost={postComment}
+            mysteryUnrevealed={check.mysteryUnrevealed}
+            hostUserId={check.authorId}
+            threadSeed={check.id}
           />
         </div>
       )}

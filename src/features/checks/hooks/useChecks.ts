@@ -71,7 +71,11 @@ function transformCheck(c: ActiveCheck, userId: string | null, displayName?: str
     id: c.id,
     text: c.text,
     author: isUnrevealed ? "???" : c.author.display_name,
-    authorId: isUnrevealed ? undefined : c.author_id,
+    // authorId stays accessible even when unrevealed — the display name is
+    // what's redacted, but downstream features (host tag on comments,
+    // notification routing) still need the real id. Components must check
+    // mysteryUnrevealed before rendering authorId visibly.
+    authorId: c.author_id,
     timeAgo: formatTimeAgo(created),
     expiresIn,
     expiryPercent,

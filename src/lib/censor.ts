@@ -85,3 +85,21 @@ const KAOMOJI_POOL = [
 export function censorKaomoji(seed: string): string {
   return KAOMOJI_POOL[hashSeed(seed) % KAOMOJI_POOL.length];
 }
+
+/**
+ * Deterministic kaomoji per (thread, user) pair. Same user keeps the same
+ * kaomoji throughout one thread (so you can follow a conversation), but gets
+ * a different kaomoji in a different thread (so identity doesn't leak across
+ * mystery checks).
+ *
+ * `threadSeed` is whatever scopes the conversation — `check.id` for comments,
+ * `squad.id` for squad chat / member lists.
+ */
+export function kaomojiForUser(threadSeed: string, userId: string): string {
+  return KAOMOJI_POOL[hashSeed(`${threadSeed}::${userId}`) % KAOMOJI_POOL.length];
+}
+
+/** Replace `@username` mentions in body text with `@???` for pre-reveal renders. */
+export function stripAtMentions(text: string): string {
+  return text.replace(/@\S+/g, "@???");
+}
