@@ -47,7 +47,7 @@ export default function SquadMembersView({
       </button>
 
       <div className="flex flex-col gap-3">
-        {squad.members.map((m) => {
+        {squad.members.map((m, idx) => {
           const isLocked = squad.dateStatus === "locked";
           const isProposed = squad.dateStatus === "proposed";
           const confirmResponse = m.userId ? dateConfirms.get(m.userId) : undefined;
@@ -55,7 +55,10 @@ export default function SquadMembersView({
           const isGrayed = isProposed && dateConfirms.size > 0 && !isConfirmed;
           const showDateStatus = isLocked || (isProposed && dateConfirms.size > 0);
           return (
-            <React.Fragment key={m.name}>
+            // userId is collision-safe; name can be a kaomoji on mystery
+            // squads and the pool is small enough that two members hit
+            // the same glyph without the per-squad dedup in hydration.
+            <React.Fragment key={m.userId ?? `${idx}-${m.name}`}>
               <div
                 onClick={() => {
                   if (m.name !== "You" && m.userId && !guestsHidden) {

@@ -124,7 +124,14 @@ export default function ChatHeader({
                     : m.name === "You" ? "#000" : color.dim;
                 return (
                   <div
-                    key={m.name}
+                    // userId is the only collision-safe key. m.name is a
+                    // kaomoji on mystery+pre-reveal squads, drawn from a
+                    // 20-element pool. Pre-PR #494 hydration could hand
+                    // out duplicates; React's dedupe then dropped one,
+                    // showing 2 avatars in a 4-person squad. The hydration
+                    // is fixed too, but using userId as the key is the
+                    // belt-and-suspenders guarantee.
+                    key={m.userId ?? `${idx}-${m.name}`}
                     className={`size-6 rounded-full flex items-center justify-center font-mono text-tiny font-bold border-2 border-card ${idx === 0 ? "" : "-ml-1.5"}`}
                     style={{ background: avatarBg, color: avatarColor, zIndex: 4 - idx, position: "relative" }}
                   >

@@ -8,7 +8,7 @@ import { type ChecksAction, CheckActionType } from "@/features/checks/reducers/c
 import { logError, logWarn } from "@/lib/logger";
 import { formatTimeAgo } from "@/lib/utils";
 import { isMysteryGuestsHidden } from "@/features/checks/lib/mystery";
-import { kaomojiForUser } from "@/lib/censor";
+import { kaomojiForUser, kaomojiAssignmentForUsers } from "@/lib/censor";
 
 const SQUAD_FORMED_MESSAGES = [
   '"{title}" squad just dropped',
@@ -144,10 +144,21 @@ export function useSquads({ userId, profile, checksRef, dispatch, showToast, onS
       );
       const myMembership = (s.members ?? []).find((m) => m.user_id === userId);
       const isWaitlisted = myMembership?.role === 'waitlist';
+      // Mystery+pre-reveal: pre-assign kaomojis with collision resolution so
+      // every non-self member gets a unique glyph. Calling kaomojiForUser per
+      // user independently can collide (~15% with 3 users, ~25% with 4) and
+      // React's key={m.name} dedupe then drops the colliding entries —
+      // surfaced as "I see only 2 people in a 4-person squad" on prod.
+      const otherMemberIds = guestsHidden
+        ? (s.members ?? []).filter((m) => m.user_id !== userId).map((m) => m.user_id)
+        : [];
+      const memberKaomojis = guestsHidden
+        ? kaomojiAssignmentForUsers(s.id, otherMemberIds)
+        : null;
       const members = (s.members ?? []).filter((m) => m.role !== 'waitlist').map((m) => {
         const isYou = m.user_id === userId;
         if (guestsHidden && !isYou) {
-          const k = kaomojiForUser(s.id, m.user_id);
+          const k = memberKaomojis!.get(m.user_id) ?? kaomojiForUser(s.id, m.user_id);
           return { name: k, avatar: k, userId: m.user_id };
         }
         return {
@@ -158,7 +169,7 @@ export function useSquads({ userId, profile, checksRef, dispatch, showToast, onS
       });
       const waitlistedMembers = (s.members ?? []).filter((m) => m.role === 'waitlist' && m.user_id !== userId).map((m) => {
         if (guestsHidden) {
-          const k = kaomojiForUser(s.id, m.user_id);
+          const k = memberKaomojis!.get(m.user_id) ?? kaomojiForUser(s.id, m.user_id);
           return { name: k, avatar: k, userId: m.user_id };
         }
         return {
