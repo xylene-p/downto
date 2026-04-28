@@ -169,15 +169,25 @@ function CheckCard({
             </div>
           )}
 
-          {/* Author header */}
+          {/* Author header — redacted black bar for unrevealed mystery checks */}
           <div className="flex items-center gap-1.5 mb-2">
-            <div className="w-5 h-5 rounded-full bg-border-light text-dim flex items-center justify-center font-mono text-[9px] font-bold shrink-0">
-              {check.author[0]?.toUpperCase()}
-            </div>
+            {check.mysteryUnrevealed ? (
+              <div className="w-5 h-5 shrink-0 bg-text" title="Mystery host — revealed on the day of the event" />
+            ) : (
+              <div className="w-5 h-5 rounded-full bg-border-light text-dim flex items-center justify-center font-mono text-[9px] font-bold shrink-0">
+                {check.author[0]?.toUpperCase()}
+              </div>
+            )}
             <span className="font-mono text-tiny text-muted min-w-0 truncate flex-1">
-              <span className="text-dt font-semibold">{check.author}</span>
-              {check.viaFriendName && (
-                <span className="font-normal text-dim">{" "}via {check.viaFriendName}</span>
+              {check.mysteryUnrevealed ? (
+                <span className="font-semibold tracking-[0.15em]" style={{ background: "var(--color-primary)", color: "var(--color-primary)" }}>███████</span>
+              ) : (
+                <>
+                  <span className="text-dt font-semibold">{check.author}</span>
+                  {check.viaFriendName && (
+                    <span className="font-normal text-dim">{" "}via {check.viaFriendName}</span>
+                  )}
+                </>
               )}
             </span>
             {check.expiresIn !== "open" && (
@@ -253,7 +263,11 @@ function CheckCard({
           {/* Responses + comment toggle + down button */}
           <div className="mt-2">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              {check.responses.filter(r => r.status === "down").length > 0 ? (() => {
+              {check.mysteryUnrevealed ? (
+                <span className="font-mono text-tiny text-faint italic">
+                  guests revealed on the day
+                </span>
+              ) : check.responses.filter(r => r.status === "down").length > 0 ? (() => {
                 const downResponders = check.responses.filter(r => r.status === "down");
                 const first = downResponders[0];
                 const othersCount = downResponders.length - 1;

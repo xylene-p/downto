@@ -12,10 +12,25 @@ import { checksReducer, initialChecksState, CheckActionType } from "@/features/c
 
 type ActiveCheck = Awaited<ReturnType<typeof db.getActiveChecks>>[number];
 
+/** YYYY-MM-DD in the viewer's local tz; matches how event_date is stored. */
+function localTodayISO(now: Date): string {
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
 function transformCheck(c: ActiveCheck, userId: string | null, displayName?: string): InterestCheck {
   const now = new Date();
   const created = new Date(c.created_at);
   const msElapsed = now.getTime() - created.getTime();
+
+  // Mystery checks hide the author + responders from non-authors until the
+  // event date arrives. Author always sees their own check normally, so they
+  // can preview what the redacted form looks like to others by checking on
+  // someone else's account.
+  const isMystery = !!(c as unknown as { mystery?: boolean }).mystery;
+  const isAuthor = c.author_id === userId;
+  const isUnrevealed = isMystery && !isAuthor && (
+    !c.event_date || c.event_date > localTodayISO(now)
+  );
 
   let expiresIn: string;
   let expiryPercent: number;
@@ -51,21 +66,30 @@ function transformCheck(c: ActiveCheck, userId: string | null, displayName?: str
   return {
     id: c.id,
     text: c.text,
-    author: c.author.display_name,
-    authorId: c.author_id,
+    author: isUnrevealed ? "???" : c.author.display_name,
+    authorId: isUnrevealed ? undefined : c.author_id,
     timeAgo: formatTimeAgo(created),
     expiresIn,
     expiryPercent,
-    responses: c.responses.map((r) => ({
-      name: r.user_id === userId ? (displayName ?? r.user?.display_name ?? "You") : (r.user?.display_name ?? "Unknown"),
-      avatar: r.user?.avatar_letter ?? "?",
-      status: r.response,
-      odbc: r.user_id,
-    })),
+    // For unrevealed mystery checks: hide every other responder, but
+    // preserve the viewer's own response so the "you're down" UI still works.
+    responses: isUnrevealed
+      ? c.responses.filter((r) => r.user_id === userId).map((r) => ({
+          name: displayName ?? r.user?.display_name ?? "You",
+          avatar: r.user?.avatar_letter ?? "?",
+          status: r.response,
+          odbc: r.user_id,
+        }))
+      : c.responses.map((r) => ({
+          name: r.user_id === userId ? (displayName ?? r.user?.display_name ?? "You") : (r.user?.display_name ?? "Unknown"),
+          avatar: r.user?.avatar_letter ?? "?",
+          status: r.response,
+          odbc: r.user_id,
+        })),
     isYours: c.author_id === userId,
     maxSquadSize: c.max_squad_size,
-    squadId: c.squads?.find((s) => !s.archived_at)?.id,
-    squadMemberCount: (() => {
+    squadId: isUnrevealed ? undefined : c.squads?.find((s) => !s.archived_at)?.id,
+    squadMemberCount: isUnrevealed ? 0 : (() => {
       const squad = c.squads?.find((s) => !s.archived_at);
       const fromMembers = squad?.members?.filter((m) => (m as { role?: string }).role !== 'waitlist')?.length;
       // Fall back to check_responses count when squad_members is empty due to RLS
@@ -87,9 +111,11 @@ function transformCheck(c: ActiveCheck, userId: string | null, displayName?: str
     vibes: mm?.vibes,
     createdAt: c.created_at,
     expiresAt: c.expires_at ?? undefined,
-    coAuthors,
+    coAuthors: isUnrevealed ? [] : coAuthors,
     isCoAuthor,
     pendingTagForYou,
+    mystery: isMystery,
+    mysteryUnrevealed: isUnrevealed,
   };
 }
 
@@ -222,6 +248,7 @@ export function useChecks({ userId, profile, friendCount, showToast, onCheckCrea
     timeFlexible?: boolean,
     taggedFriendIds?: string[],
     location?: string | null,
+    mystery?: boolean,
   ) => {
     const expiresLabel = expiresInHours == null ? "open" : expiresInHours >= 24 ? "24h" : `${expiresInHours}h`;
     const dateLabel = eventDate ? new Date(eventDate + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : undefined;
@@ -236,7 +263,7 @@ export function useChecks({ userId, profile, friendCount, showToast, onCheckCrea
 
     if (userId) {
       try {
-        const dbCheck = await db.createInterestCheck(idea, expiresInHours, eventDate, maxSquadSize, movieData, eventTime ?? null, dateFlexible ?? true, timeFlexible ?? true, location ?? null);
+        const dbCheck = await db.createInterestCheck(idea, expiresInHours, eventDate, maxSquadSize, movieData, eventTime ?? null, dateFlexible ?? true, timeFlexible ?? true, location ?? null, !!mystery);
         if (taggedFriendIds && taggedFriendIds.length > 0) {
           await db.tagCoAuthors(dbCheck.id, taggedFriendIds);
         }
@@ -257,6 +284,8 @@ export function useChecks({ userId, profile, friendCount, showToast, onCheckCrea
           dateFlexible: dateFlexible ?? true,
           timeFlexible: timeFlexible ?? true,
           location: location ?? undefined,
+          mystery: !!mystery,
+          mysteryUnrevealed: false, // author always sees their own check unredacted
           ...movieFields,
         };
         dispatch({ type: CheckActionType.UPSERT_CHECK, check: newCheck });
