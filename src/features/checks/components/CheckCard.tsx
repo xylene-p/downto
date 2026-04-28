@@ -13,7 +13,7 @@ import ReportSheet from "@/shared/components/ReportSheet";
 import CheckActionsSheet from "@/shared/components/CheckActionsSheet";
 import { Linkify } from "@/shared/components/Linkify";
 import { useFeedContext } from "@/features/checks/context/FeedContext";
-import { censorWingdings, censorGlyph } from "@/lib/censor";
+import { censorWingdings, censorKaomoji } from "@/lib/censor";
 
 export interface CheckCardProps {
   check: InterestCheck;
@@ -173,13 +173,13 @@ function CheckCard({
           {/* Author header — symbol scramble for unrevealed mystery checks */}
           <div className="flex items-center gap-1.5 mb-2">
             {check.mysteryUnrevealed ? (
-              <div
-                className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 leading-none text-[10px]"
-                style={{ background: "#C2FF8A", color: "#ff00d4" }}
+              <span
+                className="font-mono text-[10px] shrink-0 leading-none whitespace-nowrap"
+                style={{ color: "#ff00d4" }}
                 title="Mystery host — revealed on the day of the event"
               >
-                {censorGlyph(check.id)}
-              </div>
+                {censorKaomoji(check.id)}
+              </span>
             ) : (
               <div className="w-5 h-5 rounded-full bg-border-light text-dim flex items-center justify-center font-mono text-[9px] font-bold shrink-0">
                 {check.author[0]?.toUpperCase()}

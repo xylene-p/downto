@@ -47,3 +47,41 @@ export function censorWingdings(seed: string, length = 6): string {
 export function censorGlyph(seed: string): string {
   return WINGDINGS_POOL[hashSeed(seed) % WINGDINGS_POOL.length];
 }
+
+/**
+ * Curated kaomoji pool for mystery-host avatars. Kept narrow-ish (4–6 visible
+ * glyphs each) so they fit alongside regular letter circles without wrecking
+ * the flex layout. Mix of moods — cheery, mischievous, sleepy, cat — so the
+ * feed reads as a stack of different anonymous personalities, not all the
+ * same redacted shrug.
+ *
+ * Avoid emoji (renderer-dependent), avoid combining marks with low Unicode
+ * coverage, avoid anything that needs more than 1 line height.
+ */
+const KAOMOJI_POOL = [
+  "(•‿•)",
+  "(◕‿◕)",
+  "(´◡`)",
+  "(◔‿◔)",
+  "(¬‿¬)",
+  "(⌐■_■)",
+  "(°o°)",
+  "(⊙_⊙)",
+  "(•_•)",
+  "(˘ω˘)",
+  "(◠‿◠)",
+  "(◕ᴗ◕)",
+  "(•ᴗ•)",
+  "(=^･^=)",
+  "(◡‿◡✿)",
+  "(っ˘ω˘ς)",
+  "(◍•ᴗ•◍)",
+  "( ˙꒳​˙ )",
+  "(︶ω︶)",
+  "(¯ ͜ʖ ¯)",
+];
+
+/** Deterministic kaomoji for a given seed (e.g. check.id). */
+export function censorKaomoji(seed: string): string {
+  return KAOMOJI_POOL[hashSeed(seed) % KAOMOJI_POOL.length];
+}
