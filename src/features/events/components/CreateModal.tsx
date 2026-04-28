@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useModalTransition } from '@/shared/hooks/useModalTransition';
 import { useDateTimeInput } from '@/shared/hooks/useDateTimeInput';
 import type { ScrapedEvent } from '@/lib/ui-types';
-import { parseNaturalDate, sanitize } from '@/lib/utils';
+import { sanitize } from '@/lib/utils';
+import { parseWhen } from '@/lib/dateParse';
 import { logError, logWarn } from '@/lib/logger';
 import * as db from '@/lib/db';
 import { API_BASE } from '@/lib/db';
@@ -108,7 +109,7 @@ const AddModal = ({
   }, [minSquadSize, squadSize]);
 
   // When/where inputs for date+time and location
-  const { whenInput, setWhenInput, parsedDate, parsedTime, whenPreview } = useDateTimeInput();
+  const { whenInput, setWhenInput, parsedDateISO, parsedTime, whenPreview } = useDateTimeInput();
   const [whereInput, setWhereInput] = useState('');
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIdx, setMentionIdx] = useState(-1); // cursor position of @
@@ -567,7 +568,7 @@ const AddModal = ({
                 </button>
                 {(() => {
                   const scrapedDateStr = scraped.date && scraped.date !== 'TBD' ? scraped.date : null;
-                  const scrapedParsedDate = scrapedDateStr ? parseNaturalDate(scrapedDateStr) : null;
+                  const scrapedParsedDate = scrapedDateStr ? parseWhen(scrapedDateStr).dates[0] : null;
                   return (
                     <button
                       onClick={() => {
@@ -577,7 +578,7 @@ const AddModal = ({
                         onInterestCheck(
                           sanitize(title, 280),
                           24,
-                          scrapedParsedDate.iso,
+                          scrapedParsedDate,
                           5,
                           undefined,
                           timeStr
@@ -739,7 +740,7 @@ const AddModal = ({
                   onChange={(e) => setWhenInput(e.target.value)}
                   className="w-full py-2.5 px-3 bg-deep rounded-lg font-mono text-xs text-primary outline-none box-border"
                   style={{
-                    border: `1px solid ${whenInput.trim() && !parsedDate && !parsedTime ? '#ff6b6b44' : '#333'}`,
+                    border: `1px solid ${whenInput.trim() && !parsedDateISO && !parsedTime ? '#ff6b6b44' : '#333'}`,
                   }}
                 />
               </div>
@@ -934,7 +935,11 @@ const AddModal = ({
                 <p className="font-mono text-tiny text-dim mt-1.5 leading-relaxed">
                   date + location required so guests know where + when to show up.
                   who you are, and who else is in, reveals on{' '}
-                  {parsedDate?.label?.toLowerCase() ?? 'the day of the event'}.
+                  {parsedDateISO
+                    ? new Date(parsedDateISO + 'T00:00:00')
+                        .toLocaleDateString('en-US', { weekday: 'long' })
+                        .toLowerCase()
+                    : 'the day of the event'}.
                 </p>
               )}
             </div>
@@ -942,9 +947,10 @@ const AddModal = ({
             <button
               onClick={() => {
                 if (idea.trim()) {
-                  // Parse when input for date and time
-                  const eventDate = parsedDate?.iso ?? null;
-                  const eventTime = parsedTime ?? null;
+                  // Parse when input for date and time. parseWhen handles "or"
+                  // inputs; the check schema is single-date so we take dates[0].
+                  const eventDate = parsedDateISO;
+                  const eventTime = parsedTime;
                   const location = whereInput.trim() || null;
                   // Extract @mentions → friend IDs (match against username or display name)
                   const mentionNames = [...idea.matchAll(/@(\S+)/g)].map((m) =>
@@ -980,10 +986,10 @@ const AddModal = ({
                   close();
                 }
               }}
-              disabled={!idea.trim() || (mystery && (!parsedDate || !whereInput.trim()))}
+              disabled={!idea.trim() || (mystery && (!parsedDateISO || !whereInput.trim()))}
               className={cn(
                 'w-full border-none rounded-xl py-3.5 font-mono text-sm font-bold uppercase',
-                idea.trim() && (!mystery || (parsedDate && whereInput.trim()))
+                idea.trim() && (!mystery || (parsedDateISO && whereInput.trim()))
                   ? 'bg-dt text-on-accent cursor-pointer'
                   : 'bg-border-mid text-dim cursor-not-allowed'
               )}
