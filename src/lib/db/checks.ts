@@ -184,6 +184,7 @@ export async function createInterestCheck(
   dateFlexible: boolean = true,
   timeFlexible: boolean = true,
   location: string | null = null,
+  mystery: boolean = false,
 ): Promise<InterestCheck> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
@@ -210,6 +211,7 @@ export async function createInterestCheck(
     time_flexible: timeFlexible,
     max_squad_size: maxSquadSize,
     location,
+    mystery,
   };
 
   if (movieData) {

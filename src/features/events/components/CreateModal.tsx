@@ -59,7 +59,8 @@ const AddModal = ({
     dateFlexible?: boolean,
     timeFlexible?: boolean,
     taggedFriendIds?: string[],
-    location?: string | null
+    location?: string | null,
+    mystery?: boolean
   ) => void;
   defaultMode?: 'paste' | 'idea' | 'manual' | null;
   friends?: { id: string; name: string; avatar: string }[];
@@ -78,6 +79,7 @@ const AddModal = ({
   const [idea, setIdea] = useState('');
   const [checkTimer, setCheckTimer] = useState<number | null>(24);
   const [squadSize, setSquadSize] = useState(5);
+  const [mystery, setMystery] = useState(false);
 
   // Count tagged co-authors from @mentions in idea text
   const taggedCoAuthorCount = (() => {
@@ -908,6 +910,35 @@ const AddModal = ({
                   );
                 })()}
             </div>
+
+            {/* Mystery toggle — when on, the host + responders stay redacted
+                until the day of the event. Date + location become required. */}
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={() => setMystery((v) => !v)}
+                className={cn(
+                  'w-full flex items-center justify-between px-3 py-2.5 rounded-xl border font-mono text-xs cursor-pointer',
+                  mystery
+                    ? 'bg-dt/10 border-dt text-primary'
+                    : 'bg-card border-border-mid text-dim'
+                )}
+              >
+                <span>
+                  <span className="font-bold">{mystery ? '✓ Mystery mode' : 'Mystery mode'}</span>
+                  <span className="text-faint">{' '}— host hidden until day-of</span>
+                </span>
+                <span className="text-faint">{mystery ? '◉' : '○'}</span>
+              </button>
+              {mystery && (
+                <p className="font-mono text-tiny text-dim mt-1.5 leading-relaxed">
+                  date + location required so guests know where + when to show up.
+                  who you are, and who else is in, reveals on{' '}
+                  {parsedDate?.label?.toLowerCase() ?? 'the day of the event'}.
+                </p>
+              )}
+            </div>
+
             <button
               onClick={() => {
                 if (idea.trim()) {
@@ -943,21 +974,24 @@ const AddModal = ({
                     true,
                     true,
                     taggedIds.length > 0 ? taggedIds : undefined,
-                    location
+                    location,
+                    mystery
                   );
                   close();
                 }
               }}
-              disabled={!idea.trim()}
+              disabled={!idea.trim() || (mystery && (!parsedDate || !whereInput.trim()))}
               className={cn(
                 'w-full border-none rounded-xl py-3.5 font-mono text-sm font-bold uppercase',
-                idea.trim()
+                idea.trim() && (!mystery || (parsedDate && whereInput.trim()))
                   ? 'bg-dt text-on-accent cursor-pointer'
                   : 'bg-border-mid text-dim cursor-not-allowed'
               )}
               style={{ letterSpacing: '0.1em' }}
             >
-              {checkMovie ? 'Send Movie Check →' : 'Send Interest Check →'}
+              {mystery
+                ? 'Send Mystery Check →'
+                : checkMovie ? 'Send Movie Check →' : 'Send Interest Check →'}
             </button>
             <p className="font-mono text-tiny text-faint mt-3 text-center">
               sent to your friends & their friends

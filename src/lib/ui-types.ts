@@ -75,6 +75,11 @@ export interface InterestCheck {
   commentCount?: number;
   createdAt?: string;
   expiresAt?: string;
+  /** True iff this check was posted as `mystery=true`. */
+  mystery?: boolean;
+  /** True for non-authors viewing a mystery check before event_date arrives.
+   *  Card render path uses this to redact author + responders. Author always sees their own check normally. */
+  mysteryUnrevealed?: boolean;
 }
 
 export interface ScrapedEvent {
