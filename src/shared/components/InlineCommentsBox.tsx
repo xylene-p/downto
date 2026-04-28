@@ -88,18 +88,10 @@ export default function InlineCommentsBox({
             const displayText = anonymizeCommenters ? stripAtMentions(c.text) : c.text;
             return (
             <div key={c.id} className="flex items-center gap-2 min-w-0">
-              {/* Non-mystery: avatar pill. Mystery: avatar is dropped — the
-                  kaomoji in the name column carries identity, so a second
-                  glyph would just be noise. */}
-              {!redact && (
-                <div
-                  className={`shrink-0 flex items-center justify-center font-mono leading-none w-5 h-5 rounded-full text-[9px] font-bold ${c.isYours ? "bg-dt text-on-accent" : "bg-border-light text-dim"}`}
-                >
-                  {c.userAvatar}
-                </div>
-              )}
-              {/* Fixed-width right-aligned name column so every comment's text
-                  starts at the same x. Names that overflow get truncated. */}
+              {/* Fixed-width right-aligned name column (carried over from #490)
+                  so every comment's text starts at the same x. Names that
+                  overflow get truncated. Avatar pill is gone — was eating
+                  horizontal space and creating visual noise. */}
               <span
                 className={`font-mono text-tiny shrink-0 leading-snug truncate text-right ${redact && c.isYours ? "text-dt font-bold" : "text-muted"}`}
                 style={{ width: "5.5rem" }}
