@@ -431,7 +431,7 @@ function CheckCard({
         onSave={async (updates) => {
           setEditModalOpen(false);
           try {
-            await db.updateInterestCheck(check.id, { text: updates.text, event_date: updates.eventDate, event_time: updates.eventTime, date_flexible: updates.dateFlexible, time_flexible: updates.timeFlexible, location: updates.location });
+            await db.updateInterestCheck(check.id, { text: updates.text, event_date: updates.eventDate, event_date_label: updates.eventDateLabel, event_time: updates.eventTime, date_flexible: updates.dateFlexible, time_flexible: updates.timeFlexible, location: updates.location });
             if (updates.taggedFriendIds && updates.taggedFriendIds.length > 0) await db.tagCoAuthors(check.id, updates.taggedFriendIds);
             if (check.squadId) await db.updateSquadName(check.squadId, updates.text);
           } catch (err) {

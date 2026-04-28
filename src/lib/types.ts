@@ -78,6 +78,7 @@ export interface InterestCheck {
   text: string;
   expires_at: string | null;
   event_date: string | null; // ISO date from natural language parsing
+  event_date_label: string | null; // user's typed phrase when it implied multiple dates ("next thurs or next fri"); NULL for single-date inputs
   event_time: string | null; // display time like "7 PM"
   event_tz: string | null;   // IANA tz of author at insert; resolves "today" for check_is_active()
   mystery: boolean;          // true → author + responders hidden from non-authors until event_date arrives

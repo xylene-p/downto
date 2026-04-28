@@ -185,6 +185,10 @@ export async function createInterestCheck(
   timeFlexible: boolean = true,
   location: string | null = null,
   mystery: boolean = false,
+  /** User's typed phrase, only when the parse implied multiple dates
+   *  (e.g. "next thurs or next fri"). NULL for single-date inputs — the
+   *  display layer falls back to formatting event_date itself. */
+  eventDateLabel: string | null = null,
 ): Promise<InterestCheck> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
@@ -205,6 +209,7 @@ export async function createInterestCheck(
     text,
     expires_at: expiresAt,
     event_date: eventDate,
+    event_date_label: eventDateLabel,
     event_time: eventTime,
     event_tz: eventTz,
     date_flexible: dateFlexible,
@@ -286,7 +291,7 @@ export async function getArchivedChecks(): Promise<{ id: string; text: string; a
 
 export async function updateInterestCheck(
   checkId: string,
-  updates: { text?: string; max_squad_size?: number; event_date?: string | null; event_time?: string | null; date_flexible?: boolean; time_flexible?: boolean; location?: string | null }
+  updates: { text?: string; max_squad_size?: number; event_date?: string | null; event_date_label?: string | null; event_time?: string | null; date_flexible?: boolean; time_flexible?: boolean; location?: string | null }
 ): Promise<void> {
   const { error } = await supabase
     .from('interest_checks')
