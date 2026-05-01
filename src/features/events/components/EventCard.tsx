@@ -216,11 +216,30 @@ const EventCard = ({
               <div className="w-5 h-5 rounded-full bg-border-light text-dt flex items-center justify-center font-mono text-[9px] font-bold shrink-0">
                 {event.posterAvatar || event.posterName[0]?.toUpperCase()}
               </div>
-              <span className="font-mono text-tiny text-muted min-w-0 truncate">
+              <span className="font-mono text-tiny text-muted min-w-0 truncate flex-1">
                 <span className="text-dt font-semibold">
                   {event.posterName}
                 </span>
               </span>
+              {isNew && (
+                // Lime-on-fuchsia banner bleeding to the card's right edge,
+                // matching CheckCard. Negative right margin cancels the
+                // wrapper's p-4 so the background hits the card's border;
+                // the outer overflow-hidden keeps the corners rounded.
+                <span
+                  className="font-mono text-[9px] font-bold uppercase shrink-0 py-1 pl-4 pr-5 leading-none"
+                  style={{
+                    background: "#C2FF8A",
+                    color: "#ff00d4",
+                    letterSpacing: "0.12em",
+                    marginRight: -16,
+                    borderTopLeftRadius: 3,
+                    borderBottomLeftRadius: 3,
+                  }}
+                >
+                  NEW
+                </span>
+              )}
             </div>
           )}
 
@@ -232,8 +251,22 @@ const EventCard = ({
               >
                 {event.title}
               </h3>
-              {isNew && (
-                <span className="bg-dt text-on-accent font-mono text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none ml-2">new</span>
+              {isNew && !event.posterName && (
+                // Banner fallback for events with no posterName — render on
+                // the title row so the lime/fuchsia indicator still appears.
+                <span
+                  className="font-mono text-[9px] font-bold uppercase shrink-0 py-1 pl-4 pr-5 leading-none"
+                  style={{
+                    background: "#C2FF8A",
+                    color: "#ff00d4",
+                    letterSpacing: "0.12em",
+                    marginRight: -16,
+                    borderTopLeftRadius: 3,
+                    borderBottomLeftRadius: 3,
+                  }}
+                >
+                  NEW
+                </span>
               )}
             </div>
             <div className="flex flex-wrap justify-between items-baseline gap-x-3 gap-y-1 mt-2">
