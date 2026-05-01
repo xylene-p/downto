@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { color } from "@/lib/styles";
+import { isValidEmailShape, suggestEmailFix } from "@/lib/emailValidity";
 import Grain from "@/app/components/Grain";
 
 const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
@@ -25,12 +26,16 @@ const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const trimmedEmail = email.trim();
+  const emailShapeOk = isValidEmailShape(trimmedEmail);
+  const typoFix = emailShapeOk ? suggestEmailFix(trimmedEmail) : null;
+
   const handleSendCode = async () => {
-    if (!email.includes("@")) return;
+    if (!emailShapeOk) return;
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithOtp({ email });
+    const { error } = await supabase.auth.signInWithOtp({ email: trimmedEmail });
 
     setLoading(false);
     if (error) {
@@ -115,16 +120,28 @@ const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSendCode()}
             placeholder="you@email.com"
-            className="bg-card border border-border-mid rounded-xl p-4 text-primary font-mono text-lg outline-none mb-4"
+            className="bg-card border border-border-mid rounded-xl p-4 text-primary font-mono text-lg outline-none mb-2"
           />
+          {/* "Did you mean…" — non-blocking nudge for common domain typos
+              (gnail.com, gmail.con, etc). Sending without correcting still
+              works; this just spares the user a dead-end signup. */}
+          {typoFix && (
+            <button
+              type="button"
+              onClick={() => setEmail(typoFix)}
+              className="self-start bg-transparent border-none text-dt font-mono text-xs underline underline-offset-2 cursor-pointer p-0 mb-2 text-left"
+            >
+              did you mean {typoFix}?
+            </button>
+          )}
           <button
             onClick={handleSendCode}
-            disabled={!email.includes("@") || loading}
-            className="border-none rounded-xl p-4 font-mono text-sm font-bold uppercase"
+            disabled={!emailShapeOk || loading}
+            className="border-none rounded-xl p-4 font-mono text-sm font-bold uppercase mt-2"
             style={{
-              background: email.includes("@") ? color.accent : color.borderMid,
-              color: email.includes("@") ? "#000" : color.dim,
-              cursor: email.includes("@") ? "pointer" : "not-allowed",
+              background: emailShapeOk ? color.accent : color.borderMid,
+              color: emailShapeOk ? "#000" : color.dim,
+              cursor: emailShapeOk ? "pointer" : "not-allowed",
               letterSpacing: "0.1em",
             }}
           >
