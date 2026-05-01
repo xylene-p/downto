@@ -34,11 +34,16 @@ export function useCheckComments({
   userId,
   profile,
   initialCommentCount = 0,
+  initialComments,
 }: {
   checkId: string;
   userId: string | null;
   profile: Profile | null;
   initialCommentCount?: number;
+  /** Comments pre-fetched in batch by FeedView. When provided, the hook
+   *  seeds local state from this and treats itself as already-loaded so the
+   *  eager per-card fetch (the original Sentry N+1) becomes a no-op. */
+  initialComments?: CheckComment[];
 }) {
   const [comments, setComments] = useState<CommentUI[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -46,6 +51,16 @@ export function useCheckComments({
 
   // Dev-mode fixture checks aren't real rows — skip DB calls for them.
   const isMockCheck = checkId.startsWith("dev-mock-");
+
+  // Seed from FeedView's batched fetch. initialComments is undefined on the
+  // first render before the feed query resolves; once it lands, mark loaded
+  // so the eager fetch in CheckCard's useEffect early-returns.
+  useEffect(() => {
+    if (!initialComments || loaded) return;
+    setComments(initialComments.map(c => toCommentUI(c, userId)));
+    setLoaded(true);
+    setRealtimeCount(0);
+  }, [initialComments, userId, loaded]);
 
   // Always-on subscription — open when check card mounts
   useEffect(() => {
@@ -70,7 +85,7 @@ export function useCheckComments({
     } catch (err) {
       logError("loadCheckComments", err, { checkId });
     }
-  }, [checkId, userId, isMockCheck]);
+  }, [checkId, userId, isMockCheck, loaded]);
 
   const postComment = useCallback(async (text: string, mentions: string[] = []) => {
     if (!userId || !profile) return;
