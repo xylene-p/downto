@@ -34,6 +34,28 @@ export async function getCheckComments(checkId: string): Promise<CheckComment[]>
   return data ?? [];
 }
 
+/** One round-trip for many check ids — replaces N parallel getCheckComments
+ *  calls when the feed is rendering a batch of check cards. Returns a map
+ *  keyed by check_id so each card can pluck its own slice. */
+export async function getCheckCommentsBatch(
+  checkIds: string[]
+): Promise<Record<string, CheckComment[]>> {
+  if (checkIds.length === 0) return {};
+  const { data, error } = await supabase
+    .from('check_comments')
+    .select(`*, user:profiles!user_id(${COMMENT_USER_COLS})`)
+    .in('check_id', checkIds)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  const byCheck: Record<string, CheckComment[]> = {};
+  for (const id of checkIds) byCheck[id] = [];
+  for (const c of (data ?? [])) {
+    if (c.check_id) (byCheck[c.check_id] ??= []).push(c);
+  }
+  return byCheck;
+}
+
 export async function postCheckComment(checkId: string, text: string, mentions: string[] = []): Promise<CheckComment> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');

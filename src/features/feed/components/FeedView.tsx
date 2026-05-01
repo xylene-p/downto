@@ -113,6 +113,22 @@ export default function FeedView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [events.map((e) => e.id).join(',')]);
 
+  // Same N+1 fix for check comments — CheckCard auto-fetches comments on
+  // mount when initialCommentCount > 0, which fires one /check_comments
+  // request per check. Sentry's still flagging this URL pattern even after
+  // the events fix landed. Pre-fetch in batch and seed each card via the
+  // initialComments prop.
+  const [checkComments, setCheckComments] = useState<
+    Record<string, Awaited<ReturnType<typeof db.getCheckComments>>>
+  >({});
+  useEffect(() => {
+    if (!checks.length) return;
+    db.getCheckCommentsBatch(checks.map((c) => c.id))
+      .then(setCheckComments)
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checks.map((c) => c.id).join(',')]);
+
   const [mockEnabled] = useDevMockFeed();
   const effectiveChecks = mockEnabled ? DEV_MOCK_CHECKS : checks;
   const mockNewSet = React.useMemo(() => new Set(DEV_MOCK_NEW_IDS), []);
@@ -204,6 +220,7 @@ export default function FeedView({
                 friends={friends}
                 sharedCheckId={sharedCheckId}
                 initialCommentCount={commentCounts[check.id] ?? 0}
+                initialComments={checkComments[check.id]}
                 onNavigateToGroups={onNavigateToGroups}
                 onViewProfile={onViewProfile}
                 showToast={showToast}
@@ -224,6 +241,7 @@ export default function FeedView({
                   friends={friends}
                   sharedCheckId={sharedCheckId}
                   initialCommentCount={commentCounts[item.data.id] ?? 0}
+                  initialComments={checkComments[item.data.id]}
                   onNavigateToGroups={onNavigateToGroups}
                   onViewProfile={onViewProfile}
                   showToast={showToast}

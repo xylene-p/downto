@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, memo } from "react";
 import * as db from "@/lib/db";
-import type { Profile } from "@/lib/types";
+import type { Profile, CheckComment } from "@/lib/types";
 import type { InterestCheck, Friend } from "@/lib/ui-types";
 import { logError } from "@/lib/logger";
 import { useCheckComments } from "@/features/checks/hooks/useCheckComments";
@@ -22,6 +22,9 @@ export interface CheckCardProps {
   friends: Friend[];
   sharedCheckId?: string | null;
   initialCommentCount: number;
+  /** Comments pre-fetched by the parent feed in a single batched query.
+   *  Undefined while the batch is still loading. */
+  initialComments?: CheckComment[];
   onNavigateToGroups: (squadId?: string) => void;
   onViewProfile?: (userId: string) => void;
   showToast: (msg: string) => void;
@@ -37,6 +40,7 @@ function CheckCard({
   friends,
   sharedCheckId,
   initialCommentCount,
+  initialComments,
   onNavigateToGroups,
   onViewProfile,
   showToast,
@@ -66,6 +70,7 @@ function CheckCard({
     userId,
     profile,
     initialCommentCount,
+    initialComments,
   });
 
   // Eagerly fetch the comment list only when there's actually something to
