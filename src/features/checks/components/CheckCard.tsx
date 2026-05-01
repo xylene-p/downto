@@ -251,8 +251,22 @@ function CheckCard({
               </span>
             )}
             {isNew && (
-              <span className="bg-dt text-on-accent font-mono text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none shrink-0 ml-2">
-                new
+              // Lime-on-fuchsia banner bleeding to the card's right edge.
+              // Negative right margin cancels the wrapper's p-4 so the
+              // background reaches all the way to the card's inner border;
+              // the wrapper's overflow-hidden keeps the corners rounded.
+              <span
+                className="font-mono text-[9px] font-bold uppercase shrink-0 py-1 pl-4 pr-5 leading-none"
+                style={{
+                  background: "#C2FF8A",
+                  color: "#ff00d4",
+                  letterSpacing: "0.12em",
+                  marginRight: -16,
+                  borderTopLeftRadius: 3,
+                  borderBottomLeftRadius: 3,
+                }}
+              >
+                NEW
               </span>
             )}
           </div>
