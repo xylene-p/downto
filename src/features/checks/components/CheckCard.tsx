@@ -246,18 +246,8 @@ function CheckCard({
               </span>
             )}
             {isNew && (
-              <span
-                className="font-mono text-[9px] font-bold uppercase shrink-0 py-1 pl-4 pr-5 leading-none"
-                style={{
-                  background: "#C2FF8A", // guava chartreuse
-                  color: "#ff00d4",        // electric fuchsia
-                  letterSpacing: "0.12em",
-                  marginRight: -16,       // cancel the card's p-4 right padding so the bg reaches the card's right edge
-                  borderTopLeftRadius: 3,
-                  borderBottomLeftRadius: 3,
-                }}
-              >
-                NEW
+              <span className="bg-dt text-on-accent font-mono text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full leading-none shrink-0 ml-2">
+                new
               </span>
             )}
           </div>
